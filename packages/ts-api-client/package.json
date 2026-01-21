@@ -1,0 +1,19 @@
+{
+  "name": "@conceptcast/ts-api-client",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "generate": "openapi-typescript http://localhost:8000/openapi.json -o src/api.ts",
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@conceptcast/config": "workspace:*"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.10.1",
+    "typescript": "^5.9.3"
+  }
+}
