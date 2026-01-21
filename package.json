@@ -2,14 +2,19 @@
   "name": "concept-cast-monorepo",
   "private": true,
   "scripts": {
-    "dev": "pnpm -r --parallel run dev",
-    "build": "pnpm -r run build",
-    "lint": "pnpm -r run lint",
-    "test": "pnpm -r run test",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "update": "turbo run update",
+    "bootstrap": "turbo run bootstrap",
     "clean": "rm -rf node_modules **/*/node_modules"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "turbo": "^2.7.5"
   }
 }

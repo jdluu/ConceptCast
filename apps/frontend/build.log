@@ -1,0 +1,16 @@
+
+> concept-cast-frontend@0.0.0 build /home/jdluu/CS Stuff/ConceptCast/apps/frontend
+> tsc -p tsconfig.build.json && vite build
+
+vite v7.3.1 building client environment for production...
+transforming...
+✓ 5 modules transformed.
+✗ Build failed in 117ms
+error during build:
+Could not resolve "./App.css" from "src/App.tsx"
+file: /home/jdluu/CS Stuff/ConceptCast/apps/frontend/src/App.tsx
+    at getRollupError (file:///home/jdluu/CS%20Stuff/ConceptCast/node_modules/.pnpm/rollup@4.55.2/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///home/jdluu/CS%20Stuff/ConceptCast/node_modules/.pnpm/rollup@4.55.2/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at ModuleLoader.handleInvalidResolvedId (file:///home/jdluu/CS%20Stuff/ConceptCast/node_modules/.pnpm/rollup@4.55.2/node_modules/rollup/dist/es/shared/node-entry.js:21706:24)
+    at file:///home/jdluu/CS%20Stuff/ConceptCast/node_modules/.pnpm/rollup@4.55.2/node_modules/rollup/dist/es/shared/node-entry.js:21666:26
+ ELIFECYCLE  Command failed with exit code 1.

@@ -1,5 +1,5 @@
 [project]
-name = "api"
+name = "backend"
 version = "0.1.0"
 description = "ConceptCast Backend"
 authors = [{name = "ConceptCast Team"}]

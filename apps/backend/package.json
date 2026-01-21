@@ -1,0 +1,12 @@
+{
+  "name": "backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "uv run uvicorn src.main:app --reload --port 8000",
+    "lint": "uv run ruff check .",
+    "test": "uv run pytest",
+    "update": "uv lock --upgrade && uv sync",
+    "bootstrap": "uv sync"
+  }
+}

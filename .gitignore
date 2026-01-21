@@ -2,7 +2,7 @@
 node_modules/
 .pnpm-store/
 
-# Python
+# Python / Backend
 __pycache__/
 *.py[cod]
 *$py.class
@@ -13,20 +13,21 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
-# Build outputs
+# Node / Frontend
 dist/
 build/
 out/
 coverage/
+.turbo/
 
 # System
 .DS_Store
 thumbs.db
 
-# Environment
+# Environment Variables
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # IDEs
 .idea/
@@ -42,4 +43,10 @@ pnpm-debug.log*
 # Framework specific
 .next/
 .astro/
-.docusaurus/
+
+# ConceptCast Data
+data/*
+!data/jobs/
+data/jobs/*
+!data/jobs/.gitkeep
+
