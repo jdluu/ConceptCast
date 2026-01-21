@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build outputs
+dist/
+build/
+out/
+coverage/
+
+# System
+.DS_Store
+thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Framework specific
+.next/
+.astro/
+.docusaurus/
