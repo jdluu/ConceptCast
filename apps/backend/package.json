@@ -6,7 +6,7 @@
     "dev": "uv run uvicorn src.main:app --reload --port 8000",
     "lint": "uv run ruff check .",
     "test": "uv run pytest",
-    "update": "uv lock --upgrade && uv sync",
-    "bootstrap": "uv sync"
+    "update": "uv lock --upgrade && uv sync --all-extras",
+    "bootstrap": "uv sync --all-extras"
   }
 }
