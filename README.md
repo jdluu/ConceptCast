@@ -1,64 +1,27 @@
 # ConceptCast
 
-## Overview
-
 ConceptCast uses AI to turn complex ideas into clear educational videos. It employs a team of specialized agents to research, storyboard, and script animations using the Manim engine.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [How it Works](#how-it-works)
+- [Documentation & Wiki](#documentation--wiki)
+
+
+## Overview
 
 The goal is to support critical thinking rather than replace it. ConceptCast automates the difficult parts of coding visualizations, making it easier to produce quality tutorials for math, science, and business.
 
-## Tech Stack
+## How it Works
 
-### Frontend
-- **React + Vite**: High-performance, reactive user dashboard.
-- **TanStack Query**: Asynchronous state management.
-- **Zustand**: Client-side global state management.
-- **React Router**: Client-side routing.
-- **Tailwind CSS v4**: Utility-first styling with Vite integration.
-- **TypeScript**: Type-safety across the monorepo.
-- **Oxlint & Vitest**: Fast linting and unit testing.
+ConceptCast orchestrates multiple AI agents to transform a text topic into a pedagogical curriculum, validates it, and generates high-fidelity mathematical animations.
 
-### Backend
-- **FastAPI (Python)**: Async web framework for orchestrating agents.
-- **uv**: High-speed Python package and project manager.
-- **Manim Community**: Mathematical animation engine.
-- **Pydantic**: Data validation and settings management.
-- **Loguru**: Enhanced logging.
-- **Ruff & Pytest**: Linting and testing.
+## Documentation & Wiki
 
-### Monorepo
-- **Turborepo**: High-performance build system.
-- **pnpm**: Fast, disk-efficient package manager.
-- **GitHub Actions**: CI/CD for testing and documentation.
+For technical enthusiasts and contributors, please refer to our **[Project Wiki](docs/wiki/Home.md)** for:
 
-## Getting Started
+- **[Architecture](docs/wiki/Architecture.md)**: Deep dive into the tech stack and system design.
+- **[Setup Guide](docs/wiki/Setup-Guide.md)**: Installation, development, and testing instructions.
 
-### Prerequisites
 
-- Node.js >= 22 (LTS)
-- Python >= 3.11
-- pnpm >= 9
-- uv
-
-### Installation
-
-```bash
-# 1. Install JavaScript dependencies
-pnpm install
-
-# 2. Bootstrap the environment (installs Python dependencies via uv)
-pnpm bootstrap
-```
-
-### Development
-
-```bash
-# Start both frontend and backend development servers
-pnpm dev
-```
-
-### Testing
-
-```bash
-# Run unit tests for both frontend and backend
-pnpm test
-```

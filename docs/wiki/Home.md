@@ -1,12 +1,15 @@
-# Welcome to the ConceptCast Wiki
+# ConceptCast Wiki
 
-This wiki is automatically generated from the `docs/wiki` folder in the repository.
+Welcome to the technical documentation for ConceptCast. This wiki provides in-depth guides for developers, contributors, and the curious.
 
-## Project Overview
-ConceptCast is a monorepo containing:
-- **Frontend**: React + Vite
-- **Backend**: FastAPI
+## Documentation Portal
 
-## Documentation
-- [Architecture](Architecture)
-- [Setup Guide](Setup-Guide)
+### [Architecture](Architecture.md)
+*Deep dive into the system design, tech stack, and the AI "Council" (Specialized Agents).*
+
+### [Setup Guide](Setup-Guide.md)
+*Technical instructions for local development, environment bootstrapping, and running tests.*
+
+---
+> [!NOTE]
+> For a high-level project summary and business overview, please see the [README](../../README.md).
