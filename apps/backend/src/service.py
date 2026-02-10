@@ -1,5 +1,6 @@
 import os
 import uuid
+from typing import Callable
 
 from loguru import logger
 from sqlalchemy.orm import Session
@@ -53,13 +54,13 @@ async def create_new_job(db: Session, request: JobRequest) -> str:
     return job_id
 
 
-async def _run_mock_flow(request: JobRequest, update_job: callable):
+async def _run_mock_flow(request: JobRequest, update_job: Callable[[dict], None]):
     """
     Executes the mock generation flow for testing or demonstration purposes.
 
     Args:
         request (JobRequest): The job request parameters.
-        update_job (callable): callback to update job status in DB.
+        update_job (Callable[[dict], None]): Callback to update job status in DB.
 
     Side Effects:
         Updates the job record with mock plan, validation, storyboard, and code.
@@ -85,7 +86,7 @@ async def _run_mock_flow(request: JobRequest, update_job: callable):
 
 
 async def _step_planning(
-    request: JobRequest, job: JobRecord, update_job: callable
+    request: JobRequest, job: JobRecord, update_job: Callable[[dict], None]
 ) -> CurriculumPlan:
     """
     Executes the Planning step (Step 1) of the Council workflow.
@@ -119,7 +120,10 @@ async def _step_planning(
 
 
 async def _step_architecting(
-    plan: CurriculumPlan, request: JobRequest, job: JobRecord, update_job: callable
+    plan: CurriculumPlan,
+    request: JobRequest,
+    job: JobRecord,
+    update_job: Callable[[dict], None],
 ) -> Storyboard:
     """
     Executes the Architecting step (Step 3) of the Council workflow.
@@ -151,7 +155,10 @@ async def _step_architecting(
 
 
 async def _step_animating(
-    storyboard: Storyboard, request: JobRequest, job: JobRecord, update_job: callable
+    storyboard: Storyboard,
+    request: JobRequest,
+    job: JobRecord,
+    update_job: Callable[[dict], None],
 ) -> str:
     """
     Executes the Animating step (Step 4) of the Council workflow.
@@ -182,7 +189,7 @@ async def _step_animating(
         return job.manim_code
 
 
-async def _step_rendering(code: str, job_id: str, update_job: callable):
+async def _step_rendering(code: str, job_id: str, update_job: Callable[[dict], None]):
     """
     Executes the Rendering step (Step 5) of the Council workflow.
 
