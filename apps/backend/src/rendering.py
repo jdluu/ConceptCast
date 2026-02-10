@@ -29,7 +29,10 @@ async def render_storyboard(code: str, job_id: str) -> str:
 
     logger.info(f"Rendering job {job_id} in {job_dir}...")
 
-    # Run Manim command asynchronously
+    # SECURITY: This executes AI-generated Python code without sandboxing.
+    # A malicious or hallucinated output could run arbitrary system commands.
+    # TODO: Implement sandboxing (e.g., Docker container, nsjail, firejail)
+    # and static analysis on generated code before execution.
     process = await asyncio.create_subprocess_exec(
         "manim",
         "-ql",

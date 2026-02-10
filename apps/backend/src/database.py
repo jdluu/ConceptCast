@@ -1,9 +1,10 @@
+import os
 from datetime import datetime, timezone
 
 from sqlalchemy import JSON, Column, DateTime, String, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = "sqlite:///../../conceptcast.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///../../conceptcast.db")
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -33,10 +34,24 @@ class JobRecord(Base):
 
 
 def init_db():
+    """
+    Initializes the database schema.
+
+    Creates all tables defined in the SQLAlchemy models if they do not exist.
+    """
     Base.metadata.create_all(bind=engine)
 
 
 def get_db():
+    """
+    Dependency for obtaining a database session.
+
+    Yields:
+        Session: A SQLAlchemy database session.
+
+    Side Effects:
+        Closes the session after the request is completed.
+    """
     db = SessionLocal()
     try:
         yield db

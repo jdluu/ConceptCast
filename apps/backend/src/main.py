@@ -6,6 +6,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -26,13 +27,29 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize the database on startup
+    """
+    Manages the application lifecycle.
+
+    Initializes the database connection and session factory on startup.
+
+    Args:
+        app (FastAPI): The FastAPI application instance.
+    """
     init_db()
     app.state.db_session_factory = SessionLocal
     yield
 
 
 app = FastAPI(title="ConceptCast Backend", lifespan=lifespan)
+
+cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Job Artifact Storage (Persistent - defined here, mounted at end)
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
@@ -43,7 +60,13 @@ JOBS_ROOT.mkdir(parents=True, exist_ok=True)
 @app.get("/models/available", response_model=AvailableModelsResponse)
 async def get_available_models():
     """
-    Returns the list of available AI providers and their models.
+    Retrieves the list of supported AI providers and their models.
+
+    Filters providers based on the presence of their respective API keys
+    in the environment. The mock provider is always included.
+
+    Returns:
+        AvailableModelsResponse: A list of available providers and their models.
     """
     result = []
     for provider, models in AVAILABLE_MODELS.items():
@@ -66,6 +89,12 @@ async def get_available_models():
 
 @app.get("/")
 async def read_root():
+    """
+    Root endpoint for health checking and welcoming.
+
+    Returns:
+        dict: A welcome message.
+    """
     return {"message": "Welcome to ConceptCast Council"}
 
 
@@ -76,7 +105,21 @@ async def create_job(
     db: Session = Depends(get_db),
 ):
     """
-    Create a new ConceptCast job and trigger orchestration in the background.
+    Initializes a new video generation job.
+
+    Creates a database record and queues the orchestration logic for
+    asynchronous background execution.
+
+    Args:
+        request (JobRequest): Job parameters (topic, audience, model).
+        background_tasks (BackgroundTasks): FastAPI background task manager.
+        db (Session): Database session.
+
+    Returns:
+        JobStatus: The initial status of the created job.
+
+    Raises:
+        HTTPException: If job initialization fails.
     """
     try:
         job_id = await create_new_job(db, request)
@@ -93,7 +136,17 @@ async def create_job(
 @app.get("/jobs/{job_id}/status", response_model=JobStatus)
 async def get_status(job_id: str, db: Session = Depends(get_db)):
     """
-    Retrieve current status and artifacts for a job.
+    Retrieves the current state and all generated artifacts for a specific job.
+
+    Args:
+        job_id (str): The unique identifier of the job.
+        db (Session): Database session.
+
+    Returns:
+        JobStatus: Comprehensive job state including plan, storyboard, and video URL.
+
+    Raises:
+        HTTPException: If the job is not found.
     """
     job = db.query(JobRecord).filter(JobRecord.job_id == job_id).first()
     if not job:
@@ -117,7 +170,17 @@ async def job_events(
     job_id: str, db_session_factory: SessionLocal = Depends(lambda: SessionLocal)
 ):
     """
-    Server-Sent Events stream for real-time job status updates.
+    Provides a real-time stream of job status updates via Server-Sent Events (SSE).
+
+    Polls the database and emits updates only when the job state or
+    timestamp changes. The stream terminates upon job completion or failure.
+
+    Args:
+        job_id (str): The unique identifier of the job to monitor.
+        db_session_factory (SessionLocal): Factory for creating database sessions.
+
+    Returns:
+        StreamingResponse: An SSE stream of job status objects.
     """
 
     async def event_generator():
@@ -159,7 +222,17 @@ async def job_events(
 @app.get("/jobs/{job_id}/plan", response_model=CurriculumPlan)
 async def get_plan(job_id: str, db: Session = Depends(get_db)):
     """
-    Retrieve the generated curriculum plan for a job.
+    Retrieves the generated curriculum plan for a specific job.
+
+    Args:
+        job_id (str): The unique identifier of the job.
+        db (Session): Database session.
+
+    Returns:
+        CurriculumPlan: The structured pedagogical plan.
+
+    Raises:
+        HTTPException: If the job or plan is not found.
     """
     job = db.query(JobRecord).filter(JobRecord.job_id == job_id).first()
     if not job or not job.plan_data:
