@@ -7,10 +7,11 @@ import { VideoPreview } from './components/council/VideoPreview';
 import { createJob, JobStatus, CreateJobRequest } from './lib/api';
 
 /**
- * Main application component.
- * 
- * Manages the state of the current job proposal and coordinates
- * the Job Creation and Council Log views.
+ * The root application component for ConceptCast.
+ *
+ * Orchestrates the global state for job generation, including SSE-based
+ * real-time updates, simulated progress tracking, and view coordination
+ * between job creation and result displays.
  */
 function App() {
     const [currentJob, setCurrentJob] = useState<JobStatus | null>(null);
@@ -18,7 +19,6 @@ function App() {
 
     const [renderProgress, setRenderProgress] = useState(0);
 
-    // Subscribe via SSE for job status updates with reconnection logic
     useEffect(() => {
         if (!currentJob || currentJob.status === 'completed' || currentJob.status === 'failed') {
             setRenderProgress(0);
@@ -32,12 +32,10 @@ function App() {
         const connect = () => {
             if (eventSource) eventSource.close();
             
-            console.log(`Connecting to SSE (attempt ${retryCount + 1})...`);
             eventSource = new EventSource(`/api/jobs/${currentJob.job_id}/events`);
             
             eventSource.onopen = () => {
-                retryCount = 0; // Reset on success
-                console.log('SSE Connected');
+                retryCount = 0;
             };
 
             eventSource.onmessage = (event) => {
@@ -49,22 +47,17 @@ function App() {
                 }
             };
 
-            eventSource.onerror = (error) => {
-                console.error('SSE Error:', error);
+            eventSource.onerror = () => {
                 eventSource?.close();
                 
-                // Retry logic with exponential backoff (max 30s)
                 const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
                 retryCount++;
-                
-                console.log(`Retrying SSE in ${delay}ms...`);
                 retryTimeout = window.setTimeout(connect, delay);
             };
         };
 
         connect();
 
-        // Simulated progress interval for rendering phase
         let progressInterval: number | null = null;
         if (currentJob.status === 'rendering') {
             progressInterval = window.setInterval(() => {
@@ -80,15 +73,19 @@ function App() {
             if (retryTimeout) clearTimeout(retryTimeout);
             if (progressInterval) clearInterval(progressInterval);
         };
-    }, [currentJob?.job_id, currentJob?.status === 'completed', currentJob?.status === 'failed', currentJob?.status === 'rendering']);
+    }, [currentJob?.job_id, currentJob?.status]);
 
+    /**
+     * Initiates a new video generation job and updates global state.
+     *
+     * @param data - The job request parameters including topic and audience.
+     */
     const handleCreateJob = async (data: CreateJobRequest) => {
         setIsLoading(true);
         try {
             const job = await createJob(data);
             setCurrentJob(job);
-        } catch (error) {
-            console.error('Failed to create job:', error);
+        } catch {
             alert('Failed to initiate job. Check console.');
         } finally {
             setIsLoading(false);
