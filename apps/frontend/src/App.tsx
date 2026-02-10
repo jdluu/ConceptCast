@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { JobCreationForm } from './components/forms/JobCreationForm';
 import { CouncilLog } from './components/council/CouncilLog';
-import { createJob, getJobStatus, JobStatus, CreateJobRequest } from './lib/api';
+import { StoryboardView } from './components/council/StoryboardView';
+import { VideoPreview } from './components/council/VideoPreview';
+import { createJob, JobStatus, CreateJobRequest } from './lib/api';
 
 /**
  * Main application component.
@@ -14,21 +16,71 @@ function App() {
     const [currentJob, setCurrentJob] = useState<JobStatus | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Poll for job status updates
+    const [renderProgress, setRenderProgress] = useState(0);
+
+    // Subscribe via SSE for job status updates with reconnection logic
     useEffect(() => {
-        if (!currentJob || currentJob.status === 'completed' || currentJob.status === 'failed') return;
+        if (!currentJob || currentJob.status === 'completed' || currentJob.status === 'failed') {
+            setRenderProgress(0);
+            return;
+        }
 
-        const interval = setInterval(async () => {
-            try {
-                const status = await getJobStatus(currentJob.job_id);
+        let eventSource: EventSource | null = null;
+        let retryTimeout: number | null = null;
+        let retryCount = 0;
+
+        const connect = () => {
+            if (eventSource) eventSource.close();
+            
+            console.log(`Connecting to SSE (attempt ${retryCount + 1})...`);
+            eventSource = new EventSource(`/api/jobs/${currentJob.job_id}/events`);
+            
+            eventSource.onopen = () => {
+                retryCount = 0; // Reset on success
+                console.log('SSE Connected');
+            };
+
+            eventSource.onmessage = (event) => {
+                const status = JSON.parse(event.data);
                 setCurrentJob(status);
-            } catch (error) {
-                console.error('Polling error:', error);
-            }
-        }, 1000);
+                
+                if (status.status === 'completed' || status.status === 'failed') {
+                    eventSource?.close();
+                }
+            };
 
-        return () => clearInterval(interval);
-    }, [currentJob]);
+            eventSource.onerror = (error) => {
+                console.error('SSE Error:', error);
+                eventSource?.close();
+                
+                // Retry logic with exponential backoff (max 30s)
+                const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
+                retryCount++;
+                
+                console.log(`Retrying SSE in ${delay}ms...`);
+                retryTimeout = window.setTimeout(connect, delay);
+            };
+        };
+
+        connect();
+
+        // Simulated progress interval for rendering phase
+        let progressInterval: number | null = null;
+        if (currentJob.status === 'rendering') {
+            progressInterval = window.setInterval(() => {
+                setRenderProgress(prev => {
+                    if (prev >= 95) return prev;
+                    return prev + (100 - prev) * 0.05; // Asymptotic progress
+                });
+            }, 2000);
+        }
+
+        return () => {
+            if (eventSource) eventSource.close();
+            if (retryTimeout) clearTimeout(retryTimeout);
+            if (progressInterval) clearInterval(progressInterval);
+        };
+    }, [currentJob?.job_id, currentJob?.status === 'completed', currentJob?.status === 'failed', currentJob?.status === 'rendering']);
 
     const handleCreateJob = async (data: CreateJobRequest) => {
         setIsLoading(true);
@@ -69,11 +121,22 @@ function App() {
                             </div>
                         </div>
                     )}
+
+                    {currentJob?.storyboard && (
+                        <StoryboardView storyboard={currentJob.storyboard} />
+                    )}
+
+                    {currentJob?.video_url && (
+                        <VideoPreview 
+                            videoUrl={currentJob.video_url} 
+                            conceptTitle={currentJob.plan?.concept_title || 'Rendering...'} 
+                        />
+                    )}
                 </div>
 
                 <div className="space-y-6">
                     <h3 className="text-lg font-semibold text-white">Council Activity</h3>
-                    <CouncilLog job={currentJob} />
+                    <CouncilLog job={currentJob} renderProgress={renderProgress} />
                 </div>
             </div>
         </DashboardLayout>
