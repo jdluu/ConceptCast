@@ -1,6 +1,6 @@
-import { JobStatus, JobStatusEnum } from '../../lib/api';
+import { JobStatus, ValidationResult, Storyboard } from '../../lib/api';
 
-const statusColors: Record<JobStatusEnum, string> = {
+const statusColors: Record<string, string> = {
     planning: 'text-blue-400',
     validating: 'text-purple-400',
     architecting: 'text-yellow-400',
@@ -19,6 +19,9 @@ export function CouncilLog({ job, renderProgress = 0 }: { job: JobStatus | null,
         );
     }
 
+    const validation = job.validation as unknown as ValidationResult | null;
+    const storyboard = job.storyboard as unknown as Storyboard | null;
+
     const LogLine = ({ children, color = 'text-neutral-300' }: { children: React.ReactNode, color?: string }) => (
         <div className="flex gap-3 mb-1">
             <span className="text-neutral-600 shrink-0">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
@@ -36,7 +39,7 @@ export function CouncilLog({ job, renderProgress = 0 }: { job: JobStatus | null,
                             MOCK
                         </span>
                     )}
-                    <span className={`font-bold uppercase tracking-widest text-[10px] ${statusColors[job.status] || 'text-neutral-400'}`}>
+                    <span className={`font-bold uppercase tracking-widest text-[10px] ${statusColors[job.status as string] || 'text-neutral-400'}`}>
                         {job.status}
                     </span>
                 </div>
@@ -49,21 +52,21 @@ export function CouncilLog({ job, renderProgress = 0 }: { job: JobStatus | null,
                     <LogLine color="text-blue-400">Analyst: Curriculum Plan generated</LogLine>
                 )}
 
-                {job.validation && (
+                {validation && (
                     <>
-                        <LogLine color={job.validation.is_valid ? "text-purple-400" : "text-red-400"}>
-                            Validator: {job.validation.is_valid ? "✅ Plan Verified" : "❌ Plan Rejected"}
+                        <LogLine color={validation.is_valid ? "text-purple-400" : "text-red-400"}>
+                            Validator: {validation.is_valid ? "✅ Plan Verified" : "❌ Plan Rejected"}
                         </LogLine>
-                        {job.validation.feedback && (
+                        {validation.feedback && (
                             <div className="ml-16 mr-4 text-[11px] text-neutral-500 border-l-2 border-neutral-800 pl-3 py-1 mb-2 italic">
-                                "{job.validation.is_valid ? job.validation.feedback : job.error}"
+                                "{validation.is_valid ? validation.feedback : job.error}"
                             </div>
                         )}
                     </>
                 )}
 
-                {job.storyboard && (
-                    <LogLine color="text-yellow-400">Architect: Visual Storyboard created ({job.storyboard.scenes.length} scenes)</LogLine>
+                {storyboard && (
+                    <LogLine color="text-yellow-400">Architect: Visual Storyboard created ({storyboard.scenes.length} scenes)</LogLine>
                 )}
 
                 {job.manim_code && (
@@ -74,7 +77,7 @@ export function CouncilLog({ job, renderProgress = 0 }: { job: JobStatus | null,
                     <LogLine color="text-green-400">Renderer: MP4 generated successfully</LogLine>
                 )}
 
-                {job.status === 'failed' && !job.validation && (
+                {job.status === 'failed' && !validation && (
                     <LogLine color="text-red-400">System Error: {job.error}</LogLine>
                 )}
 

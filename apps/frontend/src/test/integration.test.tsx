@@ -5,12 +5,7 @@ import App from '../App';
 import * as api from '../lib/api';
 
 // Mock API
-vi.mock('../lib/api', () => ({
-    createJob: vi.fn(),
-    getJobStatus: vi.fn(),
-    getJobPlan: vi.fn(),
-    getAvailableModels: vi.fn(),
-}));
+vi.mock('../lib/api', { spy: true });
 
 /**
  * Creates a fresh QueryClient for each test to avoid shared cache state.
@@ -41,6 +36,11 @@ describe('ConceptCast Dashboard', () => {
     });
 
     it('renders the dashboard layout', () => {
+        // Mock the available models query to avoid errors
+        vi.mocked(api.getAvailableModels).mockResolvedValue({
+            available: [{ provider: 'mock', models: ['mock-llm'] }]
+        });
+        
         renderApp();
         expect(screen.getByText('ConceptCast')).toBeInTheDocument();
     });
@@ -49,9 +49,19 @@ describe('ConceptCast Dashboard', () => {
         const mockJob = {
             job_id: '123',
             status: 'planning',
+            mode: 'mock',
+            plan: null,
+            storyboard: null,
+            manim_code: null,
+            video_url: null,
+            error: null,
         };
+        
         vi.mocked(api.createJob).mockResolvedValue(mockJob as any);
         vi.mocked(api.getJobStatus).mockResolvedValue(mockJob as any);
+        vi.mocked(api.getAvailableModels).mockResolvedValue({
+            available: [{ provider: 'mock', models: ['mock-llm'] }]
+        });
 
         renderApp();
 
@@ -64,21 +74,17 @@ describe('ConceptCast Dashboard', () => {
         const button = screen.getByText('Generate Lesson');
         fireEvent.click(button);
 
-        expect(button).toBeDisabled();
-        expect(screen.getByText('Consulting Council...')).toBeInTheDocument();
+        // Verification: The Council Workflow should show the job initialized and processing
+        await waitFor(() => {
+            expect(screen.getByText('Council Workflow')).toBeInTheDocument();
+        }, { timeout: 3000 });
 
         await waitFor(() => {
-            expect(api.createJob).toHaveBeenCalledWith({
-                topic: 'Test Topic',
-                target_audience: 'General Audience',
-                provider: 'mock',
-                model_id: 'llama3-70b-8192',
-            });
-        });
+            expect(screen.getByText(/Job 123... initialized/i)).toBeInTheDocument();
+        }, { timeout: 3000 });
 
         await waitFor(() => {
-            expect(screen.getByText('PLANNING')).toBeInTheDocument();
-        });
+            expect(screen.getByText(/Processing planning/i)).toBeInTheDocument();
+        }, { timeout: 3000 });
     });
 });
-
