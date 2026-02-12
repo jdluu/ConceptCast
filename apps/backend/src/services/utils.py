@@ -1,4 +1,4 @@
-from schemas import (
+from api.schemas import (
     CurriculumPlan,
     Scene,
     Storyboard,
@@ -63,6 +63,7 @@ def generate_mock_storyboard(plan: CurriculumPlan) -> Storyboard:
                         type="Text",
                         position="ORIGIN",
                         label=plan.concept_title,
+                        color="WHITE",
                     )
                 ],
             ),
@@ -77,6 +78,7 @@ def generate_mock_storyboard(plan: CurriculumPlan) -> Storyboard:
                         type="Circle",
                         position="ORIGIN",
                         color="#4F46E5",
+                        label="Metaphor",
                     )
                 ],
             ),
@@ -107,4 +109,7 @@ def generate_mock_validation() -> ValidationResult:
         is_valid=True,
         feedback="Mock: Curriculum plan is pedagogically sound.",
         suggestions=["Everything looks great!"],
+        metadata={},
+        scores={},
+        issues=[],
     )

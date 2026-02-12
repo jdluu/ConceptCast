@@ -20,7 +20,7 @@ async def render_storyboard(code: str, job_id: str) -> str:
         RuntimeError: If rendering fails.
     """
     # Use project-root data/jobs folder
-    project_root = Path(__file__).parent.parent.parent.parent
+    project_root = Path(__file__).parent.parent.parent.parent.parent
     job_dir = project_root / "data" / "jobs" / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
