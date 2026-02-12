@@ -1,4 +1,3 @@
-
 from pydantic_ai import Agent
 
 from api.schemas import CurriculumPlan, Storyboard
