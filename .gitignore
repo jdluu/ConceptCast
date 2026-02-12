@@ -12,6 +12,10 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+*.tsbuildinfo
+junit.xml
+.coverage
+htmlcov/
 
 # Node / Frontend
 dist/
