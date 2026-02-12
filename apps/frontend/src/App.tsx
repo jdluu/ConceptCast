@@ -5,6 +5,7 @@ import { CouncilLog } from './components/council/CouncilLog';
 import { StoryboardView } from './components/council/StoryboardView';
 import { VideoPreview } from './components/council/VideoPreview';
 import { createJob, JobStatus, CreateJobRequest } from './lib/api';
+import { useJobEvents } from './lib/hooks/useJobEvents';
 
 /**
  * The root application component for ConceptCast.
@@ -14,66 +15,26 @@ import { createJob, JobStatus, CreateJobRequest } from './lib/api';
  * between job creation and result displays.
  */
 function App() {
-    const [currentJob, setCurrentJob] = useState<JobStatus | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [initialJob, setInitialJob] = useState<JobStatus | null>(null);
+    const { jobStatus: liveJobStatus } = useJobEvents(initialJob?.job_id);
+    const currentJob = liveJobStatus || initialJob;
 
+    const [isLoading, setIsLoading] = useState(false);
     const [renderProgress, setRenderProgress] = useState(0);
 
     useEffect(() => {
-        if (!currentJob || currentJob.status === 'completed' || currentJob.status === 'failed') {
-            setRenderProgress(0);
-            return;
-        }
-
-        let eventSource: EventSource | null = null;
-        let retryTimeout: number | null = null;
-        let retryCount = 0;
-
-        const connect = () => {
-            if (eventSource) eventSource.close();
-            
-            eventSource = new EventSource(`/api/jobs/${currentJob.job_id}/events`);
-            
-            eventSource.onopen = () => {
-                retryCount = 0;
-            };
-
-            eventSource.onmessage = (event) => {
-                const status = JSON.parse(event.data);
-                setCurrentJob(status);
-                
-                if (status.status === 'completed' || status.status === 'failed') {
-                    eventSource?.close();
-                }
-            };
-
-            eventSource.onerror = () => {
-                eventSource?.close();
-                
-                const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
-                retryCount++;
-                retryTimeout = window.setTimeout(connect, delay);
-            };
-        };
-
-        connect();
-
-        let progressInterval: number | null = null;
-        if (currentJob.status === 'rendering') {
-            progressInterval = window.setInterval(() => {
+        if (currentJob?.status === 'rendering') {
+            const interval = window.setInterval(() => {
                 setRenderProgress(prev => {
                     if (prev >= 95) return prev;
                     return prev + (100 - prev) * 0.05; // Asymptotic progress
                 });
             }, 2000);
+            return () => clearInterval(interval);
+        } else if (!currentJob || currentJob.status === 'completed' || currentJob.status === 'failed') {
+            setRenderProgress(0);
         }
-
-        return () => {
-            if (eventSource) eventSource.close();
-            if (retryTimeout) clearTimeout(retryTimeout);
-            if (progressInterval) clearInterval(progressInterval);
-        };
-    }, [currentJob?.job_id, currentJob?.status]);
+    }, [currentJob?.status]);
 
     /**
      * Initiates a new video generation job and updates global state.
@@ -84,7 +45,7 @@ function App() {
         setIsLoading(true);
         try {
             const job = await createJob(data);
-            setCurrentJob(job);
+            setInitialJob(job);
         } catch {
             alert('Failed to initiate job. Check console.');
         } finally {
