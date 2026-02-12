@@ -1,4 +1,3 @@
-import os
 from typing import Any
 
 from pydantic_ai.models.google import GoogleModel
@@ -8,6 +7,8 @@ from pydantic_ai.providers.deepseek import DeepSeekProvider
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.providers.groq import GroqProvider
 from pydantic_ai.providers.openai import OpenAIProvider
+
+from core.settings import get_settings
 
 # Registry of supported models per provider
 AVAILABLE_MODELS: dict[str, list[str]] = {
@@ -37,56 +38,50 @@ def get_model(
     Returns:
         str | Any | None: The configured model instance or None if no provider found.
     """
-    gemini_key = os.getenv("GOOGLE_API_KEY")
-    groq_key = os.getenv("GROQ_API_KEY")
-    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
-    synthetic_key = os.getenv("SYNTHETIC_API_KEY")
+    settings = get_settings()
 
     # Explicit routing
-    if provider_name == "google" and gemini_key:
-        p_google = GoogleProvider(api_key=gemini_key)
+    if provider_name == "google" and settings.google_api_key:
+        p_google = GoogleProvider(api_key=settings.google_api_key)
         return GoogleModel(model_id or "gemini-2.5-flash", provider=p_google)
 
-    if provider_name == "groq" and groq_key:
-        # Use GroqProvider to pass API key
-        p_groq = GroqProvider(api_key=groq_key)
+    if provider_name == "groq" and settings.groq_api_key:
+        p_groq = GroqProvider(api_key=settings.groq_api_key)
         return GroqModel(model_id or "llama-3.3-70b-versatile", provider=p_groq)
 
-    if provider_name == "deepseek" and deepseek_key:
-        p_ds = DeepSeekProvider(api_key=deepseek_key)
+    if provider_name == "deepseek" and settings.deepseek_api_key:
+        p_ds = DeepSeekProvider(api_key=settings.deepseek_api_key)
         return OpenAIChatModel(model_id or "deepseek-chat", provider=p_ds)
 
-    if provider_name == "synthetic" and synthetic_key:
+    if provider_name == "synthetic" and settings.synthetic_api_key:
         p_syn = OpenAIProvider(
-            base_url="https://api.synthetic.new/openai/v1", api_key=synthetic_key
+            base_url="https://api.synthetic.new/openai/v1",
+            api_key=settings.synthetic_api_key,
         )
         return OpenAIChatModel(model_id or "kimi-k2", provider=p_syn)
 
     # Fallback to tiered priority
     # 1. Gemini
-    if gemini_key and gemini_key != "dummy_key_for_development":
-        p_google_fallback = GoogleProvider(api_key=gemini_key)
+    if settings.google_api_key and not settings.is_dummy_key():
+        p_google_fallback = GoogleProvider(api_key=settings.google_api_key)
         return GoogleModel("gemini-2.5-flash", provider=p_google_fallback)
 
     # 2. Groq
-    if groq_key:
-        p_groq_fallback = GroqProvider(api_key=groq_key)
+    if settings.groq_api_key:
+        p_groq_fallback = GroqProvider(api_key=settings.groq_api_key)
         return GroqModel("llama-3.3-70b-versatile", provider=p_groq_fallback)
 
     # 3. DeepSeek
-    if deepseek_key:
-        p_ds_fallback = DeepSeekProvider(api_key=deepseek_key)
-        return OpenAIChatModel(
-            os.getenv("DEEPSEEK_MODEL_NAME", "deepseek-chat"), provider=p_ds_fallback
-        )
+    if settings.deepseek_api_key:
+        p_ds_fallback = DeepSeekProvider(api_key=settings.deepseek_api_key)
+        return OpenAIChatModel(settings.deepseek_model_name, provider=p_ds_fallback)
 
     # 4. Synthetic
-    if synthetic_key:
+    if settings.synthetic_api_key:
         p_syn_fallback = OpenAIProvider(
-            base_url="https://api.synthetic.new/openai/v1", api_key=synthetic_key
+            base_url="https://api.synthetic.new/openai/v1",
+            api_key=settings.synthetic_api_key,
         )
-        return OpenAIChatModel(
-            os.getenv("SYNTHETIC_MODEL_NAME", "kimi-k2"), provider=p_syn_fallback
-        )
+        return OpenAIChatModel(settings.synthetic_model_name, provider=p_syn_fallback)
 
     return None

@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -22,6 +21,7 @@ from api.schemas import (
     ProviderModels,
 )
 from core.database import JobRecord, SessionLocal, get_db, init_db
+from core.settings import get_settings
 from services.orchestrator import create_new_job, process_job_logic
 
 
@@ -91,7 +91,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(title="ConceptCast Backend", lifespan=lifespan)
 
-cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+cors_origins = get_settings().cors_origins.split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -119,15 +119,15 @@ async def get_available_models() -> AvailableModelsResponse:
         AvailableModelsResponse: A list of available providers and their models.
     """
     result = []
+    settings = get_settings()
+    key_map = {
+        "google": settings.google_api_key,
+        "groq": settings.groq_api_key,
+        "deepseek": settings.deepseek_api_key,
+        "synthetic": settings.synthetic_api_key,
+    }
     for provider, models in AVAILABLE_MODELS.items():
-        # Check if API key is present for this provider
-        key_map = {
-            "google": "GOOGLE_API_KEY",
-            "groq": "GROQ_API_KEY",
-            "deepseek": "DEEPSEEK_API_KEY",
-            "synthetic": "SYNTHETIC_API_KEY",
-        }
-        if os.getenv(key_map.get(provider, "")):
+        if key_map.get(provider):
             result.append(ProviderModels(provider=provider, models=models))
 
     # Always include mock if not already present
@@ -185,9 +185,7 @@ async def create_job(
 
 
 @app.get("/jobs/{job_id}/status", response_model=JobStatus)
-async def get_job_status(
-    job_id: str, db: Session = Depends(get_db)
-) -> JobStatus:
+async def get_job_status(job_id: str, db: Session = Depends(get_db)) -> JobStatus:
     """
     Retrieves the current state and all generated artifacts for a specific job.
 
@@ -217,7 +215,7 @@ async def get_job_status(
         ],
         job.status,
     )
-    mode_literal = cast(Literal['live', 'mock'], job.mode)
+    mode_literal = cast(Literal["live", "mock"], job.mode)
 
     return JobStatus(
         job_id=job.job_id,
@@ -255,6 +253,7 @@ async def job_events(
     return StreamingResponse(
         _stream_job_events(job_id, db_session_factory), media_type="text/event-stream"
     )
+
 
 @app.get("/jobs/{job_id}/plan", response_model=CurriculumPlan)
 async def get_plan(job_id: str, db: Session = Depends(get_db)) -> CurriculumPlan:

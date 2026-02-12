@@ -14,6 +14,7 @@ from api.schemas import (
     VisualObject,
 )
 from core.database import Base, engine
+from core.settings import get_settings
 from main import app
 
 
@@ -97,7 +98,6 @@ def mock_rendering() -> Generator[AsyncMock, None, None]:
 # --- Tests ---
 
 
-
 def test_read_root() -> None:
     with TestClient(app) as client:
         response = client.get("/")
@@ -114,7 +114,6 @@ def test_create_job_invalid_input() -> None:
         assert error_detail["msg"] == "Field required"
 
 
-
 def test_create_and_get_job(
     mock_analyst: AsyncMock,
     mock_architect: AsyncMock,
@@ -122,40 +121,41 @@ def test_create_and_get_job(
     mock_rendering: AsyncMock,
 ) -> None:
     # Simulate a valid API key to force "live" mode
-    # Simulate a valid API key to force "live" mode
+    # Clear the settings cache so env var changes are picked up
+    get_settings.cache_clear()
     with (
         patch.dict(os.environ, {"GOOGLE_API_KEY": "valid_test_key"}),
         TestClient(app) as client,
     ):
-            # 1. Create Job
-            response = client.post("/jobs/create", json={"topic": "Test Topic"})
-            assert response.status_code == 200
+        # 1. Create Job
+        response = client.post("/jobs/create", json={"topic": "Test Topic"})
+        assert response.status_code == 200
 
-            job_data = response.json()
-            job_id = job_data["job_id"]
+        job_data = response.json()
+        job_id = job_data["job_id"]
 
-            # 1.1 Poll for completion
-            max_retries = 30
-            for _ in range(max_retries):
-                response = client.get(f"/jobs/{job_id}/status")
-                job_data = response.json()
-                if job_data["status"] == "completed":
-                    break
-                if job_data["status"] == "failed":
-                    pytest.fail(f"Job failed: {job_data.get('error')}")
-                time.sleep(0.1)
-
-            assert job_data["status"] == "completed"
-
-            # 2. Get Job Status
+        # 1.1 Poll for completion
+        max_retries = 30
+        for _ in range(max_retries):
             response = client.get(f"/jobs/{job_id}/status")
-            assert response.status_code == 200
-            data = response.json()
-            assert data["status"] == "completed"
-            assert data["video_url"] == "/jobs/mock_job_id/video.mp4"
+            job_data = response.json()
+            if job_data["status"] == "completed":
+                break
+            if job_data["status"] == "failed":
+                pytest.fail(f"Job failed: {job_data.get('error')}")
+            time.sleep(0.1)
 
-            # 3. Get Job Plan
-            response = client.get(f"/jobs/{job_id}/plan")
-            assert response.status_code == 200
-            plan = response.json()
-            assert plan["concept_title"] == "Test Concept"
+        assert job_data["status"] == "completed"
+
+        # 2. Get Job Status
+        response = client.get(f"/jobs/{job_id}/status")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "completed"
+        assert data["video_url"] == "/jobs/mock_job_id/video.mp4"
+
+        # 3. Get Job Plan
+        response = client.get(f"/jobs/{job_id}/plan")
+        assert response.status_code == 200
+        plan = response.json()
+        assert plan["concept_title"] == "Test Concept"

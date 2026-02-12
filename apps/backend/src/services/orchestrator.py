@@ -1,5 +1,4 @@
 import json
-import os
 import uuid
 from collections.abc import Callable
 from typing import Any
@@ -18,6 +17,7 @@ from core.exceptions import (
     PlanGenerationError,
     StoryboardGenerationError,
 )
+from core.settings import get_settings
 from services.rendering import render_storyboard
 from services.utils import (
     generate_mock_code,
@@ -37,19 +37,13 @@ def _determine_execution_mode(request: JobRequest) -> bool:
     Returns:
         bool: True if mock mode should be used, False otherwise.
     """
-    api_key = os.getenv("GOOGLE_API_KEY")
-    groq_key = os.getenv("GROQ_API_KEY")
-    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
-    synthetic_key = os.getenv("SYNTHETIC_API_KEY")
+    settings = get_settings()
 
     # Check if we should use mock logic (no keys or explicit mock provider)
     return (
         request.provider == "mock"
-        or (
-            not (api_key or groq_key or deepseek_key or synthetic_key)
-            and not request.provider
-        )
-        or api_key == "dummy_key_for_development"
+        or (not settings.has_any_api_key() and not request.provider)
+        or settings.is_dummy_key()
     )
 
 
@@ -94,14 +88,7 @@ async def create_new_job(db: Session, request: JobRequest) -> str:
         status="planning",
         topic=request.topic,
         target_audience=request.target_audience,
-        mode="live"
-        if (
-            os.getenv("GOOGLE_API_KEY")
-            or os.getenv("GROQ_API_KEY")
-            or os.getenv("DEEPSEEK_API_KEY")
-            or os.getenv("SYNTHETIC_API_KEY")
-        )
-        else "mock",
+        mode="live" if get_settings().has_any_api_key() else "mock",
     )
     db.add(job_record)
     db.commit()
