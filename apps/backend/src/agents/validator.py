@@ -1,4 +1,3 @@
-
 from pydantic_ai import Agent
 
 from api.schemas import CurriculumPlan, ValidationResult
@@ -27,12 +26,6 @@ Your goal is to perform a pedagogical audit of a `CurriculumPlan`.
 Be strict but constructive. If a plan is confusing or skips steps, fail it.
 """
 
-validator_agent = Agent(
-    get_model(),
-    system_prompt=system_prompt,
-    output_type=ValidationResult,
-)
-
 
 async def validate_curriculum(
     plan: CurriculumPlan, provider: str | None = None, model_id: str | None = None
@@ -51,14 +44,11 @@ async def validate_curriculum(
     Returns:
         ValidationResult: The audit results including feedback and scores.
     """
-    # Use the specific model if provided
-    agent = validator_agent
-    if provider or model_id:
-        agent = Agent(
-            get_model(provider, model_id),
-            system_prompt=system_prompt,
-            output_type=ValidationResult,
-        )
+    agent = Agent(
+        get_model(provider, model_id),
+        system_prompt=system_prompt,
+        output_type=ValidationResult,
+    )
 
     prompt = f"Perform a pedagogical audit on this plan:\n{plan.model_dump_json()}"
     result = await agent.run(prompt)

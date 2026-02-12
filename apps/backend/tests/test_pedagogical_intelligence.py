@@ -6,7 +6,6 @@ from pydantic_ai import RunContext
 
 from agents.analyst import generate_curriculum
 from agents.tools import prepare_manim_docs
-from agents.validator import validator_agent
 from api.schemas import (
     CurriculumPlan,
     Scene,
@@ -24,25 +23,17 @@ def mock_deps() -> dict[str, Any]:
 @pytest.mark.asyncio
 async def test_analyst_consults_critic() -> None:
     """
-    Verifies that the Analyst agent actually calls the consult_critic tool.
+    Verifies that the Analyst agent calls validate_curriculum via consult_critic.
     """
-    # We'll use TestModel to mock the agent's behavior
-    # We want the Analyst to call 'consult_critic'
-    # TestModel doesn't easily support tool calls in a scripted way yet,
-    # so we'll patch the validator_agent.run instead.
-
     mock_validation = ValidationResult(
         is_valid=True, feedback="Great plan!", suggestions=[]
     )
 
-    with patch.object(
-        validator_agent, "run", new_callable=AsyncMock
-    ) as mock_validator_run:
-        mock_validator_run.return_value.data = mock_validation
+    with patch(
+        "agents.analyst.validate_curriculum", new_callable=AsyncMock
+    ) as mock_validate:
+        mock_validate.return_value = mock_validation
 
-        # We need the Analyst agent to actually decide to call the tool.
-        # This is hard with TestModel if we want to BE SURE it calls it.
-        # So we'll patch Agent.run to simulate the flow.
         with patch("agents.analyst.Agent") as MockAgent:
             mock_agent_instance = MockAgent.return_value
             mock_agent_instance.run = AsyncMock()
@@ -57,7 +48,7 @@ async def test_analyst_consults_critic() -> None:
             result = await generate_curriculum("Test Topic", "Test Audience")
 
             assert result == mock_plan
-            # Verify Agent was initialized with output_type (not result_type)
+            # Verify Agent was initialized with output_type
             MockAgent.assert_called_once()
             args, kwargs = MockAgent.call_args
             assert kwargs["output_type"] == CurriculumPlan
@@ -110,7 +101,7 @@ async def test_prepare_manim_docs_filters_correctly() -> None:
 
     assert updated_def is not None
     assert updated_def.description is not None
-    
+
     # Check if "Dot" and "Circle" are in the description
     # Both Circle and Square are in the storyboard, so they should be in the context
     assert "Square" in updated_def.description

@@ -1,10 +1,9 @@
-
 from pydantic_ai import Agent, RunContext
 
 from api.schemas import CurriculumPlan, ValidationResult
 
 from .factory import get_model
-from .validator import validator_agent
+from .validator import validate_curriculum
 
 # Define the Analyst Agent
 # "The Pedagogue" - Deconstructs topics into pedagogical steps.
@@ -66,10 +65,7 @@ async def generate_curriculum(
         Returns:
             ValidationResult: Feedback and pedagogical scores.
         """
-        prompt = f"Perform a pedagogical audit on this plan:\n{plan.model_dump_json()}"
-        # Delegate to the validator agent
-        result = await validator_agent.run(prompt)
-        return result.data  # type: ignore
+        return await validate_curriculum(plan)
 
     prompt = (
         f"Explain '{topic}' to a '{audience}' audience. "
