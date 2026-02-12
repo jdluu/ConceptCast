@@ -35,13 +35,13 @@ def mock_params() -> dict[str, Any]:
 
 
 @pytest.fixture
-def mock_update_job() -> MagicMock:
-    return MagicMock()
+def mock_update_job() -> AsyncMock:
+    return AsyncMock()
 
 
 @pytest.mark.asyncio
 async def test_step_planning_execution(
-    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: MagicMock
+    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: AsyncMock
 ) -> None:
     """Test that planning step calls generate_curriculum when no plan exists."""
     # Arrange
@@ -71,7 +71,7 @@ async def test_step_planning_execution(
 
 @pytest.mark.asyncio
 async def test_step_planning_checkpoint(
-    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: MagicMock
+    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: AsyncMock
 ) -> None:
     """Test that planning step returns existing plan if already present."""
     # Arrange
@@ -95,7 +95,7 @@ async def test_step_planning_checkpoint(
 
 @pytest.mark.asyncio
 async def test_step_architecting_execution(
-    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: MagicMock
+    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: AsyncMock
 ) -> None:
     """Test that architecting step calls generate_storyboard."""
     # Arrange
@@ -118,7 +118,7 @@ async def test_step_architecting_execution(
 
 @pytest.mark.asyncio
 async def test_step_animating_execution(
-    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: MagicMock
+    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: AsyncMock
 ) -> None:
     """Test that animating step calls generate_manim_code."""
     # Arrange

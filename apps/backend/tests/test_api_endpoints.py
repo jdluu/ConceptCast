@@ -1,6 +1,6 @@
 import os
 import time
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -20,12 +20,11 @@ from main import app
 
 # For tests, we'll use the same engine but clear the tables
 @pytest.fixture(autouse=True)
-def setup_db() -> Generator[None, None, None]:
-    # Make sure we are using the real engine from database.py but clear it
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+async def setup_db() -> AsyncGenerator[None, None]:
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
     yield
-    # We leave it for the next run or session cleanup
 
 
 # --- Mocks for logic in service.py ---
@@ -98,14 +97,16 @@ def mock_rendering() -> Generator[AsyncMock, None, None]:
 # --- Tests ---
 
 
-def test_read_root() -> None:
+@pytest.mark.asyncio
+async def test_read_root() -> None:
     with TestClient(app) as client:
         response = client.get("/")
         assert response.status_code == 200
         assert response.json() == {"message": "Welcome to ConceptCast Council"}
 
 
-def test_create_job_invalid_input() -> None:
+@pytest.mark.asyncio
+async def test_create_job_invalid_input() -> None:
     with TestClient(app) as client:
         response = client.post("/jobs/create", json={"invalid_field": "Test Topic"})
         assert response.status_code == 422  # Unprocessable Entity
@@ -114,7 +115,8 @@ def test_create_job_invalid_input() -> None:
         assert error_detail["msg"] == "Field required"
 
 
-def test_create_and_get_job(
+@pytest.mark.asyncio
+async def test_create_and_get_job(
     mock_analyst: AsyncMock,
     mock_architect: AsyncMock,
     mock_animator: AsyncMock,
