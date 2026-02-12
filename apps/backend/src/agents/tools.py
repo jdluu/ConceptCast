@@ -1,6 +1,6 @@
 from pydantic_ai import RunContext, ToolDefinition
 
-from schemas import Storyboard
+from api.schemas import Storyboard
 
 # A curated "ground truth" for common Manim components to reduce hallucinations.
 # In a full-scale app, this could be a RAG vector store or a JSON file.
@@ -142,6 +142,16 @@ async def prepare_manim_docs(
     """
     Advanced Tool Pattern: Dynamically adjusts the tool description
     based on the Storyboard's current needs.
+
+    Filters the Manim documentation to only include types referenced in
+    the current storyboard scenes, preserving context window space.
+
+    Args:
+        ctx (RunContext): The tool execution context.
+        tool_def (ToolDefinition): The original tool definition.
+
+    Returns:
+        ToolDefinition | None: The modified tool definition with context-aware docs.
     """
     storyboard = ctx.deps
     mentioned_types = set()
@@ -163,6 +173,14 @@ async def prepare_manim_docs(
 def search_manim_docs(query: str) -> str:
     """
     Searches for specific Manim syntax.
+
+    Performs a keyword search against the curated `MANIM_DOCS` dictionary.
+
+    Args:
+        query (str): The search term (e.g., 'Circle', 'animate').
+
+    Returns:
+        str: A string containing matching documentation or a fallback message.
     """
     # Simple keyword search for now
     matches = [

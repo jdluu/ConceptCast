@@ -1,8 +1,7 @@
-from typing import Optional
 
 from pydantic_ai import Agent
 
-from schemas import CurriculumPlan, ValidationResult
+from api.schemas import CurriculumPlan, ValidationResult
 
 from .factory import get_model
 
@@ -36,10 +35,21 @@ validator_agent = Agent(
 
 
 async def validate_curriculum(
-    plan: CurriculumPlan, provider: Optional[str] = None, model_id: Optional[str] = None
+    plan: CurriculumPlan, provider: str | None = None, model_id: str | None = None
 ) -> ValidationResult:
     """
     Performs a pedagogical audit on a curriculum plan.
+
+    Uses the Validator Agent (The Critic) to evaluate the logical progression,
+    clarity, and flow of the teaching steps.
+
+    Args:
+        plan (CurriculumPlan): The plan to evaluate.
+        provider (str | None): Optional explicit AI provider.
+        model_id (str | None): Optional explicit AI model ID.
+
+    Returns:
+        ValidationResult: The audit results including feedback and scores.
     """
     # Use the specific model if provided
     agent = validator_agent
@@ -52,4 +62,4 @@ async def validate_curriculum(
 
     prompt = f"Perform a pedagogical audit on this plan:\n{plan.model_dump_json()}"
     result = await agent.run(prompt)
-    return result.data
+    return result.data  # type: ignore

@@ -1,8 +1,8 @@
-from typing import Optional
+import json
 
 from pydantic_ai import Agent
 
-from schemas import Storyboard
+from api.schemas import Storyboard
 
 from .factory import get_model
 from .tools import prepare_manim_docs, search_manim_docs
@@ -32,13 +32,24 @@ using the **Manim Community** library.
 
 async def generate_manim_code(
     storyboard: Storyboard,
-    provider: Optional[str] = None,
-    model_id: Optional[str] = None,
+    provider: str | None = None,
+    model_id: str | None = None,
 ) -> str:
     """
     Translates a storyboard into executable Manim Python code.
+
+    Uses the Animator Agent to generate Python code that renders the
+    storyboard using the Manim library.
+
+    Args:
+        storyboard (Storyboard): The visual plan to animate.
+        provider (str | None): Optional explicit AI provider.
+        model_id (str | None): Optional explicit AI model ID.
+
+    Returns:
+        str: The raw Python code implementing the animation.
     """
-    agent = Agent(
+    animator_agent = Agent(
         get_model(provider, model_id),
         system_prompt=system_prompt,
         output_type=str,
@@ -46,8 +57,9 @@ async def generate_manim_code(
     )
 
     # Register the advanced documentation tool
-    agent.tool(search_manim_docs, prepare=prepare_manim_docs)
+    animator_agent.tool(search_manim_docs, prepare=prepare_manim_docs)  # type: ignore
 
-    prompt = f"Generate Manim code for this storyboard:\n{storyboard.model_dump_json()}"
-    result = await agent.run(prompt, deps=storyboard)
-    return result.data
+    result = await animator_agent.run(
+        f"Write Manim code for: {json.dumps(storyboard.model_dump())}", deps=storyboard
+    )
+    return result.data  # type: ignore

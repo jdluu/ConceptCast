@@ -1,8 +1,7 @@
-from typing import Optional
 
 from pydantic_ai import Agent
 
-from schemas import CurriculumPlan, Storyboard
+from api.schemas import CurriculumPlan, Storyboard
 
 from .factory import get_model
 
@@ -31,10 +30,21 @@ Your goal is to transform a `CurriculumPlan` into a detailed `Storyboard`.
 
 
 async def generate_storyboard(
-    plan: CurriculumPlan, provider: Optional[str] = None, model_id: Optional[str] = None
+    plan: CurriculumPlan, provider: str | None = None, model_id: str | None = None
 ) -> Storyboard:
     """
     Translates a curriculum plan into a visual storyboard.
+
+    Uses the Architect Agent to map teaching steps into concrete Manim scenes
+    and visual objects.
+
+    Args:
+        plan (CurriculumPlan): The pedagogical plan to visualize.
+        provider (str | None): Optional explicit AI provider.
+        model_id (str | None): Optional explicit AI model ID.
+
+    Returns:
+        Storyboard: A structured list of scenes and visual objects.
     """
     agent = Agent(
         get_model(provider, model_id),
@@ -45,4 +55,4 @@ async def generate_storyboard(
         f"Create a storyboard for the following curriculum:\n{plan.model_dump_json()}"
     )
     result = await agent.run(prompt)
-    return result.data
+    return result.data  # type: ignore
