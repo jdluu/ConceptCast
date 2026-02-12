@@ -1,7 +1,42 @@
 import asyncio
+import re
 from pathlib import Path
 
 from loguru import logger
+
+# Patterns that should never appear in generated Manim code.
+# This is a heuristic blocklist, not a true sandbox.
+_BLOCKED_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"\bimport\s+(os|sys|subprocess|shutil|socket|http|requests|urllib)\b"),
+    re.compile(r"\bfrom\s+(os|sys|subprocess|shutil|socket|http|requests|urllib)\b"),
+    re.compile(r"\b__import__\s*\("),
+    re.compile(r"\bexec\s*\("),
+    re.compile(r"\beval\s*\("),
+    re.compile(r"\bcompile\s*\("),
+    re.compile(r"\bopen\s*\("),
+]
+
+
+def _sanitize_code(code: str) -> None:
+    """
+    Scans generated Manim code for dangerous patterns before execution.
+
+    Checks against a blocklist of imports and builtins that should never
+    appear in legitimate Manim animation code.
+
+    Args:
+        code: The generated Python code to validate.
+
+    Raises:
+        RuntimeError: If any blocked pattern is detected.
+    """
+    for pattern in _BLOCKED_PATTERNS:
+        match = pattern.search(code)
+        if match:
+            raise RuntimeError(
+                f"Generated code contains unsafe pattern: '{match.group()}'. "
+                "Aborting execution."
+            )
 
 
 async def render_storyboard(code: str, job_id: str) -> str:
@@ -17,8 +52,10 @@ async def render_storyboard(code: str, job_id: str) -> str:
         str: Relative path to the rendered video file.
 
     Raises:
-        RuntimeError: If rendering fails.
+        RuntimeError: If code sanitization or rendering fails.
     """
+    _sanitize_code(code)
+
     # Use project-root data/jobs folder
     project_root = Path(__file__).parent.parent.parent.parent.parent
     job_dir = project_root / "data" / "jobs" / job_id
