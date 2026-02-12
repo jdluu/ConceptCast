@@ -4,8 +4,10 @@ import { JobCreationForm } from './components/forms/JobCreationForm';
 import { CouncilLog } from './components/council/CouncilLog';
 import { StoryboardView } from './components/council/StoryboardView';
 import { VideoPreview } from './components/council/VideoPreview';
-import { createJob, JobStatus, CreateJobRequest } from './lib/api';
+import { createJob, JobStatus, CreateJobRequest, CurriculumPlan, Storyboard } from './lib/api';
 import { useJobEvents } from './lib/hooks/useJobEvents';
+
+import { CurriculumPlanDisplay } from './components/council/CurriculumPlanDisplay';
 
 /**
  * The root application component for ConceptCast.
@@ -21,6 +23,9 @@ function App() {
 
     const [isLoading, setIsLoading] = useState(false);
     const [renderProgress, setRenderProgress] = useState(0);
+
+    const plan = currentJob?.plan as unknown as CurriculumPlan | null;
+    const storyboard = currentJob?.storyboard as unknown as Storyboard | null;
 
     useEffect(() => {
         if (currentJob?.status === 'rendering') {
@@ -62,32 +67,18 @@ function App() {
                         isLoading={isLoading} 
                     />
                     
-                    {currentJob?.plan && (
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-                            <h3 className="text-md font-semibold text-white mb-4">Curriculum Plan</h3>
-                            <div className="prose prose-invert prose-sm">
-                                <h4 className="text-indigo-400">{currentJob.plan.concept_title}</h4>
-                                <p className="text-neutral-400 text-xs mb-4">Audience: {currentJob.plan.target_audience}</p>
-                                <ul className="space-y-2">
-                                    {currentJob.plan.teaching_steps.map((step) => (
-                                        <li key={step.step_id} className="bg-neutral-950 p-3 rounded border border-neutral-800">
-                                            <div className="font-medium text-white">{step.step_id}. {step.concept}</div>
-                                            <div className="text-xs text-neutral-500 mt-1">Metaphor: {step.visual_metaphor}</div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
+                    {plan && (
+                        <CurriculumPlanDisplay plan={plan} />
                     )}
 
-                    {currentJob?.storyboard && (
-                        <StoryboardView storyboard={currentJob.storyboard} />
+                    {storyboard && (
+                        <StoryboardView storyboard={storyboard} />
                     )}
 
                     {currentJob?.video_url && (
                         <VideoPreview 
                             videoUrl={currentJob.video_url} 
-                            conceptTitle={currentJob.plan?.concept_title || 'Rendering...'} 
+                            conceptTitle={plan?.concept_title || 'Rendering...'} 
                         />
                     )}
                 </div>

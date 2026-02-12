@@ -16,6 +16,9 @@
     },
     "bootstrap": {
       "cache": false
+    },
+    "update": {
+      "cache": false
     }
   }
 }
