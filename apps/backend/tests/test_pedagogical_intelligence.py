@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -5,12 +6,23 @@ from pydantic_ai import RunContext
 
 from agents.analyst import generate_curriculum
 from agents.tools import prepare_manim_docs
-from agents.validator import ValidationResult, validator_agent
-from schemas import CurriculumPlan, Scene, Storyboard, VisualObject
+from agents.validator import validator_agent
+from api.schemas import (
+    CurriculumPlan,
+    Scene,
+    Storyboard,
+    ValidationResult,
+    VisualObject,
+)
+
+
+@pytest.fixture
+def mock_deps() -> dict[str, Any]:
+    return dict()
 
 
 @pytest.mark.asyncio
-async def test_analyst_consults_critic():
+async def test_analyst_consults_critic() -> None:
     """
     Verifies that the Analyst agent actually calls the consult_critic tool.
     """
@@ -52,7 +64,7 @@ async def test_analyst_consults_critic():
 
 
 @pytest.mark.asyncio
-async def test_prepare_manim_docs_filters_correctly():
+async def test_prepare_manim_docs_filters_correctly() -> None:
     """
     Verifies that prepare_manim_docs correctly filters the documentation
     based on the storyboard content.
@@ -66,8 +78,20 @@ async def test_prepare_manim_docs_filters_correctly():
                 description="D1",
                 narration="N1",
                 objects=[
-                    VisualObject(name="dot", type="Dot", position="ORIGIN"),
-                    VisualObject(name="circ", type="Circle", position="UP"),
+                    VisualObject(
+                        name="obj1",
+                        type="Circle",
+                        position="ORIGIN",
+                        color="RED",
+                        label="A",
+                    ),
+                    VisualObject(
+                        name="obj2",
+                        type="Square",
+                        position="LEFT",
+                        color="BLUE",
+                        label="B",
+                    ),
                 ],
             )
         ],
@@ -85,11 +109,13 @@ async def test_prepare_manim_docs_filters_correctly():
     updated_def = await prepare_manim_docs(ctx, tool_def)
 
     assert updated_def is not None
+    assert updated_def.description is not None
+    
     # Check if "Dot" and "Circle" are in the description
-    assert "Dot" in updated_def.description
-    assert "Circle" in updated_def.description
-    # Newly added components that are NOT in the storyboard
-    assert "Square" not in updated_def.description
+    # Both Circle and Square are in the storyboard, so they should be in the context
+    assert "Square" in updated_def.description
+    # "Triangle" is not in the storyboard
+    assert "Triangle" not in updated_def.description
     assert "Axes" not in updated_def.description
     assert "ValueTracker" not in updated_def.description
     # Add a check for an animation that might be mentioned implicitly

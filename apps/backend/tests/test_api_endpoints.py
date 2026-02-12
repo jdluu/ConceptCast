@@ -1,24 +1,25 @@
 import os
 import time
+from collections.abc import Generator
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from database import Base, engine
-from main import app
-from schemas import (
+from api.schemas import (
     CurriculumPlan,
     Scene,
     Storyboard,
     TeachingStep,
     VisualObject,
 )
+from core.database import Base, engine
+from main import app
 
 
 # For tests, we'll use the same engine but clear the tables
 @pytest.fixture(autouse=True)
-def setup_db():
+def setup_db() -> Generator[None, None, None]:
     # Make sure we are using the real engine from database.py but clear it
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
@@ -30,8 +31,10 @@ def setup_db():
 
 
 @pytest.fixture
-def mock_analyst():
-    with patch("service.generate_curriculum", new_callable=AsyncMock) as mock:
+def mock_analyst() -> Generator[AsyncMock, None, None]:
+    with patch(
+        "services.orchestrator.generate_curriculum", new_callable=AsyncMock
+    ) as mock:
         mock.return_value = CurriculumPlan(
             concept_title="Test Concept",
             target_audience="Test Audience",
@@ -48,8 +51,10 @@ def mock_analyst():
 
 
 @pytest.fixture
-def mock_architect():
-    with patch("service.generate_storyboard", new_callable=AsyncMock) as mock:
+def mock_architect() -> Generator[AsyncMock, None, None]:
+    with patch(
+        "services.orchestrator.generate_storyboard", new_callable=AsyncMock
+    ) as mock:
         mock.return_value = Storyboard(
             concept_title="Test Concept",
             scenes=[
@@ -60,9 +65,11 @@ def mock_architect():
                     narration="Narr 1",
                     objects=[
                         VisualObject(
-                            name="obj1",
-                            type="Dot",
+                            name="Circle",
+                            type="Circle",
                             position="ORIGIN",
+                            color="RED",
+                            label="A",
                         )
                     ],
                 )
@@ -72,15 +79,17 @@ def mock_architect():
 
 
 @pytest.fixture
-def mock_animator():
-    with patch("service.generate_manim_code", new_callable=AsyncMock) as mock:
+def mock_animator() -> Generator[AsyncMock, None, None]:
+    with patch(
+        "services.orchestrator.generate_manim_code", new_callable=AsyncMock
+    ) as mock:
         mock.return_value = "from manim import *"
         yield mock
 
 
 @pytest.fixture
-def mock_rendering():
-    with patch("service.render_storyboard") as mock:
+def mock_rendering() -> Generator[AsyncMock, None, None]:
+    with patch("services.orchestrator.render_storyboard") as mock:
         mock.return_value = "/jobs/mock_job_id/video.mp4"
         yield mock
 
@@ -88,19 +97,36 @@ def mock_rendering():
 # --- Tests ---
 
 
-def test_read_root():
+
+def test_read_root() -> None:
     with TestClient(app) as client:
         response = client.get("/")
         assert response.status_code == 200
         assert response.json() == {"message": "Welcome to ConceptCast Council"}
 
 
+def test_create_job_invalid_input() -> None:
+    with TestClient(app) as client:
+        response = client.post("/jobs/create", json={"invalid_field": "Test Topic"})
+        assert response.status_code == 422  # Unprocessable Entity
+        error_detail = response.json()["detail"][0]
+        assert error_detail["loc"] == ["body", "topic"]
+        assert error_detail["msg"] == "Field required"
+
+
+
 def test_create_and_get_job(
-    mock_analyst, mock_architect, mock_animator, mock_rendering
-):
+    mock_analyst: AsyncMock,
+    mock_architect: AsyncMock,
+    mock_animator: AsyncMock,
+    mock_rendering: AsyncMock,
+) -> None:
     # Simulate a valid API key to force "live" mode
-    with patch.dict(os.environ, {"GOOGLE_API_KEY": "valid_test_key"}):
-        with TestClient(app) as client:
+    # Simulate a valid API key to force "live" mode
+    with (
+        patch.dict(os.environ, {"GOOGLE_API_KEY": "valid_test_key"}),
+        TestClient(app) as client,
+    ):
             # 1. Create Job
             response = client.post("/jobs/create", json={"topic": "Test Topic"})
             assert response.status_code == 200

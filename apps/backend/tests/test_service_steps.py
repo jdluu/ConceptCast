@@ -1,14 +1,15 @@
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from database import JobRecord
-from schemas import CurriculumPlan, JobRequest, Storyboard, TeachingStep
-from service import _step_animating, _step_architecting, _step_planning
+from api.schemas import CurriculumPlan, JobRequest, Storyboard, TeachingStep
+from core.database import JobRecord
+from services.orchestrator import _step_animating, _step_architecting, _step_planning
 
 
 @pytest.fixture
-def mock_job_request():
+def mock_job_request() -> JobRequest:
     return JobRequest(
         topic="Test Topic",
         target_audience="Test Audience",
@@ -18,25 +19,30 @@ def mock_job_request():
 
 
 @pytest.fixture
-def mock_job_record():
+def mock_job_record() -> JobRecord:
     return JobRecord(
         job_id="test-job-123",
         status="planning",
-        plan_data=None,
-        storyboard_data=None,
+        plan=None,
+        storyboard=None,
         manim_code=None,
     )
 
 
 @pytest.fixture
-def mock_update_job():
+def mock_params() -> dict[str, Any]:
+    return {"param1": "value1", "param2": "value2"}
+
+
+@pytest.fixture
+def mock_update_job() -> MagicMock:
     return MagicMock()
 
 
 @pytest.mark.asyncio
 async def test_step_planning_execution(
-    mock_job_request, mock_job_record, mock_update_job
-):
+    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: MagicMock
+) -> None:
     """Test that planning step calls generate_curriculum when no plan exists."""
     # Arrange
     expected_plan = CurriculumPlan(
@@ -47,7 +53,9 @@ async def test_step_planning_execution(
         ],
     )
 
-    with patch("service.generate_curriculum", new_callable=AsyncMock) as mock_gen:
+    with patch(
+        "services.orchestrator.generate_curriculum", new_callable=AsyncMock
+    ) as mock_gen:
         mock_gen.return_value = expected_plan
 
         # Act
@@ -63,16 +71,18 @@ async def test_step_planning_execution(
 
 @pytest.mark.asyncio
 async def test_step_planning_checkpoint(
-    mock_job_request, mock_job_record, mock_update_job
-):
+    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: MagicMock
+) -> None:
     """Test that planning step returns existing plan if already present."""
     # Arrange
     existing_plan = CurriculumPlan(
         concept_title="Existing", target_audience="Audience", teaching_steps=[]
     )
-    mock_job_record.plan_data = existing_plan.model_dump()
+    mock_job_record.plan = existing_plan.model_dump()
 
-    with patch("service.generate_curriculum", new_callable=AsyncMock) as mock_gen:
+    with patch(
+        "services.orchestrator.generate_curriculum", new_callable=AsyncMock
+    ) as mock_gen:
         # Act
         result = await _step_planning(
             mock_job_request, mock_job_record, mock_update_job
@@ -85,14 +95,15 @@ async def test_step_planning_checkpoint(
 
 @pytest.mark.asyncio
 async def test_step_architecting_execution(
-    mock_job_request, mock_job_record, mock_update_job
-):
+    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: MagicMock
+) -> None:
     """Test that architecting step calls generate_storyboard."""
     # Arrange
     plan = CurriculumPlan(concept_title="T", target_audience="A", teaching_steps=[])
     expected_storyboard = Storyboard(concept_title="T", scenes=[])
-
-    with patch("service.generate_storyboard", new_callable=AsyncMock) as mock_gen:
+    with patch(
+        "services.orchestrator.generate_storyboard", new_callable=AsyncMock
+    ) as mock_gen:
         mock_gen.return_value = expected_storyboard
 
         # Act
@@ -107,14 +118,15 @@ async def test_step_architecting_execution(
 
 @pytest.mark.asyncio
 async def test_step_animating_execution(
-    mock_job_request, mock_job_record, mock_update_job
-):
+    mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: MagicMock
+) -> None:
     """Test that animating step calls generate_manim_code."""
     # Arrange
     storyboard = Storyboard(concept_title="T", scenes=[])
     expected_code = "class TestScene(Scene): pass"
-
-    with patch("service.generate_manim_code", new_callable=AsyncMock) as mock_gen:
+    with patch(
+        "services.orchestrator.generate_manim_code", new_callable=AsyncMock
+    ) as mock_gen:
         mock_gen.return_value = expected_code
 
         # Act
