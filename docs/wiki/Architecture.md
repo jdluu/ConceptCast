@@ -7,7 +7,6 @@ ConceptCast is a modular system designed for automated educational video product
 ### Frontend
 - **React + Vite**: High-performance, reactive user dashboard.
 - **TanStack Query**: Asynchronous state management.
-- **Zustand**: Client-side global state management.
 - **Tailwind CSS v4**: Utility-first styling.
 - **TypeScript**: Type-safety across the monorepo.
 
