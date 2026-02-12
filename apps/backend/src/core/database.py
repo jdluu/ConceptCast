@@ -1,19 +1,42 @@
-import os
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, String, create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy import JSON, DateTime, String
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///../../conceptcast.db")
+from core.settings import get_settings
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+DATABASE_URL = get_settings().database_url.replace("sqlite://", "sqlite+aiosqlite://")
+
+engine = create_async_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+AsyncSessionLocal = sessionmaker(
+    bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
+)
 
 
 class Base(DeclarativeBase):
     pass
+
+
+async def init_db() -> None:
+    """Initializes the database tables asynchronously.
+
+    Creates all tables defined in the SQLAlchemy models if they do not already exist.
+    """
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Dependency for providing asynchronous database sessions.
+
+    Yields:
+        AsyncSession: A context-managed SQLAlchemy asynchronous session.
+    """
+    async with AsyncSessionLocal() as session:
+        yield session
 
 
 class JobRecord(Base):
@@ -61,26 +84,4 @@ class JobRecord(Base):
     )
 
 
-def init_db() -> None:
-    """
-    Initializes the database tables.
 
-    Side Effects:
-        Creates all tables defined in the declarative base if they do not exist.
-    """
-    # Create tables
-    Base.metadata.create_all(bind=engine)
-
-
-def get_db() -> Generator[Session, Any, None]:
-    """
-    Dependency to get a database session.
-
-    Yields:
-        Session: A standard SQLAlchemy database session.
-    """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()

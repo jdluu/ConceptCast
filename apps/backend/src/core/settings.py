@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     deepseek_model_name: str = "deepseek-chat"
     synthetic_model_name: str = "kimi-k2"
     database_url: str = "sqlite:///../../conceptcast.db"
-    cors_origins: str = "*"
+    cors_origins: str = "http://localhost:5173"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

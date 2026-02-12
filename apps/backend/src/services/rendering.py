@@ -7,13 +7,16 @@ from loguru import logger
 # Patterns that should never appear in generated Manim code.
 # This is a heuristic blocklist, not a true sandbox.
 _BLOCKED_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\bimport\s+(os|sys|subprocess|shutil|socket|http|requests|urllib)\b"),
-    re.compile(r"\bfrom\s+(os|sys|subprocess|shutil|socket|http|requests|urllib)\b"),
+    re.compile(r"\bimport\s+(os|sys|subprocess|shutil|socket|http|requests|urllib|importlib|pickle)\b"),
+    re.compile(r"\bfrom\s+(os|sys|subprocess|shutil|socket|http|requests|urllib|importlib|pickle)\b"),
     re.compile(r"\b__import__\s*\("),
     re.compile(r"\bexec\s*\("),
     re.compile(r"\beval\s*\("),
     re.compile(r"\bcompile\s*\("),
     re.compile(r"\bopen\s*\("),
+    re.compile(r"\binput\s*\("),
+    re.compile(r"\bbreakpoint\s*\("),
+    re.compile(r"\bgetattr\s*\("),
 ]
 
 

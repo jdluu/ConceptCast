@@ -1,5 +1,6 @@
 import asyncio
 import json
+import uuid
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -10,7 +11,8 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.factory import AVAILABLE_MODELS
 from api.schemas import (
@@ -20,30 +22,33 @@ from api.schemas import (
     JobStatus,
     ProviderModels,
 )
-from core.database import JobRecord, SessionLocal, get_db, init_db
+from core.database import AsyncSessionLocal, JobRecord, get_db, init_db
 from core.settings import get_settings
-from services.orchestrator import create_new_job, process_job_logic
+from services.orchestrator import process_job_logic
 
 
 async def _stream_job_events(
-    job_id: str, db_session_factory: Callable[[], Session]
+    job_id: str, db_session_factory: Callable[[], AsyncSession]
 ) -> AsyncGenerator[str, None]:
-    """
-    Generates SSE events for a specific job by polling the database.
+    """Generates Server-Sent Events (SSE) for a specific job by polling the database.
 
     Args:
-        job_id (str): The job ID to monitor.
-        db_session_factory (Callable): Factory for DB sessions.
+        job_id: The unique identifier of the job to monitor.
+        db_session_factory: A factory function that returns an AsyncSession for non-blocking polls.
 
     Yields:
-        str: SSE formatted string.
+        str: An SSE-formatted string containing the job status and artifacts in JSON format.
     """
     last_status = None
     last_updated = None
 
     while True:
-        with db_session_factory() as db:
-            job = db.query(JobRecord).filter(JobRecord.job_id == job_id).first()
+        async with db_session_factory() as db:
+            result = await db.execute(
+                select(JobRecord).where(JobRecord.job_id == job_id)
+            )
+            job = result.scalar_one_or_none()
+            
             if not job:
                 yield f"data: {json.dumps({'error': 'Job not found'})}\n\n"
                 break
@@ -76,16 +81,17 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """
-    Manages the application lifecycle.
+    """Manages the FastAPI application lifecycle.
 
-    Initializes the database connection and session factory on startup.
+    Initializes the asynchronous database connection and stores the session factory
+    in the application state for global access (e.g., in background tasks).
 
     Args:
-        app (FastAPI): The FastAPI application instance.
+        app: The FastAPI application instance.
     """
-    init_db()
-    app.state.db_session_factory = SessionLocal
+    await init_db()
+    # Store session factory in app state for background tasks
+    app.state.db_session_factory = AsyncSessionLocal
     yield
 
 
@@ -101,22 +107,23 @@ app.add_middleware(
 )
 
 # Job Artifact Storage Configuration
-# Defined here relative to the project root and mounted as a static directory.
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 JOBS_ROOT = PROJECT_ROOT / "data" / "jobs"
 JOBS_ROOT.mkdir(parents=True, exist_ok=True)
+app.mount(
+    "/jobs/artifacts", StaticFiles(directory=str(JOBS_ROOT)), name="job_artifacts"
+)
 
 
 @app.get("/models/available", response_model=AvailableModelsResponse)
 async def get_available_models() -> AvailableModelsResponse:
-    """
-    Retrieves the list of supported AI providers and their models.
+    """Retrieves the list of supported AI providers and their models.
 
-    Filters providers based on the presence of their respective API keys
-    in the environment. The mock provider is always included.
+    Checks configured API keys to filter which providers (Google, Groq, DeepSeek, etc.)
+    are available for the current environment. Always includes 'mock' mode.
 
     Returns:
-        AvailableModelsResponse: A list of available providers and their models.
+        AvailableModelsResponse: A list of providers and their associated model IDs.
     """
     result = []
     settings = get_settings()
@@ -139,11 +146,10 @@ async def get_available_models() -> AvailableModelsResponse:
 
 @app.get("/")
 async def read_root() -> dict[str, str]:
-    """
-    Root endpoint for health checking and welcoming.
+    """Root health-check endpoint.
 
     Returns:
-        dict: A welcome message.
+        dict: A welcome message if the server is running correctly.
     """
     return {"message": "Welcome to ConceptCast Council"}
 
@@ -152,18 +158,16 @@ async def read_root() -> dict[str, str]:
 async def create_job(
     request: JobRequest,
     background_tasks: BackgroundTasks,
-    db_session_factory: Callable[[], Session] = Depends(lambda: SessionLocal),
+    db: AsyncSession = Depends(get_db),
 ) -> JobStatus:
-    """
-    Initializes a new video generation job.
+    """Initializes a new asynchronous video generation job.
 
-    Creates a database record and queues the orchestration logic for
-    asynchronous background execution.
+    Creates a job record in the database and triggers the background processing workflow.
 
     Args:
-        request (JobRequest): Job parameters (topic, audience, model).
-        db_session_factory (Callable[[], Session]): Factory for creating database
-            sessions.
+        request: The job configuration (topic, audience, provider).
+        background_tasks: FastAPI BackgroundTasks handler.
+        db: The asynchronous database session.
 
     Returns:
         JobStatus: The initial status of the created job.
@@ -172,34 +176,49 @@ async def create_job(
         HTTPException: If job initialization fails.
     """
     try:
-        with db_session_factory() as db:
-            job_id = await create_new_job(db, request)
+        # Note: create_new_job must be updated to handle async session
+        # For now, we inline the creation logic to ensure async compat
+        job_id = str(uuid.uuid4())
+        
+        mode = "mock" if request.provider == "mock" else "live"
+        new_job = JobRecord(
+            job_id=job_id,
+            topic=request.topic,
+            target_audience=request.target_audience,
+            status="planning",
+            mode=mode
+        )
+        
+        db.add(new_job)
+        await db.commit()
+        await db.refresh(new_job)
 
-        # Use the session factory from app state
-        session_factory = getattr(app.state, "db_session_factory", SessionLocal)
+        # Use the session factory from app state for background task
+        session_factory = getattr(app.state, "db_session_factory", AsyncSessionLocal)
         background_tasks.add_task(process_job_logic, job_id, request, session_factory)
 
-        return JobStatus(job_id=job_id, status="planning", mode="live")
+        return JobStatus(job_id=job_id, status="planning", mode=mode)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/jobs/{job_id}/status", response_model=JobStatus)
-async def get_job_status(job_id: str, db: Session = Depends(get_db)) -> JobStatus:
-    """
-    Retrieves the current state and all generated artifacts for a specific job.
+async def get_job_status(job_id: str, db: AsyncSession = Depends(get_db)) -> JobStatus:
+    """Retrieves the current status and artifacts for a specific job.
 
     Args:
-        job_id (str): The unique identifier of the job.
-        db (Session): Database session.
+        job_id: The UUID of the job to retrieve.
+        db: The asynchronous database session.
 
     Returns:
-        JobStatus: Comprehensive job state including plan, storyboard, and video URL.
+        JobStatus: Detailed state including plan, storyboard, and video URL if available.
 
     Raises:
-        HTTPException: If the job is not found.
+        HTTPException: If job is not found.
     """
-    job = db.query(JobRecord).filter(JobRecord.job_id == job_id).first()
+    result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
+    job = result.scalar_one_or_none()
+    
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
@@ -233,47 +252,39 @@ async def get_job_status(job_id: str, db: Session = Depends(get_db)) -> JobStatu
 @app.get("/jobs/{job_id}/events")
 async def job_events(
     job_id: str,
-    db_session_factory: Callable[[], Session] = Depends(lambda: SessionLocal),
+    db_session_factory: Callable[[], AsyncSession] = Depends(lambda: AsyncSessionLocal),
 ) -> StreamingResponse:
-    """
-    Provides a real-time stream of job status updates via Server-Sent Events (SSE).
-
-    Polls the database and emits updates only when the job state or
-    timestamp changes. The stream terminates upon job completion or failure.
+    """Provides a real-time stream of job updates via SSE.
 
     Args:
-        job_id (str): The unique identifier of the job to monitor.
-        db_session_factory (Callable[[], Session]): Factory for creating database
-            sessions.
+        job_id: The UUID of the job to stream events for.
+        db_session_factory: Factory for non-blocking DB sessions.
 
     Returns:
-        StreamingResponse: An SSE stream of job status objects.
+        StreamingResponse: An event-stream connection.
     """
-
     return StreamingResponse(
         _stream_job_events(job_id, db_session_factory), media_type="text/event-stream"
     )
 
 
 @app.get("/jobs/{job_id}/plan", response_model=CurriculumPlan)
-async def get_plan(job_id: str, db: Session = Depends(get_db)) -> CurriculumPlan:
-    """
-    Retrieves the generated curriculum plan for a specific job.
+async def get_plan(job_id: str, db: AsyncSession = Depends(get_db)) -> CurriculumPlan:
+    """Retrieves the generated curriculum plan for a specific job.
 
     Args:
-        job_id (str): The unique identifier of the job.
-        db (Session): Database session.
+        job_id: The UUID of the job.
+        db: The asynchronous database session.
 
     Returns:
-        CurriculumPlan: The structured pedagogical plan.
+        CurriculumPlan: The parsed curriculum JSON.
 
     Raises:
-        HTTPException: If the job or plan is not found.
+        HTTPException: If job or plan is not found.
     """
-    job = db.query(JobRecord).filter(JobRecord.job_id == job_id).first()
+    result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
+    job = result.scalar_one_or_none()
+    
     if not job or not job.plan:
         raise HTTPException(status_code=404, detail="Plan not found")
     return CurriculumPlan(**job.plan)
-
-
-app.mount("/jobs", StaticFiles(directory=str(JOBS_ROOT)), name="jobs")
