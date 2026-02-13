@@ -58,7 +58,11 @@ def get_model(
             base_url="https://api.synthetic.new/openai/v1",
             api_key=settings.synthetic_api_key,
         )
-        return OpenAIChatModel(model_id or settings.synthetic_model_name, provider=p_syn)
+        # Synthetic provider requires 'hf:' prefix even for passed model_ids
+        target_model = model_id or settings.synthetic_model_name
+        if not target_model.startswith("hf:"):
+            target_model = f"hf:{target_model}"
+        return OpenAIChatModel(target_model, provider=p_syn)
 
     # Fallback to tiered priority
     # 1. Gemini
@@ -82,6 +86,9 @@ def get_model(
             base_url="https://api.synthetic.new/openai/v1",
             api_key=settings.synthetic_api_key,
         )
-        return OpenAIChatModel(settings.synthetic_model_name, provider=p_syn_fallback)
+        target_model = settings.synthetic_model_name
+        if not target_model.startswith("hf:"):
+            target_model = f"hf:{target_model}"
+        return OpenAIChatModel(target_model, provider=p_syn_fallback)
 
     return None
