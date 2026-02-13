@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     deepseek_api_key: str | None = None
     synthetic_api_key: str | None = None
     deepseek_model_name: str = "deepseek-chat"
-    synthetic_model_name: str = "kimi-k2"
+    synthetic_model_name: str = "hf:kimi-k2"
     database_url: str = "sqlite:///../../conceptcast.db"
     cors_origins: str = "http://localhost:5173"
 

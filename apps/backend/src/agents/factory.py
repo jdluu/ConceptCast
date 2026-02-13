@@ -15,7 +15,7 @@ AVAILABLE_MODELS: dict[str, list[str]] = {
     "google": ["gemini-2.5-flash", "gemma-3-27b-it"],
     "groq": ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"],
     "deepseek": ["deepseek-chat", "deepseek-reasoner"],
-    "synthetic": ["kimi-k2", "qwen-3-coder", "glm-4.5"],
+    "synthetic": ["hf:kimi-k2", "hf:qwen-3-coder", "hf:glm-4.5"],
     "mock": ["mock-llm", "mock-analyst", "mock-critic"],
 }
 
@@ -58,7 +58,7 @@ def get_model(
             base_url="https://api.synthetic.new/openai/v1",
             api_key=settings.synthetic_api_key,
         )
-        return OpenAIChatModel(model_id or "kimi-k2", provider=p_syn)
+        return OpenAIChatModel(model_id or settings.synthetic_model_name, provider=p_syn)
 
     # Fallback to tiered priority
     # 1. Gemini
