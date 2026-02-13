@@ -7,15 +7,6 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "aenum"
-version = "3.1.16"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/09/7a/61ed58e8be9e30c3fe518899cc78c284896d246d51381bab59b5db11e1f3/aenum-3.1.16.tar.gz", hash = "sha256:bfaf9589bdb418ee3a986d85750c7318d9d2839c1b1a1d6fe8fc53ec201cf140", size = 137693, upload-time = "2026-01-12T22:34:38.819Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/52/6ad8f63ec8da1bf40f96996d25d5b650fdd38f5975f8c813732c47388f18/aenum-3.1.16-py3-none-any.whl", hash = "sha256:9035092855a98e41b66e3d0998bd7b96280e85ceb3a04cc035636138a1943eaf", size = 165627, upload-time = "2025-04-25T03:17:58.89Z" },
-]
-
-[[package]]
 name = "ag-ui-protocol"
 version = "0.1.11"
 source = { registry = "https://pypi.org/simple" }
@@ -378,7 +369,7 @@ dependencies = [
     { name = "alembic" },
     { name = "docker" },
     { name = "fastapi" },
-    { name = "infisicalsdk" },
+    { name = "logfire" },
     { name = "loguru" },
     { name = "manim" },
     { name = "pydantic-ai" },
@@ -409,7 +400,7 @@ requires-dist = [
     { name = "docker", specifier = ">=7.1.0" },
     { name = "fastapi", specifier = ">=0.109.0" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },
-    { name = "infisicalsdk", specifier = ">=1.0.15" },
+    { name = "logfire", specifier = ">=4.23.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "manim", specifier = ">=0.18.0" },
     { name = "pydantic-ai", specifier = ">=1.52.0" },
@@ -1545,22 +1536,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f3/49/3b30cad09e7771a4982d9975a8cbf64f00d4a1ececb53297f1d9a7be1b10/importlib_metadata-8.7.1.tar.gz", hash = "sha256:49fef1ae6440c182052f407c8d34a68f72efc36db9ca90dc0113398f2fdde8bb", size = 57107, upload-time = "2025-12-21T10:00:19.278Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fa/5e/f8e9a1d23b9c20a551a8a02ea3637b4642e22c2626e3a13a9a29cdea99eb/importlib_metadata-8.7.1-py3-none-any.whl", hash = "sha256:5a1f80bf1daa489495071efbb095d75a634cf28a8bc299581244063b53176151", size = 27865, upload-time = "2025-12-21T10:00:18.329Z" },
-]
-
-[[package]]
-name = "infisicalsdk"
-version = "1.0.15"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "aenum" },
-    { name = "boto3" },
-    { name = "botocore" },
-    { name = "python-dateutil" },
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/32/1f/2b078bd2e0ad7b46c7b205e54e377d6129eec30aa8ce130934bb5f9d7f33/infisicalsdk-1.0.15.tar.gz", hash = "sha256:8ae04f16322bbc8e1a2e64d7144e28fcb588559768c8a0ad792db12c7198e37b", size = 17013, upload-time = "2026-01-20T01:06:47.012Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/90/8fb6751c0281e18f09ff352064275fae10a93f2ea8d3fbdfcf9e7ed0b92a/infisicalsdk-1.0.15-py3-none-any.whl", hash = "sha256:9f8900e3702a17127c7ad5c958e6777229305df87f87fa3169395da5479d9dfb", size = 21058, upload-time = "2026-01-20T01:06:45.679Z" },
 ]
 
 [[package]]
