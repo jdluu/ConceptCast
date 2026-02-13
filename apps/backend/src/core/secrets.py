@@ -15,15 +15,24 @@ class SecretManager:
     def __init__(self) -> None:
         self.client: Optional[InfisicalClient] = None
         self.token = os.getenv("INFISICAL_TOKEN")
+        self.client_id = os.getenv("INFISICAL_CLIENT_ID")
+        self.client_secret = os.getenv("INFISICAL_CLIENT_SECRET")
         self.site_url = os.getenv("INFISICAL_URL", "https://app.infisical.com")
         self.project_id = os.getenv("INFISICAL_PROJECT_ID")
         self.environment = os.getenv("INFISICAL_ENV", "dev")
 
-        if self.token:
+        if (self.client_id and self.client_secret) or self.token:
             try:
                 self.client = InfisicalClient(site_url=self.site_url)
-                self.client.auth.login.token(token=self.token)
-                logger.info("Authenticated with Infisical")
+                if self.client_id and self.client_secret:
+                    self.client.auth.login.universal_auth(
+                        client_id=self.client_id, 
+                        client_secret=self.client_secret
+                    )
+                    logger.info("Authenticated with Infisical via Universal Auth")
+                elif self.token:
+                    self.client.auth.login.token(token=self.token)
+                    logger.info("Authenticated with Infisical via Token")
             except Exception as e:
                 logger.error(f"Failed to authenticate with Infisical: {e}")
                 self.client = None
