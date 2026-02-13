@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///../../conceptcast.db"
     cors_origins: str = "http://localhost:5173"
 
-    model_config = {"env_file": ".env", "extra": "ignore"}
+    model_config = {"env_file": "../../.env", "extra": "ignore"}
 
     def has_any_api_key(self) -> bool:
         """Returns True if at least one real AI provider API key is set."""
