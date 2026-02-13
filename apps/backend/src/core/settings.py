@@ -52,7 +52,18 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Returns a cached singleton Settings instance.
 
+    Values are prioritized from Infisical if configured, otherwise from .env.
+
     Returns:
         Settings: The application settings.
     """
-    return Settings()
+    from core.secrets import secret_manager
+
+    return Settings(
+        google_api_key=secret_manager.get_secret("GOOGLE_API_KEY"),
+        groq_api_key=secret_manager.get_secret("GROQ_API_KEY"),
+        deepseek_api_key=secret_manager.get_secret("DEEPSEEK_API_KEY"),
+        synthetic_api_key=secret_manager.get_secret("SYNTHETIC_API_KEY"),
+        database_url=secret_manager.get_secret("DATABASE_URL", "sqlite:///../../conceptcast.db"),
+        cors_origins=secret_manager.get_secret("CORS_ORIGINS", "http://localhost:5173"),
+    )

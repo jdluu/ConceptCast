@@ -69,31 +69,41 @@ async def render_storyboard(code: str, job_id: str) -> str:
 
     logger.info(f"Rendering job {job_id} in {job_dir}...")
 
-    # SECURITY: This executes AI-generated Python code without sandboxing.
-    # A malicious or hallucinated output could run arbitrary system commands.
-    # TODO: Implement sandboxing (e.g., Docker container, nsjail, firejail)
-    # and static analysis on generated code before execution.
-    process = await asyncio.create_subprocess_exec(
-        "manim",
-        "-ql",
-        "--media_dir",
-        str(job_dir),
-        str(code_file),
-        "SceneGen",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
+    # Execute rendering in Docker sandbox for security
+    from services.sandbox import docker_sandbox
 
-    stdout, stderr = await process.communicate()
+    try:
+        render_output = docker_sandbox.run_rendering(
+            job_dir=job_dir,
+            code_file=\"scene.py\",
+            scene_name=\"SceneGen\"
+        )
+        
+        if render_output is None:
+            # Fallback for environments without Docker (e.g., local dev)
+            logger.warning(\"Docker sandbox unavailable, falling back to local execution (UNSAFE)\")
+            process = await asyncio.create_subprocess_exec(
+                \"manim\",
+                \"-ql\",
+                \"--media_dir\",
+                \".\",
+                str(code_file),
+                \"SceneGen\",
+                cwd=str(job_dir),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await process.communicate()
+            if process.returncode != 0:
+                raise RuntimeError(f\"Local rendering failed: {stderr.decode()}\")
 
-    if process.returncode != 0:
-        error_msg = stderr.decode().strip()
-        logger.error(f"Manim rendering failed for job {job_id}: {error_msg}")
-        raise RuntimeError(f"Manim rendering failed: {error_msg}")
+    except Exception as e:
+        logger.error(f\"Sandbox execution failed for job {job_id}: {e}\")
+        raise RuntimeError(f\"Rendering failed: {str(e)}\")
 
     # Locate the output video
-    # Manim structure: job_dir/videos/scene/480p15/SceneGen.mp4
-    video_output = job_dir / "videos" / "scene" / "480p15" / "SceneGen.mp4"
+    # Manim structure with --media_dir .: job_dir/videos/scene/480p15/SceneGen.mp4
+    video_output = job_dir / \"videos\" / \"scene\" / \"480p15\" / \"SceneGen.mp4\"
     if not video_output.exists():
         raise RuntimeError(
             f"Rendering finished but output file not found at {video_output}"
