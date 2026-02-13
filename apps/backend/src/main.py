@@ -76,7 +76,7 @@ async def _stream_job_events(
         await asyncio.sleep(1)  # Internal poll for DB changes
 
 
-load_dotenv()
+
 
 
 @asynccontextmanager

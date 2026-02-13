@@ -5,8 +5,14 @@ replacing scattered os.getenv() calls across the codebase.
 """
 
 from functools import lru_cache
+from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
+
+# Load environment variables from project root .env
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
 
 class Settings(BaseSettings):
