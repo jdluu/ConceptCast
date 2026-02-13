@@ -75,35 +75,35 @@ async def render_storyboard(code: str, job_id: str) -> str:
     try:
         render_output = docker_sandbox.run_rendering(
             job_dir=job_dir,
-            code_file=\"scene.py\",
-            scene_name=\"SceneGen\"
+            code_file="scene.py",
+            scene_name="SceneGen"
         )
         
         if render_output is None:
             # Fallback for environments without Docker (e.g., local dev)
-            logger.warning(\"Docker sandbox unavailable, falling back to local execution (UNSAFE)\")
+            logger.warning("Docker sandbox unavailable, falling back to local execution (UNSAFE)")
             process = await asyncio.create_subprocess_exec(
-                \"manim\",
-                \"-ql\",
-                \"--media_dir\",
-                \".\",
+                "manim",
+                "-ql",
+                "--media_dir",
+                ".",
                 str(code_file),
-                \"SceneGen\",
+                "SceneGen",
                 cwd=str(job_dir),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
             _, stderr = await process.communicate()
             if process.returncode != 0:
-                raise RuntimeError(f\"Local rendering failed: {stderr.decode()}\")
+                raise RuntimeError(f"Local rendering failed: {stderr.decode()}")
 
     except Exception as e:
-        logger.error(f\"Sandbox execution failed for job {job_id}: {e}\")
-        raise RuntimeError(f\"Rendering failed: {str(e)}\")
+        logger.error(f"Sandbox execution failed for job {job_id}: {e}")
+        raise RuntimeError(f"Rendering failed: {str(e)}")
 
     # Locate the output video
     # Manim structure with --media_dir .: job_dir/videos/scene/480p15/SceneGen.mp4
-    video_output = job_dir / \"videos\" / \"scene\" / \"480p15\" / \"SceneGen.mp4\"
+    video_output = job_dir / "videos" / "scene" / "480p15" / "SceneGen.mp4"
     if not video_output.exists():
         raise RuntimeError(
             f"Rendering finished but output file not found at {video_output}"
