@@ -15,7 +15,7 @@ The goal is to support critical thinking rather than replace it. ConceptCast aut
 
 ## How it Works
 
-ConceptCast orchestrates multiple AI agents to transform a text topic into a pedagogical curriculum, validates it, and generates high-fidelity mathematical animations.
+ConceptCast orchestrates multiple AI agents to transform a text topic into a pedagogical curriculum, validates it, and generates high-fidelity mathematical animations. The UI is wired to the backend: choose an AI provider (e.g. **DeepSeek**) in the New Project form and click **Generate Lesson** to run the council with that provider. See the [Setup Guide](docs/wiki/Setup-Guide.md#configuring-ai-providers-eg-deepseek) for configuring API keys (e.g. `DEEPSEEK_API_KEY`).
 
 ## Documentation & Wiki
 
