@@ -1,0 +1,52 @@
+services:
+  dind:
+    image: docker:24-dind
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    volumes:
+      - conceptcast_data:/app/data
+    ports:
+      - "2375:2375"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - conceptcast_data:/app/data
+    environment:
+      PROJECT_ROOT: /app
+      DATABASE_URL: sqlite+aiosqlite:////app/data/conceptcast.db
+      HOST_DATA_DIR: /app/data
+      DOCKER_HOST: tcp://dind:2375
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      - dind
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - conceptcast_data:/app/data
+    environment:
+      PROJECT_ROOT: /app
+      FRONTEND_DIST: /app/frontend_dist
+      DATABASE_URL: sqlite+aiosqlite:////app/data/conceptcast.db
+      HOST_DATA_DIR: /app/data
+    env_file:
+      - .env
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  conceptcast_data:
