@@ -1,117 +1,361 @@
-import asyncio
+import ast
+import os
 import re
+import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
 from loguru import logger
 
-# Patterns that should never appear in generated Manim code.
-# This is a heuristic blocklist, not a true sandbox.
-_BLOCKED_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\bimport\s+(os|sys|subprocess|shutil|socket|http|requests|urllib|importlib|pickle)\b"),
-    re.compile(r"\bfrom\s+(os|sys|subprocess|shutil|socket|http|requests|urllib|importlib|pickle)\b"),
-    re.compile(r"\b__import__\s*\("),
-    re.compile(r"\bexec\s*\("),
-    re.compile(r"\beval\s*\("),
-    re.compile(r"\bcompile\s*\("),
-    re.compile(r"\bopen\s*\("),
-    re.compile(r"\binput\s*\("),
-    re.compile(r"\bbreakpoint\s*\("),
-    re.compile(r"\bgetattr\s*\("),
-]
+from core.exceptions import AnimationGenerationError
+from core.settings import get_settings
+
+# Opening code fence (optional "python" / "py")
+_CODE_FENCE_START = re.compile(r"^\s*```(?:python|py)?\s*\n?", re.IGNORECASE)
+
+# Allowed modules for import
+_ALLOWED_MODULES = {
+    "manim",
+    "math",
+    "numpy",
+    "random",
+    "datetime",
+    "itertools",
+    "typing",
+}
+
+# Builtin functions that are explicitly banned
+_BANNED_BUILTINS = {
+    "exec",
+    "eval",
+    "compile",
+    "open",
+    "input",
+    "breakpoint",
+    "getattr",
+    "setattr",
+    "delattr",
+    "__import__",
+    "globals",
+    "locals",
+    "vars",
+    "memoryview",
+}
+
+
+class ASTSanitizer(ast.NodeVisitor):
+    """
+    AST-based sanitizer to ensure generated Manim code does not perform
+    unsafe operations like arbitrary IO, system calls, or dynamic execution.
+    """
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            base_module = alias.name.split(".")[0]
+            if base_module not in _ALLOWED_MODULES:
+                raise RuntimeError(f"Import of module '{alias.name}' is not allowed.")
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if node.module:
+            base_module = node.module.split(".")[0]
+            if base_module not in _ALLOWED_MODULES:
+                raise RuntimeError(
+                    f"Import from module '{node.module}' is not allowed."
+                )
+        self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> None:
+        # Check for calls to banned builtins (e.g., eval("..."))
+        if isinstance(node.func, ast.Name) and node.func.id in _BANNED_BUILTINS:
+            raise RuntimeError(
+                f"Call to unsafe builtin '{node.func.id}' is forbidden."
+            )
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        # Block access to private/dunder attributes which are often used in jailbreaks
+        # e.g., __subclasses__, __bases__, __globals__
+        # We allow __init__ and standard Manim/Python dunders might be needed,
+        # but for generated code, simple access is safer.
+        # Stricter: Block anything starting with __ except known safe ones?
+        # For now, block specific dangerous ones.
+        if node.attr in {
+            "__subclasses__",
+            "__bases__",
+            "__globals__",
+            "__code__",
+            "__closure__",
+            "__func__",
+            "__self__",
+            "__module__",
+            "__dict__",
+        }:
+            raise RuntimeError(
+                f"Access to unsafe attribute '{node.attr}' is forbidden."
+            )
+        self.generic_visit(node)
 
 
 def _sanitize_code(code: str) -> None:
     """
-    Scans generated Manim code for dangerous patterns before execution.
+    Scans generated Manim code using AST parsing to validate safety.
+    Raises RuntimeError if unsafe patterns are detected.
+    """
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        raise RuntimeError(f"Syntax error in generated code: {e}") from e
 
-    Checks against a blocklist of imports and builtins that should never
-    appear in legitimate Manim animation code.
+    sanitizer = ASTSanitizer()
+    sanitizer.visit(tree)
+
+
+def extract_and_validate_manim_code(raw: str) -> str:
+    """
+    Extracts raw Python from animator output (strips markdown fences) and validates.
+
+    - Removes leading ```python / ``` and trailing ``` so Manim receives valid .py.
+    - Validates Python syntax with ast.parse.
+    - Ensures a class named SceneGen exists (required for rendering).
 
     Args:
-        code: The generated Python code to validate.
+        raw: The animator output (may be wrapped in markdown code blocks).
+
+    Returns:
+        str: Cleaned, validated Python code.
 
     Raises:
-        RuntimeError: If any blocked pattern is detected.
+        RuntimeError: If code cannot be extracted, is invalid Python, 
+            or missing SceneGen.
     """
-    for pattern in _BLOCKED_PATTERNS:
-        match = pattern.search(code)
-        if match:
-            raise RuntimeError(
-                f"Generated code contains unsafe pattern: '{match.group()}'. "
-                "Aborting execution."
-            )
+    code = raw.strip()
+    # Strip opening fence (e.g. ```python or ```)
+    if _CODE_FENCE_START.match(code):
+        code = _CODE_FENCE_START.sub("", code, count=1)
+    # Strip trailing fence
+    if code.endswith("```"):
+        code = code[: code.rfind("```")].rstrip()
+    code = code.strip()
+    if not code:
+        raise RuntimeError(
+            "Animator output was empty or only contained markdown fences. "
+            "Expected raw Python code with a SceneGen class."
+        )
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        raise RuntimeError(
+            f"Generated Manim code has a Python syntax error: {e}. "
+            "Animator must return only valid Python with a class SceneGen(Scene)."
+        ) from e
+
+    # AST validation (sanitization + structure check)
+    sanitizer = ASTSanitizer()
+    try:
+        sanitizer.visit(tree)
+    except RuntimeError as e:
+        raise RuntimeError(f"Code validation failed: {e}") from e
+
+    has_scene_gen = any(
+        isinstance(node, ast.ClassDef) and node.name == "SceneGen"
+        for node in ast.walk(tree)
+    )
+    if not has_scene_gen:
+        raise RuntimeError(
+            "Generated code must define a class named SceneGen inheriting from Scene. "
+            "Animator must return only raw Python code."
+        )
+    return code
+
+
+def _quality_to_flag(quality: str) -> str:
+    normalized = quality.strip().lower()
+    mapping = {
+        "ql": "-ql",
+        "low": "-ql",
+        "dev": "-ql",
+        "qm": "-qm",
+        "medium": "-qm",
+        "prod": "-qh",
+        "production": "-qh",
+        "qh": "-qh",
+        "high": "-qh",
+    }
+    return mapping.get(normalized, "-ql")
+
+
+@dataclass
+class PreviewResult:
+    """Result of a low-quality preview render."""
+
+    success: bool
+    logs: str
+    frame_path: Path | None
+    error: str | None
 
 
 async def render_storyboard(code: str, job_id: str) -> str:
     """
-    Renders a Manim scene from the provided code asynchronously.
-    Artifacts are stored in the project-root data/jobs/{job_id} directory.
+    Renders the Manim animation for the given code.
 
     Args:
-        code: The generated Manim Python code.
-        job_id: Unique ID of the job.
+        code: The Manim Python code to execute.
+        job_id: Unique job identifier for artifact isolation.
 
     Returns:
-        str: Relative path to the rendered video file.
+        The web-accessible URL path to the generated video.
 
     Raises:
-        RuntimeError: If code sanitization or rendering fails.
+        AnimationGenerationError: If rendering fails or code is invalid.
     """
-    _sanitize_code(code)
+    # 1. Validate and sanitize code
+    try:
+        validated_code = extract_and_validate_manim_code(code)
+    except Exception as e:
+        raise AnimationGenerationError(f"Invalid Manim code: {e}") from e
 
-    # Use project-root data/jobs folder
-    project_root = Path(__file__).parent.parent.parent.parent.parent
-    job_dir = project_root / "data" / "jobs" / job_id
+    # 2. Setup job directory
+    # host_data_dir is the path on the host machine where data is stored
+    # We need this for Docker volume mounting when running in a container
+    host_data_dir = os.getenv("HOST_DATA_DIR")
+    base_dir = Path("/app/data") if host_data_dir else get_settings().data_dir
+
+    job_dir = base_dir / "jobs" / "artifacts" / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
     code_file = job_dir / "scene.py"
-    code_file.write_text(code)
+    code_file.write_text(validated_code)
 
-    logger.info(f"Rendering job {job_id} in {job_dir}...")
+    # 3. Execute in Sandbox
+    logger.info(f"Starting render for job {job_id}")
 
-    # Execute rendering in Docker sandbox for security
+    # If running in Docker (HOST_DATA_DIR set), we need to pass the host path
+    host_job_dir = (
+        Path(host_data_dir) / "jobs" / "artifacts" / job_id if host_data_dir else None
+    )
+
+    # Retry logic for transient rendering issues
+    max_retries = 2
+    last_error = None
+
     from services.sandbox import docker_sandbox
 
+    for attempt in range(max_retries + 1):
+        try:
+            result = docker_sandbox.run_rendering(
+                job_dir=job_dir,
+                code_file="scene.py",
+                scene_name="SceneGen",
+                host_job_dir=host_job_dir,
+                quality_flag=_quality_to_flag(
+                    get_settings().render_quality
+                ),  # Use configured quality
+            )
+
+            if not result:
+                # If sandbox failed to start (e.g. no docker), we error out
+                raise AnimationGenerationError("Rendering sandbox unavailable")
+
+            # Check for output file
+            # Manim -ql produces 480p15 video strings in 
+            # media/videos/scene/480p15/SceneGen.mp4
+            # We need to find where it actually went.
+            # With --media_dir ., it should be in 
+            # ./videos/scene/480p15/SceneGen.mp4 if code uses defaults?
+            # Actually, defaults are media/videos/...
+            # Let's find the .mp4 file
+            video_files = list(job_dir.glob("**/*.mp4"))
+            if not video_files:
+                logger.error(
+                    f"Manim finished but no video found. Logs:\n"
+                    f"{result.stdout}\n{result.stderr}"
+                )
+                raise AnimationGenerationError(
+                    "Manim finished but produced no video file."
+                )
+
+            video_path = video_files[0]
+
+            # Move/Rename to a standard location: {job_dir}/video.mp4
+            final_video_path = job_dir / "video.mp4"
+            shutil.move(str(video_path), str(final_video_path))
+
+            # Cleanup media dir? kept for debugging/cache
+
+            # Return web path
+            return f"/jobs/artifacts/{job_id}/video.mp4"
+
+        except RuntimeError as e:
+            logger.warning(f"Render attempt {attempt + 1} failed: {e}")
+            last_error = e
+            if attempt < max_retries:
+                continue
+
+    raise AnimationGenerationError(
+        f"Rendering failed after retries. Last error: {last_error}"
+    )
+
+
+async def render_preview(code: str, job_id: str) -> PreviewResult:
+    """
+    Generates a low-quality preview execution to capture logs and potential errors.
+    Does not halt on video missing, but returns logs for analysis.
+    """
+    # 1. Validate
     try:
-        render_output = docker_sandbox.run_rendering(
+        validated_code = extract_and_validate_manim_code(code)
+    except Exception as e:
+        return PreviewResult(success=False, logs=str(e), frame_path=None, error=str(e))
+
+    # 2. Setup (Reuse logic - simpler path)
+    host_data_dir = os.getenv("HOST_DATA_DIR")
+    base_dir = Path("/app/data") if host_data_dir else get_settings().data_dir
+    job_dir = base_dir / "jobs" / "artifacts" / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    code_file = job_dir / "scene.py"
+    code_file.write_text(validated_code)
+
+    host_job_dir = (
+        Path(host_data_dir) / "jobs" / "artifacts" / job_id if host_data_dir else None
+    )
+
+    # 3. Run with low quality
+    try:
+        from services.sandbox import docker_sandbox
+
+        result = docker_sandbox.run_rendering(
             job_dir=job_dir,
             code_file="scene.py",
-            scene_name="SceneGen"
+            scene_name="SceneGen",
+            host_job_dir=host_job_dir,
+            quality_flag="-ql",
         )
-        
-        if render_output is None:
-            # Fallback for environments without Docker (e.g., local dev)
-            logger.warning("Docker sandbox unavailable, falling back to local execution (UNSAFE)")
-            process = await asyncio.create_subprocess_exec(
-                "manim",
-                "-ql",
-                "--media_dir",
-                ".",
-                str(code_file),
-                "SceneGen",
-                cwd=str(job_dir),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+
+        if not result:
+            return PreviewResult(
+                success=False,
+                logs="Sandbox unavailable",
+                frame_path=None,
+                error="Sandbox unavailable",
             )
-            _, stderr = await process.communicate()
-            if process.returncode != 0:
-                raise RuntimeError(f"Local rendering failed: {stderr.decode()}")
 
-    except Exception as e:
-        logger.error(f"Sandbox execution failed for job {job_id}: {e}")
-        raise RuntimeError(f"Rendering failed: {str(e)}")
+        # Check success by looking for video OR just return logs
+        video_files = list(job_dir.glob("**/*.mp4"))
+        success = len(video_files) > 0
 
-    # Locate the output video
-    # Manim structure with --media_dir .: job_dir/videos/scene/480p15/SceneGen.mp4
-    video_output = job_dir / "videos" / "scene" / "480p15" / "SceneGen.mp4"
-    if not video_output.exists():
-        raise RuntimeError(
-            f"Rendering finished but output file not found at {video_output}"
+        # Future: extract the last frame image for vision analysis
+        # For now, just return None for frame_path
+
+        combined_logs = f"STDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
+
+        return PreviewResult(
+            success=success,
+            logs=combined_logs,
+            frame_path=None,
+            error=None if success else "No video output produced",
         )
 
-    # Move to top-level of job directory for easier serving
-    final_path = job_dir / "video.mp4"
-    video_output.rename(final_path)
-
-    logger.info(f"Successfully rendered video for job {job_id} at {final_path}")
-    return f"/jobs/{job_id}/video.mp4"
+    except RuntimeError as e:
+        return PreviewResult(success=False, logs=str(e), frame_path=None, error=str(e))
