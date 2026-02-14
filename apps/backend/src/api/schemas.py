@@ -130,6 +130,45 @@ class Storyboard(BaseModel):
     scenes: list[Scene]
 
 
+class ThoughtLog(BaseModel):
+    """
+    Represents a single thought streamed from an agent.
+    """
+
+    agent: str
+    phase: str
+    content: str
+    ts: str
+
+
+class AnimationReview(BaseModel):
+    """Result of an AI review comparing a rendered frame to a storyboard."""
+
+    approved: bool = Field(..., description="Whether the animation frame is acceptable")
+    issues: list[str] = Field(
+        default_factory=list, description="List of visual discrepancies found"
+    )
+    revision_instructions: str = Field(
+        ..., description="Specific instructions for the animator to fix the issues"
+    )
+
+
+class JobSummary(BaseModel):
+    """Lightweight job representation for the jobs list."""
+
+    job_id: str
+    topic: str
+    status: str
+    mode: str
+    created_at: str
+    retry_count: int
+    error: str | None
+
+
+class JobListResponse(BaseModel):
+    jobs: list[JobSummary]
+
+
 class JobStatus(BaseModel):
     """
     Status tracking model for a ConceptCast generation job.
@@ -138,16 +177,21 @@ class JobStatus(BaseModel):
         job_id (str): Unique UUID for the job.
         status (str): Current processing status (planning, validating, etc.).
         current_step (str | None): Detail on the specific sub-step execution.
-        plan (dict | None): The curriculum plan data.
-        validation (dict | None): Generation validation data.
-        storyboard (dict | None): The storyboard data.
+        plan (CurriculumPlan | None): The curriculum plan data.
+        validation (ValidationResult | None): Generation validation data.
+        storyboard (Storyboard | None): The storyboard data.
         manim_code (str | None): The generated Manim Python code.
         video_url (str | None): URL to the final rendered video.
         error (str | None): Error message if the job failed.
         mode (str): Execution mode ('live' for API calls, 'mock' for simulation).
+        streamed_thoughts (list[ThoughtLog]): Live stream of agent thoughts.
     """
 
     job_id: str
+    streamed_thoughts: list[ThoughtLog] = Field(
+        default_factory=list,
+        description="Live stream of agent thoughts (agent, phase, content, ts).",
+    )
     status: Literal[
         "planning",
         "validating",
@@ -156,11 +200,12 @@ class JobStatus(BaseModel):
         "reviewing",
         "completed",
         "failed",
+        "pending_retry",
     ]
     current_step: str | None = None
-    plan: dict[str, Any] | None = None
-    validation: dict[str, Any] | None = None
-    storyboard: dict[str, Any] | None = None
+    plan: CurriculumPlan | None = None
+    validation: ValidationResult | None = None
+    storyboard: Storyboard | None = None
     manim_code: str | None = None
     video_url: str | None = None
     error: str | None = None
@@ -195,6 +240,7 @@ class JobRequest(BaseModel):
 class ProviderModels(BaseModel):
     provider: str
     models: list[str]
+    display_name: str | None = None
 
 
 class AvailableModelsResponse(BaseModel):

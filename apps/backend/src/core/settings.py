@@ -23,8 +23,14 @@ class Settings(BaseSettings):
         groq_api_key: Groq API key for Llama/Mixtral models.
         deepseek_api_key: DeepSeek API key.
         synthetic_api_key: Synthetic provider API key.
+        context7_api_key: Context7 API key for doc retrieval (e.g. Manim Community).
+        context7_cache_ttl_seconds: TTL for Context7 response cache.
+        context7_cache_max_entries: Max Context7 cache entries kept in-memory.
+        context7_max_retries: Retries for transient Context7 API failures.
         deepseek_model_name: Override for DeepSeek model name.
         synthetic_model_name: Override for Synthetic model name.
+        render_quality: Manim quality profile for rendering (ql/qm/qh).
+        streamed_thoughts_max_entries: Max persisted streamed thought deltas per job.
         database_url: SQLAlchemy database URL.
         cors_origins: Comma-separated list of allowed CORS origins.
     """
@@ -33,12 +39,21 @@ class Settings(BaseSettings):
     groq_api_key: str | None = None
     deepseek_api_key: str | None = None
     synthetic_api_key: str | None = None
+    context7_api_key: str | None = None
+    context7_cache_ttl_seconds: int = 1800
+    context7_cache_max_entries: int = 256
+    context7_max_retries: int = 2
     deepseek_model_name: str = "deepseek-chat"
-    synthetic_model_name: str = "hf:kimi-k2"
-    database_url: str = "sqlite:///../../conceptcast.db"
+    synthetic_model_name: str = "hf:deepseek-ai/DeepSeek-V3"
+    render_quality: str = "ql"
+    streamed_thoughts_max_entries: int = 500
+    animation_review_max_iterations: int = 3
+    animation_review_enabled: bool = True
+    database_url: str = "sqlite:///" + str(PROJECT_ROOT / "conceptcast.db")
     cors_origins: str = "http://localhost:5173"
+    data_dir: Path = PROJECT_ROOT / "data"
 
-    model_config = {"env_file": "../../.env", "extra": "ignore"}
+    model_config = {"env_file": str(PROJECT_ROOT / ".env"), "extra": "ignore"}
 
     def has_any_api_key(self) -> bool:
         """Returns True if at least one real AI provider API key is set."""
@@ -58,18 +73,9 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Returns a cached singleton Settings instance.
 
-    Values are prioritized from Infisical if configured, otherwise from .env.
+    Values are loaded from environment variables and .env file.
 
     Returns:
         Settings: The application settings.
     """
-    from core.secrets import secret_manager
-
-    return Settings(
-        google_api_key=secret_manager.get_secret("GOOGLE_API_KEY"),
-        groq_api_key=secret_manager.get_secret("GROQ_API_KEY"),
-        deepseek_api_key=secret_manager.get_secret("DEEPSEEK_API_KEY"),
-        synthetic_api_key=secret_manager.get_secret("SYNTHETIC_API_KEY"),
-        database_url=secret_manager.get_secret("DATABASE_URL", "sqlite:///../../conceptcast.db"),
-        cors_origins=secret_manager.get_secret("CORS_ORIGINS", "http://localhost:5173"),
-    )
+    return Settings()

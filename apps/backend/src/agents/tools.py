@@ -1,9 +1,13 @@
+import json
+
 from pydantic_ai import RunContext, ToolDefinition
 
 from api.schemas import Storyboard
+from core.context7 import get_manim_docs_context
+from core.settings import get_settings
 
-# A curated "ground truth" for common Manim components to reduce hallucinations.
-# In a full-scale app, this could be a RAG vector store or a JSON file.
+# Curated fallback when CONTEXT7_API_KEY is not set. With Context7 we use
+# Manim Community docs at /websites/manim_community_en_stable instead.
 MANIM_DOCS = {
     "Line": (
         "Line(start=LEFT, end=RIGHT, buff=0). "
@@ -170,24 +174,36 @@ async def prepare_manim_docs(
     return tool_def
 
 
-def search_manim_docs(query: str) -> str:
+async def search_manim_docs(ctx: RunContext[Storyboard], query: str) -> str:
     """
-    Searches for specific Manim syntax.
+    Searches for Manim Community documentation.
 
-    Performs a keyword search against the curated `MANIM_DOCS` dictionary.
+    When CONTEXT7_API_KEY is set, uses Context7 API to retrieve relevant
+    snippets from Manim Community docs. Otherwise falls back to keyword
+    search over the curated MANIM_DOCS dict.
+    When used with prepare=prepare_manim_docs, pydantic_ai requires the first
+    parameter to be RunContext[Storyboard] so the tool is context-aware.
 
     Args:
-        query (str): The search term (e.g., 'Circle', 'animate').
+        ctx: Run context (deps=Storyboard); used by prepare, not in body.
+        query: The search term or question (e.g., 'Circle', 'FadeIn animation').
 
     Returns:
-        str: A string containing matching documentation or a fallback message.
+        str: JSON string with key "documentation" so providers 
+        that parse tool results as JSON succeed.
     """
-    # Simple keyword search for now
-    matches = [
-        f"{k}: {v}"
-        for k, v in MANIM_DOCS.items()
-        if query.lower() in k.lower() or query.lower() in v.lower()
-    ]
-    if not matches:
-        return "No specific matches found. Use standard Manim Community syntax."
-    return "\n".join(matches)
+    api_key = get_settings().context7_api_key
+    if api_key:
+        content = await get_manim_docs_context(query, api_key=api_key)
+    else:
+        matches = [
+            f"{k}: {v}"
+            for k, v in MANIM_DOCS.items()
+            if query.lower() in k.lower() or query.lower() in v.lower()
+        ]
+        content = (
+            "\n".join(matches)
+            if matches
+            else "No specific matches found. Use standard Manim Community syntax."
+        )
+    return json.dumps({"documentation": content})

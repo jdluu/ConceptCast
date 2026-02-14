@@ -1,8 +1,11 @@
+from collections.abc import Awaitable, Callable
+from typing import Any
+
 from pydantic_ai import Agent, RunContext
 
 from api.schemas import CurriculumPlan, ValidationResult
 
-from .factory import get_model
+from .streaming import run_agent_streamed
 from .validator import validate_curriculum
 
 # Define the Analyst Agent
@@ -27,26 +30,16 @@ sequential dependency graph for visual learning.
 async def generate_curriculum(
     topic: str,
     audience: str,
-    provider: str | None = None,
-    model_id: str | None = None,
+    model: Any,
+    on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
 ) -> CurriculumPlan:
     """
     Generates a pedagogical curriculum plan for a given topic.
-
-    Uses the Analyst Agent to deconstruct the topic into a sequence of
-    teaching steps, each with a visual metaphor and narration.
-
-    Args:
-        topic (str): The main concept to explain.
-        audience (str): The target audience knowledge level.
-        provider (str | None): Optional explicit AI provider.
-        model_id (str | None): Optional explicit AI model ID.
-
-    Returns:
-        CurriculumPlan: A structured plan containing teaching steps.
+    Streams analyst (and validator, when critic is called) thoughts 
+    if on_thought is provided.
     """
     agent = Agent(
-        get_model(provider, model_id),
+        model,
         system_prompt=system_prompt,
         output_type=CurriculumPlan,
     )
@@ -55,21 +48,11 @@ async def generate_curriculum(
     async def consult_critic(
         ctx: RunContext[None], plan: CurriculumPlan
     ) -> ValidationResult:
-        """
-        Consults the Validator Agent (The Critic) to audit the curriculum plan.
-
-        Args:
-            ctx (RunContext): The agent's execution context.
-            plan (CurriculumPlan): The plan to validate.
-
-        Returns:
-            ValidationResult: Feedback and pedagogical scores.
-        """
-        return await validate_curriculum(plan)
+        return await validate_curriculum(plan, model, on_thought=on_thought)
 
     prompt = (
         f"Explain '{topic}' to a '{audience}' audience. "
         "Remember to consult the critic before finalizing your output."
     )
-    result = await agent.run(prompt)
-    return result.data  # type: ignore
+    result = await run_agent_streamed("analyst", agent, prompt, on_thought=on_thought)
+    return result  # type: ignore

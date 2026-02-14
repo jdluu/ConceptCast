@@ -2,7 +2,7 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, String
+from sqlalchemy import JSON, DateTime, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
@@ -56,6 +56,11 @@ class JobRecord(Base):
         video_url (str | None): URL to the rendered video file.
         error (str | None): Error message if the job failed.
         mode (str): Execution mode ('live' or 'mock').
+        provider (str | None): AI provider requested at job creation 
+            (e.g. 'deepseek', 'google').
+        model_id (str | None): Model ID requested at job creation.
+        streamed_thoughts (list | None): Live stream of agent thoughts/deltas 
+            for the UI.
         created_at (datetime): Timestamp when the job was created.
         updated_at (datetime): Timestamp when the job was last updated.
     """
@@ -74,6 +79,12 @@ class JobRecord(Base):
     video_url: Mapped[str | None] = mapped_column(String, nullable=True)
     error: Mapped[str | None] = mapped_column(String, nullable=True)
     mode: Mapped[str] = mapped_column(String, default="live")
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    provider: Mapped[str | None] = mapped_column(String, nullable=True)
+    model_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    streamed_thoughts: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSON, nullable=True, default=None
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC)
     )
@@ -82,6 +93,3 @@ class JobRecord(Base):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
-
-
-
