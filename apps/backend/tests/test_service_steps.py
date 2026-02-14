@@ -3,9 +3,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from api.schemas import CurriculumPlan, JobRequest, Storyboard, TeachingStep
+from api.schemas import (
+    AnimationReview,
+    CurriculumPlan,
+    JobRequest,
+    Storyboard,
+    TeachingStep,
+)
 from core.database import JobRecord
-from services.orchestrator import _step_animating, _step_architecting, _step_planning
+from services.workflow_steps import (
+    step_animating,
+    step_architecting,
+    step_planning,
+    step_rendering,
+)
 
 
 @pytest.fixture
@@ -26,6 +37,7 @@ def mock_job_record() -> JobRecord:
         plan=None,
         storyboard=None,
         manim_code=None,
+        mode="live",
     )
 
 
@@ -44,7 +56,6 @@ async def test_step_planning_execution(
     mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: AsyncMock
 ) -> None:
     """Test that planning step calls generate_curriculum when no plan exists."""
-    # Arrange
     expected_plan = CurriculumPlan(
         concept_title="Test Topic",
         target_audience="Test Audience",
@@ -52,20 +63,24 @@ async def test_step_planning_execution(
             TeachingStep(step_id=1, concept="C1", visual_metaphor="V1", narration="N1")
         ],
     )
+    mock_model = MagicMock()
 
-    with patch(
-        "services.orchestrator.generate_curriculum", new_callable=AsyncMock
-    ) as mock_gen:
+    with (
+        patch("services.workflow_steps.get_model", return_value=mock_model),
+        patch(
+            "services.workflow_steps.generate_curriculum", new_callable=AsyncMock
+        ) as mock_gen,
+    ):
         mock_gen.return_value = expected_plan
 
-        # Act
-        result = await _step_planning(
-            mock_job_request, mock_job_record, mock_update_job
+        async def noop_on_thought(_a: str, _p: str, _c: str) -> None:
+            pass
+
+        result = await step_planning(
+            mock_job_request, mock_job_record, mock_update_job, noop_on_thought
         )
 
-        # Assert
         mock_gen.assert_awaited_once()
-        mock_update_job.assert_called()  # Should verify specific calls
         assert result == expected_plan
 
 
@@ -74,21 +89,21 @@ async def test_step_planning_checkpoint(
     mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: AsyncMock
 ) -> None:
     """Test that planning step returns existing plan if already present."""
-    # Arrange
     existing_plan = CurriculumPlan(
         concept_title="Existing", target_audience="Audience", teaching_steps=[]
     )
     mock_job_record.plan = existing_plan.model_dump()
 
+    async def noop_on_thought(_a: str, _p: str, _c: str) -> None:
+        pass
+
     with patch(
-        "services.orchestrator.generate_curriculum", new_callable=AsyncMock
+        "services.workflow_steps.generate_curriculum", new_callable=AsyncMock
     ) as mock_gen:
-        # Act
-        result = await _step_planning(
-            mock_job_request, mock_job_record, mock_update_job
+        result = await step_planning(
+            mock_job_request, mock_job_record, mock_update_job, noop_on_thought
         )
 
-        # Assert
         mock_gen.assert_not_awaited()
         assert result.concept_title == "Existing"
 
@@ -98,20 +113,25 @@ async def test_step_architecting_execution(
     mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: AsyncMock
 ) -> None:
     """Test that architecting step calls generate_storyboard."""
-    # Arrange
     plan = CurriculumPlan(concept_title="T", target_audience="A", teaching_steps=[])
     expected_storyboard = Storyboard(concept_title="T", scenes=[])
-    with patch(
-        "services.orchestrator.generate_storyboard", new_callable=AsyncMock
-    ) as mock_gen:
+    mock_model = MagicMock()
+
+    async def noop_on_thought(_a: str, _p: str, _c: str) -> None:
+        pass
+
+    with (
+        patch("services.workflow_steps.get_model", return_value=mock_model),
+        patch(
+            "services.workflow_steps.generate_storyboard", new_callable=AsyncMock
+        ) as mock_gen,
+    ):
         mock_gen.return_value = expected_storyboard
 
-        # Act
-        result = await _step_architecting(
-            plan, mock_job_request, mock_job_record, mock_update_job
+        result = await step_architecting(
+            plan, mock_job_request, mock_job_record, mock_update_job, noop_on_thought
         )
 
-        # Assert
         mock_gen.assert_awaited_once()
         assert result == expected_storyboard
 
@@ -121,19 +141,42 @@ async def test_step_animating_execution(
     mock_job_request: JobRequest, mock_job_record: JobRecord, mock_update_job: AsyncMock
 ) -> None:
     """Test that animating step calls generate_manim_code."""
-    # Arrange
     storyboard = Storyboard(concept_title="T", scenes=[])
-    expected_code = "class TestScene(Scene): pass"
-    with patch(
-        "services.orchestrator.generate_manim_code", new_callable=AsyncMock
-    ) as mock_gen:
-        mock_gen.return_value = expected_code
+    expected_code = "from manim import *\nclass SceneGen(Scene): pass"
+    mock_model = MagicMock()
 
-        # Act
-        result = await _step_animating(
-            storyboard, mock_job_request, mock_job_record, mock_update_job
+    async def noop_on_thought(_a: str, _p: str, _c: str) -> None:
+        pass
+
+    with (
+        patch("services.workflow_steps.get_model", return_value=mock_model),
+        patch(
+            "services.workflow_steps.generate_manim_code", new_callable=AsyncMock
+        ) as mock_gen,
+        patch(
+            "services.workflow_steps.render_preview", new_callable=AsyncMock
+        ) as mock_render,
+        patch(
+            "services.workflow_steps.review_animation", new_callable=AsyncMock
+        ) as mock_review,
+    ):
+        mock_gen.return_value = expected_code
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.logs = "logs"
+        mock_result.frame_path = "preview.png"
+        mock_render.return_value = mock_result
+        mock_review.return_value = AnimationReview(
+            approved=True, issues=[], revision_instructions=""
         )
 
-        # Assert
+        result = await step_animating(
+            storyboard,
+            mock_job_request,
+            mock_job_record,
+            mock_update_job,
+            noop_on_thought,
+        )
+
         mock_gen.assert_awaited_once()
         assert result == expected_code

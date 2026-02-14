@@ -1,12 +1,13 @@
 import os
 import time
 from collections.abc import AsyncGenerator, Generator
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from api.schemas import (
+    AnimationReview,
     CurriculumPlan,
     Scene,
     Storyboard,
@@ -33,7 +34,7 @@ async def setup_db() -> AsyncGenerator[None, None]:
 @pytest.fixture
 def mock_analyst() -> Generator[AsyncMock, None, None]:
     with patch(
-        "services.orchestrator.generate_curriculum", new_callable=AsyncMock
+        "services.workflow_steps.generate_curriculum", new_callable=AsyncMock
     ) as mock:
         mock.return_value = CurriculumPlan(
             concept_title="Test Concept",
@@ -53,7 +54,7 @@ def mock_analyst() -> Generator[AsyncMock, None, None]:
 @pytest.fixture
 def mock_architect() -> Generator[AsyncMock, None, None]:
     with patch(
-        "services.orchestrator.generate_storyboard", new_callable=AsyncMock
+        "services.workflow_steps.generate_storyboard", new_callable=AsyncMock
     ) as mock:
         mock.return_value = Storyboard(
             concept_title="Test Concept",
@@ -81,20 +82,42 @@ def mock_architect() -> Generator[AsyncMock, None, None]:
 @pytest.fixture
 def mock_animator() -> Generator[AsyncMock, None, None]:
     with patch(
-        "services.orchestrator.generate_manim_code", new_callable=AsyncMock
+        "services.workflow_steps.generate_manim_code", new_callable=AsyncMock
     ) as mock:
-        mock.return_value = "from manim import *"
+        mock.return_value = "from manim import *\nclass SceneGen(Scene): pass"
         yield mock
 
 
 @pytest.fixture
 def mock_rendering() -> Generator[AsyncMock, None, None]:
-    with patch("services.orchestrator.render_storyboard") as mock:
-        mock.return_value = "/jobs/mock_job_id/video.mp4"
+    with patch("services.workflow_steps.render_storyboard") as mock:
+        mock.return_value = "/jobs/artifacts/mock_job_id/video.mp4"
+        yield mock
+
+
+@pytest.fixture
+def mock_preview_rendering() -> Generator[AsyncMock, None, None]:
+    with patch("services.workflow_steps.render_preview", new_callable=AsyncMock) as mock:
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.logs = "logs"
+        mock_result.frame_path = "preview.png"
+        mock.return_value = mock_result
         yield mock
 
 
 # --- Tests ---
+
+
+@pytest.fixture
+def mock_reviewer() -> Generator[AsyncMock, None, None]:
+    with patch(
+        "services.workflow_steps.review_animation", new_callable=AsyncMock
+    ) as mock:
+        mock.return_value = AnimationReview(
+            approved=True, issues=[], revision_instructions=""
+        )
+        yield mock
 
 
 @pytest.mark.asyncio
@@ -121,6 +144,8 @@ async def test_create_and_get_job(
     mock_architect: AsyncMock,
     mock_animator: AsyncMock,
     mock_rendering: AsyncMock,
+    mock_preview_rendering: AsyncMock,
+    mock_reviewer: AsyncMock,
 ) -> None:
     # Simulate a valid API key to force "live" mode
     # Clear the settings cache so env var changes are picked up
@@ -129,8 +154,15 @@ async def test_create_and_get_job(
         patch.dict(os.environ, {"GOOGLE_API_KEY": "valid_test_key"}),
         TestClient(app) as client,
     ):
-        # 1. Create Job
-        response = client.post("/jobs/create", json={"topic": "Test Topic"})
+        # 1. Create Job (provider and model_id required for live mode)
+        response = client.post(
+            "/jobs/create",
+            json={
+                "topic": "Test Topic",
+                "provider": "google",
+                "model_id": "gemini-2.5-flash",
+            },
+        )
         assert response.status_code == 200
 
         job_data = response.json()
@@ -154,7 +186,7 @@ async def test_create_and_get_job(
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "completed"
-        assert data["video_url"] == "/jobs/mock_job_id/video.mp4"
+        assert data["video_url"] == "/jobs/artifacts/mock_job_id/video.mp4"
 
         # 3. Get Job Plan
         response = client.get(f"/jobs/{job_id}/plan")

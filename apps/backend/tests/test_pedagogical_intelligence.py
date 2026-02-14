@@ -29,29 +29,33 @@ async def test_analyst_consults_critic() -> None:
         is_valid=True, feedback="Great plan!", suggestions=[]
     )
 
+    mock_plan = CurriculumPlan(
+        concept_title="Test", target_audience="Test", teaching_steps=[]
+    )
     with patch(
         "agents.analyst.validate_curriculum", new_callable=AsyncMock
     ) as mock_validate:
         mock_validate.return_value = mock_validation
 
         with patch("agents.analyst.Agent") as MockAgent:
-            mock_agent_instance = MockAgent.return_value
-            mock_agent_instance.run = AsyncMock()
+            MockAgent.return_value = MagicMock()
 
-            # Simulate the Analyst returning a CurriculumPlan
-            mock_plan = CurriculumPlan(
-                concept_title="Test", target_audience="Test", teaching_steps=[]
-            )
-            mock_agent_instance.run.return_value.data = mock_plan
+            with patch(
+                "agents.analyst.run_agent_streamed", new_callable=AsyncMock
+            ) as mock_streamed:
+                mock_streamed.return_value = mock_plan
 
-            # The actual generate_curriculum function creates the agent and runs it
-            result = await generate_curriculum("Test Topic", "Test Audience")
+                result = await generate_curriculum(
+                    "Test Topic", "Test Audience", model=MagicMock()
+                )
 
-            assert result == mock_plan
-            # Verify Agent was initialized with output_type
-            MockAgent.assert_called_once()
-            args, kwargs = MockAgent.call_args
-            assert kwargs["output_type"] == CurriculumPlan
+                assert result == mock_plan
+                mock_streamed.assert_awaited_once()
+                call_args = mock_streamed.call_args
+                assert call_args[0][0] == "analyst"
+                MockAgent.assert_called_once()
+                _, kwargs = MockAgent.call_args
+                assert kwargs["output_type"] == CurriculumPlan
 
 
 @pytest.mark.asyncio

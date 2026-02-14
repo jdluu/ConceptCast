@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App from '../App';
 import * as api from '../lib/api';
+import { DeveloperModeProvider } from '../lib/DeveloperModeContext';
 
 // Mock API
 vi.mock('../lib/api', { spy: true });
@@ -19,13 +20,15 @@ function createTestQueryClient(): QueryClient {
 }
 
 /**
- * Renders the App wrapped in a fresh QueryClientProvider.
+ * Renders the App wrapped in QueryClientProvider and DeveloperModeProvider.
  */
 function renderApp() {
     const queryClient = createTestQueryClient();
     return render(
         <QueryClientProvider client={queryClient}>
-            <App />
+            <DeveloperModeProvider>
+                <App />
+            </DeveloperModeProvider>
         </QueryClientProvider>
     );
 }
@@ -36,11 +39,9 @@ describe('ConceptCast Dashboard', () => {
     });
 
     it('renders the dashboard layout', () => {
-        // Mock the available models query to avoid errors
         vi.mocked(api.getAvailableModels).mockResolvedValue({
             available: [{ provider: 'mock', models: ['mock-llm'] }]
         });
-        
         renderApp();
         expect(screen.getByText('ConceptCast')).toBeInTheDocument();
     });
@@ -56,35 +57,33 @@ describe('ConceptCast Dashboard', () => {
             video_url: null,
             error: null,
         };
-        
         vi.mocked(api.createJob).mockResolvedValue(mockJob as any);
         vi.mocked(api.getJobStatus).mockResolvedValue(mockJob as any);
+        // Provide a real provider so "Generate Lesson" is enabled (mock is filtered out when has real providers)
         vi.mocked(api.getAvailableModels).mockResolvedValue({
-            available: [{ provider: 'mock', models: ['mock-llm'] }]
+            available: [
+                { provider: 'google', models: ['gemini-2.5-flash'], display_name: 'Google (Gemini)' },
+                { provider: 'mock', models: ['mock-llm'] }
+            ]
         });
 
         renderApp();
 
-        // Fill form with topic
         fireEvent.change(screen.getByPlaceholderText(/Quantum Entanglement/i), {
             target: { value: 'Test Topic' }
         });
 
-        // Submit
         const button = screen.getByText('Generate Lesson');
         fireEvent.click(button);
 
-        // Verification: The Council Workflow should show the job initialized and processing
+        // Verification: Generating view shows with System Logs and proper topic
         await waitFor(() => {
-            expect(screen.getByText('Council Workflow')).toBeInTheDocument();
+            expect(screen.getByText('System Logs')).toBeInTheDocument();
+            expect(screen.getByText('Test Topic')).toBeInTheDocument();
         }, { timeout: 3000 });
 
         await waitFor(() => {
-            expect(screen.getByText(/Job 123... initialized/i)).toBeInTheDocument();
-        }, { timeout: 3000 });
-
-        await waitFor(() => {
-            expect(screen.getByText(/Processing planning/i)).toBeInTheDocument();
+            expect(screen.getByText(/Analyst: Creating curriculum plan/i)).toBeInTheDocument();
         }, { timeout: 3000 });
     });
 });
