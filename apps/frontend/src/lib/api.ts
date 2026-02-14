@@ -15,11 +15,8 @@ export interface paths {
          * Get Available Models
          * @description Retrieves the list of supported AI providers and their models.
          *
-         *     Filters providers based on the presence of their respective API keys
-         *     in the environment. The mock provider is always included.
-         *
-         *     Returns:
-         *         AvailableModelsResponse: A list of available providers and their models.
+         *     Only includes providers for which the user has an API key configured; mock is always included.
+         *     No tiered priority.
          */
         get: operations["get_available_models_models_available_get"];
         put?: never;
@@ -39,10 +36,7 @@ export interface paths {
         };
         /**
          * Read Root
-         * @description Root endpoint for health checking and welcoming.
-         *
-         *     Returns:
-         *         dict: A welcome message.
+         * @description Root health-check endpoint (used when frontend is not bundled).
          */
         get: operations["read_root__get"];
         put?: never;
@@ -64,15 +58,14 @@ export interface paths {
         put?: never;
         /**
          * Create Job
-         * @description Initializes a new video generation job.
+         * @description Initializes a new asynchronous video generation job.
          *
-         *     Creates a database record and queues the orchestration logic for
-         *     asynchronous background execution.
+         *     Creates a job record in the database and triggers the background processing workflow.
          *
          *     Args:
-         *         request (JobRequest): Job parameters (topic, audience, model).
-         *         db_session_factory (Callable[[], Session]): Factory for creating database
-         *             sessions.
+         *         request: The job configuration (topic, audience, provider).
+         *         background_tasks: FastAPI BackgroundTasks handler.
+         *         db: The asynchronous database session.
          *
          *     Returns:
          *         JobStatus: The initial status of the created job.
@@ -96,17 +89,17 @@ export interface paths {
         };
         /**
          * Get Job Status
-         * @description Retrieves the current state and all generated artifacts for a specific job.
+         * @description Retrieves the current status and artifacts for a specific job.
          *
          *     Args:
-         *         job_id (str): The unique identifier of the job.
-         *         db (Session): Database session.
+         *         job_id: The UUID of the job to retrieve.
+         *         db: The asynchronous database session.
          *
          *     Returns:
-         *         JobStatus: Comprehensive job state including plan, storyboard, and video URL.
+         *         JobStatus: Detailed state including plan, storyboard, and video URL if available.
          *
          *     Raises:
-         *         HTTPException: If the job is not found.
+         *         HTTPException: If job is not found.
          */
         get: operations["get_job_status_jobs__job_id__status_get"];
         put?: never;
@@ -126,18 +119,14 @@ export interface paths {
         };
         /**
          * Job Events
-         * @description Provides a real-time stream of job status updates via Server-Sent Events (SSE).
-         *
-         *     Polls the database and emits updates only when the job state or
-         *     timestamp changes. The stream terminates upon job completion or failure.
+         * @description Provides a real-time stream of job updates via SSE.
          *
          *     Args:
-         *         job_id (str): The unique identifier of the job to monitor.
-         *         db_session_factory (Callable[[], Session]): Factory for creating database
-         *             sessions.
+         *         job_id: The UUID of the job to stream events for.
+         *         db_session_factory: Factory for non-blocking DB sessions.
          *
          *     Returns:
-         *         StreamingResponse: An SSE stream of job status objects.
+         *         StreamingResponse: An event-stream connection.
          */
         get: operations["job_events_jobs__job_id__events_get"];
         put?: never;
@@ -160,14 +149,14 @@ export interface paths {
          * @description Retrieves the generated curriculum plan for a specific job.
          *
          *     Args:
-         *         job_id (str): The unique identifier of the job.
-         *         db (Session): Database session.
+         *         job_id: The UUID of the job.
+         *         db: The asynchronous database session.
          *
          *     Returns:
-         *         CurriculumPlan: The structured pedagogical plan.
+         *         CurriculumPlan: The parsed curriculum JSON.
          *
          *     Raises:
-         *         HTTPException: If the job or plan is not found.
+         *         HTTPException: If job or plan is not found.
          */
         get: operations["get_plan_jobs__job_id__plan_get"];
         put?: never;
@@ -259,17 +248,23 @@ export interface components {
          *         job_id (str): Unique UUID for the job.
          *         status (str): Current processing status (planning, validating, etc.).
          *         current_step (str | None): Detail on the specific sub-step execution.
-         *         plan (dict | None): The curriculum plan data.
-         *         validation (dict | None): Generation validation data.
-         *         storyboard (dict | None): The storyboard data.
+         *         plan (CurriculumPlan | None): The curriculum plan data.
+         *         validation (ValidationResult | None): Generation validation data.
+         *         storyboard (Storyboard | None): The storyboard data.
          *         manim_code (str | None): The generated Manim Python code.
          *         video_url (str | None): URL to the final rendered video.
          *         error (str | None): Error message if the job failed.
          *         mode (str): Execution mode ('live' for API calls, 'mock' for simulation).
+         *         streamed_thoughts (list[ThoughtLog]): Live stream of agent thoughts.
          */
         JobStatus: {
             /** Job Id */
             job_id: string;
+            /**
+             * Streamed Thoughts
+             * @description Live stream of agent thoughts (agent, phase, content, ts).
+             */
+            streamed_thoughts?: components["schemas"]["ThoughtLog"][];
             /**
              * Status
              * @enum {string}
@@ -277,18 +272,9 @@ export interface components {
             status: "planning" | "validating" | "architecting" | "rendering" | "reviewing" | "completed" | "failed";
             /** Current Step */
             current_step?: string | null;
-            /** Plan */
-            plan?: {
-                [key: string]: unknown;
-            } | null;
-            /** Validation */
-            validation?: {
-                [key: string]: unknown;
-            } | null;
-            /** Storyboard */
-            storyboard?: {
-                [key: string]: unknown;
-            } | null;
+            plan?: components["schemas"]["CurriculumPlan"] | null;
+            validation?: components["schemas"]["ValidationResult"] | null;
+            storyboard?: components["schemas"]["Storyboard"] | null;
             /** Manim Code */
             manim_code?: string | null;
             /** Video Url */
@@ -309,6 +295,57 @@ export interface components {
             provider: string;
             /** Models */
             models: string[];
+            /** Display Name */
+            display_name?: string | null;
+        };
+        /**
+         * Scene
+         * @description A single scene in the storyboard, mapping to a Manim Scene class.
+         *
+         *     Attributes:
+         *         scene_id (int): Sequential ID of the scene.
+         *         title (str): Short title of the scene.
+         *         description (str): Detailed visual description of the scene action.
+         *         narration (str): Voiceover script for this scene.
+         *         objects (list[VisualObject]): List of visual entities in the scene.
+         */
+        Scene: {
+            /** Scene Id */
+            scene_id: number;
+            /**
+             * Title
+             * @description Short title of the scene
+             */
+            title: string;
+            /**
+             * Description
+             * @description Detailed description of what happens visually
+             */
+            description: string;
+            /**
+             * Narration
+             * @description Voiceover script for this scene
+             */
+            narration: string;
+            /**
+             * Objects
+             * @description Visual entities
+             */
+            objects?: components["schemas"]["VisualObject"][];
+        };
+        /**
+         * Storyboard
+         * @description A complete visual orchestration of a curriculum.
+         *
+         *     Attributes:
+         *         concept_title (str): Title of the concept being visualized.
+         *         scenes (list[Scene]): Ordered list of scenes.
+         */
+        Storyboard: {
+            /** Concept Title */
+            concept_title: string;
+            /** Scenes */
+            scenes: components["schemas"]["Scene"][];
         };
         /**
          * TeachingStep
@@ -342,6 +379,20 @@ export interface components {
              */
             narration: string;
         };
+        /**
+         * ThoughtLog
+         * @description Represents a single thought streamed from an agent.
+         */
+        ThoughtLog: {
+            /** Agent */
+            agent: string;
+            /** Phase */
+            phase: string;
+            /** Content */
+            content: string;
+            /** Ts */
+            ts: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -350,6 +401,98 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
+        };
+        /**
+         * ValidationResult
+         * @description Pedagogical validation results for a curriculum plan.
+         *
+         *     Attributes:
+         *         is_valid (bool): Whether the plan passes pedagogical standards.
+         *         feedback (str): Constructive feedback or validation errors.
+         *         suggestions (list[str]): Specific ideas for improvement.
+         *         metadata (dict): Additional metadata about the validation process.
+         *         scores (dict): Quantitative scores for pedagogical aspects.
+         *         issues (list[dict]): Detailed list of identified issues.
+         */
+        ValidationResult: {
+            /**
+             * Is Valid
+             * @description Whether the plan passes pedagogical standards
+             */
+            is_valid: boolean;
+            /**
+             * Feedback
+             * @description Constructive feedback or validation errors
+             */
+            feedback: string;
+            /**
+             * Suggestions
+             * @description Specific improvement ideas
+             */
+            suggestions?: string[];
+            /**
+             * Metadata
+             * @description Additional metadata about the validation process
+             */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Scores
+             * @description Quantitative scores for different pedagogical aspects
+             */
+            scores?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Issues
+             * @description Detailed list of identified issues, each as a dictionary
+             */
+            issues?: {
+                [key: string]: string;
+            }[];
+        };
+        /**
+         * VisualObject
+         * @description Represents a visual entity in a Manim scene.
+         *
+         *     Attributes:
+         *         name (str): Internal name for the object (e.g., 'main_graph').
+         *         type (str): Manim class type (e.g., 'Axes', 'Dot').
+         *         position (str): Relative position or coordinates.
+         *         color (str | None): Color specification (Hex or Manim constant).
+         *         label (str | None): Optional text or Latex label.
+         */
+        VisualObject: {
+            /**
+             * Name
+             * @description Internal name (e.g., 'main_graph')
+             */
+            name: string;
+            /**
+             * Type
+             * @description Manim type (e.g., 'Axes', 'FunctionGraph', 'Dot')
+             */
+            type: string;
+            /**
+             * Position
+             * @description Relative position (e.g., 'ORIGIN', 'UP * 2')
+             */
+            position: string;
+            /**
+             * Color
+             * @description Hex or Manim color constant
+             */
+            color?: string | null;
+            /**
+             * Label
+             * @description Latex or text label
+             */
+            label?: string | null;
         };
     };
     responses: never;
@@ -538,36 +681,29 @@ export type JobStatus = components['schemas']['JobStatus'];
 export type JobRequest = components['schemas']['JobRequest'];
 export type CreateJobRequest = components['schemas']['JobRequest'];
 export type AvailableModelsResponse = components['schemas']['AvailableModelsResponse'];
+export type ThoughtLog = components['schemas']['ThoughtLog'];
+export type Storyboard = components['schemas']['Storyboard'];
+export type Scene = components['schemas']['Scene'];
+export type VisualObject = components['schemas']['VisualObject'];
+export type ValidationResult = components['schemas']['ValidationResult'];
 
-// Missing definitions in generated types, manually re-defining to match frontend usage
-export interface ValidationResult {
-    is_valid: boolean;
-    feedback: string;
-    score: number;
+export interface JobSummary {
+    job_id: string;
+    topic: string;
+    status: JobStatus["status"];
+    created_at: string;
+    updated_at: string;
+    mode: "live" | "mock";
+    retry_count: number;
 }
 
-export interface VisualObject {
-    name: string;
-    type: string;
-    position: string;
-    color: string;
-    label: string | null;
+export interface JobListResponse {
+    jobs: JobSummary[];
 }
 
-export interface Scene {
-    scene_id: number;
-    title: string;
-    description: string;
-    narration: string;
-    objects: VisualObject[];
-}
-
-export interface Storyboard {
-    concept_title: string;
-    scenes: Scene[];
-}
-
-const API_BASE_url = 'http://localhost:8000';
+/** Backend base URL for REST and SSE; used by api helpers and useJobEvents. */
+export const API_BASE_url =
+    (import.meta.env.VITE_API_url as string | undefined) ?? 'http://localhost:8000';
 
 /**
  * Creates a new video generation job on the server.
@@ -626,6 +762,33 @@ export async function getStoryboard(jobId: string): Promise<Storyboard> {
 }
 
 /**
+ * Lists all jobs sorted by creation date (newest first).
+ */
+export async function listJobs(): Promise<JobListResponse> {
+    const response = await fetch(`${API_BASE_url}/jobs`);
+    if (!response.ok) {
+        throw new Error('Failed to list jobs');
+    }
+    return response.json();
+}
+
+/**
+ * Retries a failed or stuck job from the last successful checkpoint.
+ * @param jobId - The unique UUID of the job.
+ */
+export async function retryJob(jobId: string): Promise<JobStatus> {
+    const response = await fetch(`${API_BASE_url}/jobs/${jobId}/retry`, {
+        method: 'POST',
+    });
+    
+    if (!response.ok) {
+        throw new Error('Failed to retry job');
+    }
+    
+    return response.json();
+}
+
+/**
  * Retrieves the list of available AI models and their providers from the backend.
  * 
  * @returns A promise resolving to the list of available providers and models.
@@ -637,4 +800,18 @@ export async function getAvailableModels(): Promise<AvailableModelsResponse> {
         throw new Error('Failed to get available models');
     }
     return response.json();
+}
+
+/**
+ * Deletes a job from the database.
+ * @param jobId - The unique UUID of the job.
+ */
+export async function deleteJob(jobId: string): Promise<void> {
+    const response = await fetch(`${API_BASE_url}/jobs/${jobId}`, {
+        method: 'DELETE',
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to delete job');
+    }
 }

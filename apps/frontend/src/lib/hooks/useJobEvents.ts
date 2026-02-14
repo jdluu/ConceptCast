@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { JobStatus, getJobStatus } from '../api';
+import { JobStatus, getJobStatus, API_BASE_url } from '../api';
 
 interface UseJobEventsReturn {
     jobStatus: JobStatus | null;
@@ -13,11 +13,17 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
     const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'error' | 'closed'>('closed');
     const [error, setError] = useState<Error | null>(null);
 
-    const { data: jobStatus } = useQuery({
+    const { data: jobStatus } = useQuery<JobStatus>({
         queryKey: ['job', jobId],
         queryFn: () => getJobStatus(jobId!),
         enabled: !!jobId,
-        staleTime: Infinity, // Data is updated via SSE
+        staleTime: Infinity, // Primary updates via SSE
+        refetchInterval: (query) => {
+            const data = query.state.data;
+            const status = data?.status;
+            if (status === 'completed' || status === 'failed') return false;
+            return 3000; // Fallback poll every 3s while job in progress
+        },
     });
     
     // Refs to keep track of retry logic without triggering re-renders
@@ -36,7 +42,7 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
         setConnectionState('connecting');
         
         try {
-            const es = new EventSource(`/api/jobs/${jobId}/events`);
+            const es = new EventSource(`${API_BASE_url}/jobs/${jobId}/events`);
             eventSource.current = es;
 
             es.onopen = () => {
