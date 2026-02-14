@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { Toaster, toast } from 'sonner';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { JobCreationForm } from './components/forms/JobCreationForm';
-import { CouncilLog } from './components/council/CouncilLog';
-import { StoryboardView } from './components/council/StoryboardView';
-import { VideoPreview } from './components/council/VideoPreview';
-import { createJob, JobStatus, CreateJobRequest, CurriculumPlan, Storyboard } from './lib/api';
+import { GeneratingLessonView } from './components/council/GeneratingLessonView';
+import { LibraryPage } from './components/pages/LibraryPage';
+import { SettingsPage } from './components/pages/SettingsPage';
+import { JobsPage } from './components/pages/JobsPage';
+import { VideoResultPage } from './components/pages/VideoResultPage';
+import { API_BASE_url, JobStatus, CurriculumPlan, Storyboard } from './lib/api';
 import { useJobEvents } from './lib/hooks/useJobEvents';
-
-import { CurriculumPlanDisplay } from './components/council/CurriculumPlanDisplay';
+import { useJobStore } from './lib/store/useJobStore';
+import { useNavStore } from './lib/store/useNavStore';
 
 /**
  * The root application component for ConceptCast.
@@ -16,19 +19,37 @@ import { CurriculumPlanDisplay } from './components/council/CurriculumPlanDispla
  * real-time updates, simulated progress tracking, and view coordination
  * between job creation and result displays.
  */
+const isJobInProgress = (job: JobStatus) =>
+    job.status !== 'completed' && job.status !== 'failed';
+
+/** Resolve video URL for playback: prepend API base when path is relative. */
+function resolveVideoUrl(videoUrl: string | null | undefined): string | null {
+    if (!videoUrl) return null;
+    if (videoUrl.startsWith('http')) return videoUrl;
+    const base = API_BASE_url.replace(/\/$/, '');
+    const path = videoUrl.startsWith('/') ? videoUrl : `/${videoUrl}`;
+    return `${base}${path}`;
+}
+
 function App() {
-    const [initialJob, setInitialJob] = useState<JobStatus | null>(null);
-    const { jobStatus: liveJobStatus } = useJobEvents(initialJob?.job_id);
-    const currentJob = liveJobStatus || initialJob;
+    // Stores
+    const { 
+        currentJob: initialJob, 
+        setRenderProgress,
+        resetJob
+    } = useJobStore();
+    
+    const { currentNav } = useNavStore();
 
-    const [isLoading, setIsLoading] = useState(false);
-    const [renderProgress, setRenderProgress] = useState(0);
-
-    const plan = currentJob?.plan as unknown as CurriculumPlan | null;
-    const storyboard = currentJob?.storyboard as unknown as Storyboard | null;
+    // Live job state from backend (GET /jobs/:id/status + SSE /jobs/:id/events)
+    // We use the job_id from the store's initialJob
+    const { jobStatus: liveJobStatus, connectionState, error: streamError } = useJobEvents(initialJob?.job_id);
+    
+    // The "source of truth" for the current job state is the live status if available, else the fallback
+    const job = liveJobStatus ?? initialJob;
 
     useEffect(() => {
-        if (currentJob?.status === 'rendering') {
+        if (job?.status === 'rendering') {
             const interval = window.setInterval(() => {
                 setRenderProgress(prev => {
                     if (prev >= 95) return prev;
@@ -36,59 +57,82 @@ function App() {
                 });
             }, 2000);
             return () => clearInterval(interval);
-        } else if (!currentJob || currentJob.status === 'completed' || currentJob.status === 'failed') {
+        } else if (!job || job.status === 'completed' || job.status === 'failed') {
             setRenderProgress(0);
         }
-    }, [currentJob?.status]);
+    }, [job?.status, setRenderProgress]);
 
-    /**
-     * Initiates a new video generation job and updates global state.
-     *
-     * @param data - The job request parameters including topic and audience.
-     */
-    const handleCreateJob = async (data: CreateJobRequest) => {
-        setIsLoading(true);
-        try {
-            const job = await createJob(data);
-            setInitialJob(job);
-        } catch {
-            alert('Failed to initiate job. Check console.');
-        } finally {
-            setIsLoading(false);
+    // Handle background errors/success via toasts
+    useEffect(() => {
+        if (job?.status === 'failed' && job.error) {
+            toast.error(`Generation failed: ${job.error}`);
         }
+        if (job?.status === 'completed') {
+            toast.success('Animation completed! Loading results...');
+        }
+    }, [job?.status, job?.error]);
+
+    const showGeneratingView = job && isJobInProgress(job);
+
+    const showVideoResultPage =
+        job?.status === 'completed' &&
+        job.plan &&
+        job.storyboard;
+
+    const plan = job?.plan as unknown as CurriculumPlan | null;
+    const storyboard = job?.storyboard as unknown as Storyboard | null;
+
+    const mainContent = () => {
+        if (currentNav === 'jobs') return <JobsPage />;
+        if (currentNav === 'library') return <LibraryPage />;
+        if (currentNav === 'settings') return <SettingsPage />;
+        
+        if (showGeneratingView) {
+            return (
+                <GeneratingLessonView
+                    streamState={connectionState}
+                    streamError={streamError}
+                />
+            );
+        }
+
+        if (showVideoResultPage) {
+            return (
+                <VideoResultPage
+                    videoUrl={resolveVideoUrl(job.video_url)}
+                    conceptTitle={plan?.concept_title || 'Concept'}
+                    plan={plan!}
+                    storyboard={storyboard!}
+                    onReset={resetJob}
+                />
+            );
+        }
+
+        return (
+            <div className="max-w-3xl mx-auto">
+                <header className="mb-8">
+                    <h1 className="text-2xl font-semibold text-white">Create New Project</h1>
+                </header>
+
+                <section className="mb-12">
+                    <JobCreationForm />
+                </section>
+            </div>
+        );
     };
 
     return (
-        <DashboardLayout>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-8">
-                    <JobCreationForm 
-                        onSubmit={handleCreateJob} 
-                        isLoading={isLoading} 
-                    />
-                    
-                    {plan && (
-                        <CurriculumPlanDisplay plan={plan} />
-                    )}
-
-                    {storyboard && (
-                        <StoryboardView storyboard={storyboard} />
-                    )}
-
-                    {currentJob?.video_url && (
-                        <VideoPreview 
-                            videoUrl={currentJob.video_url} 
-                            conceptTitle={plan?.concept_title || 'Rendering...'} 
-                        />
-                    )}
-                </div>
-
-                <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-white">Council Activity</h3>
-                    <CouncilLog job={currentJob} renderProgress={renderProgress} />
-                </div>
-            </div>
-        </DashboardLayout>
+        <>
+            <Toaster position="top-right" richColors theme="dark" />
+            <DashboardLayout>
+                {mainContent()}
+                
+                {/* 
+                  Legacy artifacts/council log removed from main view here 
+                  as they are now integrated into GeneratingLessonView or VideoResultPage.
+                */}
+            </DashboardLayout>
+        </>
     );
 }
 
