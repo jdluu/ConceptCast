@@ -1,128 +1,261 @@
-import { useState } from 'react';
-
-const placeholderProjects = [
-    { id: '1', title: 'Quantum Physics for Kids', duration: '3:45', generated: 'Oct 26, 2023', thumbnail: '' },
-    { id: '2', title: 'Intro to Machine Learning', duration: '5:12', generated: 'Oct 28, 2023', thumbnail: '' },
-    { id: '3', title: 'History of Ancient Rome', duration: '4:20', generated: 'Oct 28, 2023', thumbnail: '' },
-    { id: '4', title: 'How to Bake Sourdough', duration: '6:00', generated: 'Oct 29, 2023', thumbnail: '' },
-    { id: '5', title: 'Understanding Blockchain', duration: '4:45', generated: 'Oct 30, 2023', thumbnail: '' },
-    { id: '6', title: 'The Solar System Explained', duration: '3:30', generated: 'Oct 30, 2023', thumbnail: '' },
-];
-
-function PlayIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-            <path d="M8 5v14l11-7z" />
-        </svg>
-    );
-}
-
-function InfoIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-    );
-}
-
-function TrashIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-    );
-}
-
-
+import { useEffect, useState, useMemo } from 'react';
+import { listJobs, getJobStatus, type JobSummary, type JobStatus, deleteJob } from '../../lib/api/client';
+import { 
+    Play, 
+    Search, 
+    Filter, 
+    Trash2, 
+    Download,
+    Calendar,
+    Clock,
+    ChevronDown
+} from 'lucide-react';
+import { useDeveloperMode } from '../../lib/contexts/developer-mode';
+import { VideoPlayer } from '../ui/VideoPlayer';
+import { formatDuration } from '../../lib/utils';
 
 export function LibraryPage() {
+    const [jobs, setJobs] = useState<JobSummary[]>([]);
+    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-
+    const [selectedJob, setSelectedJob] = useState<JobStatus | null>(null);
+    const [sortBy, setBy] = useState<'latest' | 'oldest' | 'topic' | 'duration'>('latest');
+    const [topicFilter, setTopicFilter] = useState('all');
+    
+    const { developerMode } = useDeveloperMode();
+    
+    useEffect(() => {
+        loadLibrary();
+    }, []);
+    
+    const loadLibrary = async () => {
+        try {
+            const data = await listJobs();
+            const completedJobs = data.jobs.filter(j => j.status === 'completed');
+            setJobs(completedJobs);
+        } catch (err) {
+            console.error('Failed to load library', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const uniqueTopics = useMemo(() => {
+        const topics = new Set(jobs.map(j => j.topic));
+        return Array.from(topics).sort();
+    }, [jobs]);
+    
+    const filteredJobs = useMemo(() => {
+        let result = developerMode ? jobs : jobs.filter(job => job.mode !== 'mock');
+        
+        if (search) {
+            result = result.filter(j => j.topic.toLowerCase().includes(search.toLowerCase()));
+        }
+        
+        if (topicFilter !== 'all') {
+            result = result.filter(j => j.topic === topicFilter);
+        }
+        
+        return result.sort((a, b) => {
+            if (sortBy === 'latest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            if (sortBy === 'topic') return a.topic.localeCompare(b.topic);
+            if (sortBy === 'duration') return (b.duration_seconds || 0) - (a.duration_seconds || 0);
+            return 0;
+        });
+    }, [jobs, search, developerMode, sortBy, topicFilter]);
+    
+    const handlePlay = async (jobId: string) => {
+        try {
+            const details = await getJobStatus(jobId);
+            setSelectedJob(details);
+        } catch (err) {
+            console.error('Failed to fetch job for playback', err);
+        }
+    };
+    
+    if (loading) {
+        return <div className="p-8 text-neutral-400">Loading library...</div>;
+    }
+    
     return (
-        <div className="max-w-6xl mx-auto">
-            <h1 className="text-3xl font-semibold text-white mb-8">Library</h1>
-
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </span>
+        <div className="max-w-7xl mx-auto px-6 transition-colors duration-300">
+            <header className="mb-12">
+                <h1 className="text-4xl font-bold text-[var(--foreground)] tracking-tight mb-2">Library</h1>
+                <p className="text-[var(--text-muted)]">Your collection of high-quality generated educational content.</p>
+            </header>
+            
+            <div className="flex flex-col md:flex-row gap-4 mb-10">
+                <div className="relative flex-1 group">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-indigo-500 transition-colors" />
                     <input
                         type="search"
-                        placeholder="Search projects..."
+                        placeholder="Search your library..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-neutral-900 border border-neutral-700 rounded-lg text-white placeholder:text-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                        aria-label="Search projects"
+                        className="w-full pl-11 pr-4 py-3 bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl text-[var(--foreground)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all shadow-sm"
                     />
                 </div>
-                <div className="flex flex-wrap gap-2">
-                    <select
-                        aria-label="Filter by date"
-                        className="px-4 py-2.5 bg-neutral-900 border border-neutral-700 rounded-lg text-neutral-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer hover:border-neutral-600 transition-colors"
-                    >
-                        <option>Filter by Date</option>
-                    </select>
-                    <select
-                        aria-label="Filter by topic"
-                        className="px-4 py-2.5 bg-neutral-900 border border-neutral-700 rounded-lg text-neutral-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer hover:border-neutral-600 transition-colors"
-                    >
-                        <option>Filter by Topic</option>
-                    </select>
+                <div className="flex gap-2">
+                    <FilterSelect 
+                        icon={<Calendar className="w-4 h-4" />} 
+                        value={sortBy} 
+                        onChange={(v) => setBy(v as any)}
+                        options={[
+                            { label: 'Latest First', value: 'latest' },
+                            { label: 'Oldest First', value: 'oldest' },
+                            { label: 'By Topic (A-Z)', value: 'topic' },
+                            { label: 'Longest Duration', value: 'duration' }
+                        ]}
+                    />
+                    <FilterSelect 
+                        icon={<Filter className="w-4 h-4" />} 
+                        value={topicFilter} 
+                        onChange={setTopicFilter}
+                        options={[
+                            { label: 'All Topics', value: 'all' },
+                            ...uniqueTopics.map(t => ({ label: t, value: t }))
+                        ]}
+                    />
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {placeholderProjects.map((project) => (
-                    <article
-                        key={project.id}
-                        className="group bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden flex flex-col hover:border-neutral-700 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-300"
-                    >
-                        <div className="aspect-video bg-neutral-800 relative flex items-center justify-center overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                            <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center text-neutral-900 shadow-lg transform group-hover:scale-110 transition-transform duration-300 z-10">
-                                <PlayIcon />
+            {filteredJobs.length === 0 ? (
+                <div className="py-32 text-center border-2 border-dashed border-[var(--surface-border)] rounded-3xl bg-[var(--surface)]/20">
+                    <div className="w-20 h-20 bg-[var(--surface)] rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                        <Play className="w-8 h-8 text-indigo-500" />
+                    </div>
+                    <h3 className="text-xl font-bold text-[var(--foreground)] mb-2">No videos found</h3>
+                    <p className="text-[var(--text-muted)] max-w-xs mx-auto">
+                        Once you complete a generation job, it will appear here in your permanent library.
+                    </p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {filteredJobs.map((job) => (
+                        <article 
+                            key={job.job_id}
+                            className="group relative bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl overflow-hidden hover:border-indigo-500/50 hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500 flex flex-col shadow-sm"
+                        >
+                            {/* Thumbnail Container */}
+                            <div className="aspect-video bg-[var(--background)] relative overflow-hidden shadow-inner">
+                                {job.thumbnail_url ? (
+                                    <img 
+                                        src={job.thumbnail_url} 
+                                        alt="" 
+                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[var(--surface)] to-[var(--background)]">
+                                        <Play className="w-12 h-12 text-[var(--text-muted)] opacity-20 group-hover:text-indigo-500/30 transition-colors" />
+                                    </div>
+                                )}
+                                
+                                {/* Overlay Gradient */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-[var(--surface)]/90 via-transparent to-transparent opacity-60 group-hover:opacity-100 transition-opacity" />
+                                
+                                {/* Duration Badge */}
+                                <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/80 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase tracking-wider border border-white/10">
+                                    {formatDuration(job.duration_seconds)}
+                                </div>
+
+                                {/* Hover Play Button */}
+                                <button 
+                                    onClick={() => handlePlay(job.job_id)}
+                                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0"
+                                >
+                                    <div className="w-20 h-20 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 active:scale-95 transition-all">
+                                        <Play className="w-8 h-8 fill-current" />
+                                    </div>
+                                </button>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-6 flex-1 flex flex-col">
+                                <h2 className="text-lg font-bold text-[var(--foreground)] mb-2 line-clamp-2 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                    {job.topic}
+                                </h2>
+                                <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] mb-6">
+                                    <span className="flex items-center gap-1">
+                                        <Clock className="w-3.5 h-3.5" />
+                                        {new Date(job.created_at).toLocaleDateString()}
+                                    </span>
+                                    <span className="w-1 h-1 bg-[var(--surface-border)] rounded-full" />
+                                    <span className="font-mono text-[10px] uppercase tracking-tighter text-[var(--text-muted)] opacity-80">{job.model_id?.split(':')[0] || 'Unknown'}</span>
+                                </div>
+
+                                <div className="mt-auto flex gap-3">
+                                    <button 
+                                        onClick={() => handlePlay(job.job_id)}
+                                        className="flex-1 h-11 bg-indigo-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-600/20"
+                                    >
+                                        <Play className="w-4 h-4 fill-current" />
+                                        Play Now
+                                    </button>
+                                    <button className="w-11 h-11 bg-[var(--background)] border border-[var(--surface-border)] rounded-xl flex items-center justify-center text-[var(--text-muted)] hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-[var(--surface)] transition-all active:scale-95 shadow-sm">
+                                        <Download className="w-4 h-4" />
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            if (confirm('Are you sure you want to delete this video from your library?')) {
+                                                deleteJob(job.job_id).then(loadLibrary);
+                                            }
+                                        }}
+                                        className="w-11 h-11 bg-[var(--background)] border border-[var(--surface-border)] rounded-xl flex items-center justify-center text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/20 transition-all active:scale-95 shadow-sm"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            )}
+
+            {/* Video Modal */}
+            {selectedJob && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/95 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="relative w-full max-w-5xl">
+                        <button 
+                            onClick={() => setSelectedJob(null)}
+                            className="absolute -top-12 right-0 text-white/60 hover:text-white transition-colors flex items-center gap-2 uppercase text-xs font-bold tracking-widest"
+                        >
+                            Close
+                        </button>
+                        <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black">
+                            <VideoPlayer src={selectedJob.video_url!} />
+                        </div>
+                        <div className="mt-6 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-xl font-bold text-white">{selectedJob.topic || 'Untitled Concept'}</h3>
+                                <p className="text-white/50 text-sm mt-1">{selectedJob.model_id || 'ConceptCast Engine v1'}</p>
+                            </div>
+                            <div className="flex gap-4">
+                                <button className="px-6 py-2.5 bg-white/10 border border-white/10 rounded-xl text-sm font-bold text-white hover:bg-white/20 transition-all">Download HD</button>
                             </div>
                         </div>
-                        <div className="p-5 flex-1 flex flex-col">
-                            <h2 className="font-semibold text-white mb-1.5 line-clamp-2 group-hover:text-indigo-400 transition-colors">
-                                {project.title}
-                            </h2>
-                            <div className="flex items-center gap-2 text-[11px] text-neutral-500 mb-5 font-medium uppercase tracking-wider">
-                                <span>{project.duration} mins</span>
-                                <span className="w-1 h-1 rounded-full bg-neutral-700" />
-                                <span>{project.generated}</span>
-                            </div>
-                            <div className="flex gap-2 mt-auto">
-                                <button
-                                    type="button"
-                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
-                                >
-                                    <PlayIcon />
-                                    Play
-                                </button>
-                                <button
-                                    type="button"
-                                    className="p-2 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white transition-all active:scale-95"
-                                    aria-label="Details"
-                                    title="View Plan & Storyboard"
-                                >
-                                    <InfoIcon />
-                                </button>
-                                <button
-                                    type="button"
-                                    className="p-2 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400 transition-all active:scale-95"
-                                    aria-label="Delete"
-                                    title="Delete Project"
-                                >
-                                    <TrashIcon />
-                                </button>
-                            </div>
-                        </div>
-                    </article>
-                ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function FilterSelect({ icon, value, onChange, options }: { icon: React.ReactNode, value: string, onChange: (v: string) => void, options: { label: string, value: string }[] }) {
+    return (
+        <div className="relative group">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors pointer-events-none">
+                {icon}
+            </div>
+            <select 
+                value={value} 
+                onChange={(e) => onChange(e.target.value)}
+                className="pl-11 pr-10 py-3 bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl text-sm font-bold text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-[var(--foreground)] transition-all shadow-sm"
+            >
+                {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none group-hover:text-indigo-500 transition-colors">
+                <ChevronDown className="w-4 h-4" />
             </div>
         </div>
     );

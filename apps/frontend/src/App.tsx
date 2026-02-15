@@ -7,10 +7,11 @@ import { LibraryPage } from './components/pages/LibraryPage';
 import { SettingsPage } from './components/pages/SettingsPage';
 import { JobsPage } from './components/pages/JobsPage';
 import { VideoResultPage } from './components/pages/VideoResultPage';
-import { API_BASE_url, JobStatus, CurriculumPlan, Storyboard } from './lib/api';
+import { API_BASE_URL, JobStatus, CurriculumPlan, Storyboard } from './lib/api/client';
 import { useJobEvents } from './lib/hooks/useJobEvents';
 import { useJobStore } from './lib/store/useJobStore';
 import { useNavStore } from './lib/store/useNavStore';
+import { ThemeProvider, useTheme } from './lib/contexts/theme';
 
 /**
  * The root application component for ConceptCast.
@@ -26,12 +27,12 @@ const isJobInProgress = (job: JobStatus) =>
 function resolveVideoUrl(videoUrl: string | null | undefined): string | null {
     if (!videoUrl) return null;
     if (videoUrl.startsWith('http')) return videoUrl;
-    const base = API_BASE_url.replace(/\/$/, '');
+    const base = API_BASE_URL.replace(/\/$/, '');
     const path = videoUrl.startsWith('/') ? videoUrl : `/${videoUrl}`;
     return `${base}${path}`;
 }
 
-function App() {
+function AppContent() {
     // Stores
     const { 
         currentJob: initialJob, 
@@ -40,6 +41,7 @@ function App() {
     } = useJobStore();
     
     const { currentNav } = useNavStore();
+    const { theme } = useTheme();
 
     // Live job state from backend (GET /jobs/:id/status + SSE /jobs/:id/events)
     // We use the job_id from the store's initialJob
@@ -90,6 +92,7 @@ function App() {
         if (showGeneratingView) {
             return (
                 <GeneratingLessonView
+                    job={job!}
                     streamState={connectionState}
                     streamError={streamError}
                 />
@@ -103,6 +106,8 @@ function App() {
                     conceptTitle={plan?.concept_title || 'Concept'}
                     plan={plan!}
                     storyboard={storyboard!}
+                    validation={job.validation}
+                    manimCode={job.manim_code}
                     onReset={resetJob}
                 />
             );
@@ -123,16 +128,19 @@ function App() {
 
     return (
         <>
-            <Toaster position="top-right" richColors theme="dark" />
+            <Toaster position="top-right" richColors theme={theme === 'system' ? 'system' : theme} />
             <DashboardLayout>
                 {mainContent()}
-                
-                {/* 
-                  Legacy artifacts/council log removed from main view here 
-                  as they are now integrated into GeneratingLessonView or VideoResultPage.
-                */}
             </DashboardLayout>
         </>
+    );
+}
+
+function App() {
+    return (
+        <ThemeProvider>
+            <AppContent />
+        </ThemeProvider>
     );
 }
 

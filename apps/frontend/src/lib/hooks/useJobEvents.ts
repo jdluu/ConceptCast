@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { JobStatus, getJobStatus, API_BASE_url } from '../api';
+import { type JobStatus, getJobStatus, API_BASE_URL } from '../api/client';
 
 interface UseJobEventsReturn {
     jobStatus: JobStatus | null;
@@ -42,7 +42,7 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
         setConnectionState('connecting');
         
         try {
-            const es = new EventSource(`${API_BASE_url}/jobs/${jobId}/events`);
+            const es = new EventSource(`${API_BASE_URL}/jobs/${jobId}/events`);
             eventSource.current = es;
 
             es.onopen = () => {

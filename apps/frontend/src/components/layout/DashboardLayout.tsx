@@ -53,14 +53,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="min-h-screen bg-black text-neutral-200 font-sans selection:bg-indigo-500/30">
+        <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] font-sans selection:bg-indigo-500/30 transition-colors duration-300">
             {/* Mobile hamburger */}
             <button
                 type="button"
                 aria-label="Toggle navigation menu"
                 aria-expanded={sidebarOpen}
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-neutral-900 border border-neutral-700 text-neutral-300 hover:text-white transition-colors"
+                className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-[var(--surface)] border border-[var(--surface-border)] text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     {sidebarOpen ? (
@@ -73,7 +73,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {sidebarOpen && (
                 <div
-                    className="lg:hidden fixed inset-0 z-30 bg-black/60"
+                    className="lg:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
                     onClick={() => setSidebarOpen(false)}
                     aria-hidden="true"
                 />
@@ -82,77 +82,67 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             {/* Sidebar */}
             <nav
                 aria-label="Main navigation"
-                className={`fixed top-0 left-0 w-64 h-full border-r border-neutral-800 bg-neutral-950 p-6 z-40 transition-transform duration-200 ${
+                className={`fixed top-0 left-0 w-64 h-full border-r border-[var(--surface-border)] bg-[var(--surface)] p-6 z-40 transition-transform duration-200 ${
                     sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                 } lg:translate-x-0`}
             >
                 <div className="flex items-center gap-3 mb-10">
-                    <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-lg shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-lg shrink-0 shadow-lg shadow-indigo-500/20">
                         C
                     </div>
-                    <span className="text-xl font-bold tracking-tight text-white">ConceptCast</span>
+                    <span className="text-xl font-bold tracking-tight text-[var(--foreground)]">ConceptCast</span>
                 </div>
 
                 <div className="space-y-1" role="list">
-                    <button
-                        type="button"
-                        aria-current={currentNav === 'new-project' ? 'page' : undefined}
-                        onClick={() => setCurrentNav('new-project')}
-                        className={`w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-md font-medium transition-colors ${
-                            currentNav === 'new-project'
-                                ? 'bg-neutral-800/80 text-white'
-                                : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
-                        }`}
-                    >
-                        <IconNewProject />
-                        New Project
-                    </button>
-                    <button
-                        type="button"
-                        aria-current={currentNav === 'jobs' ? 'page' : undefined}
-                        onClick={() => setCurrentNav('jobs')}
-                        className={`w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-md font-medium transition-colors ${
-                            currentNav === 'jobs'
-                                ? 'bg-neutral-800/80 text-white'
-                                : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
-                        }`}
-                    >
-                        <IconJobs />
-                        Jobs
-                    </button>
-                    <button
-                        type="button"
-                        aria-current={currentNav === 'library' ? 'page' : undefined}
-                        onClick={() => setCurrentNav('library')}
-                        className={`w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-md font-medium transition-colors ${
-                            currentNav === 'library'
-                                ? 'bg-neutral-800/80 text-white'
-                                : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
-                        }`}
-                    >
-                        <IconLibrary />
-                        Library
-                    </button>
-                    <button
-                        type="button"
-                        aria-current={currentNav === 'settings' ? 'page' : undefined}
-                        onClick={() => setCurrentNav('settings')}
-                        className={`w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-md font-medium transition-colors ${
-                            currentNav === 'settings'
-                                ? 'bg-neutral-800/80 text-white'
-                                : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
-                        }`}
-                    >
-                        <IconSettings />
-                        Settings
-                    </button>
+                    <NavItem 
+                        active={currentNav === 'new-project'} 
+                        onClick={() => setCurrentNav('new-project')} 
+                        icon={<IconNewProject />} 
+                        label="New Project" 
+                    />
+                    <NavItem 
+                        active={currentNav === 'jobs'} 
+                        onClick={() => setCurrentNav('jobs')} 
+                        icon={<IconJobs />} 
+                        label="Jobs" 
+                    />
+                    <NavItem 
+                        active={currentNav === 'library'} 
+                        onClick={() => setCurrentNav('library')} 
+                        icon={<IconLibrary />} 
+                        label="Library" 
+                    />
+                    <NavItem 
+                        active={currentNav === 'settings'} 
+                        onClick={() => setCurrentNav('settings')} 
+                        icon={<IconSettings />} 
+                        label="Settings" 
+                    />
                 </div>
             </nav>
 
             {/* Main content */}
-            <main className="lg:ml-64 min-h-screen p-8">
+            <main className="lg:ml-64 min-h-screen p-8 transition-colors duration-300">
                 {children}
             </main>
         </div>
+    );
+}
+
+function NavItem({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
+    return (
+        <button
+            type="button"
+            aria-current={active ? 'page' : undefined}
+            onClick={onClick}
+            className={`w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-xl font-medium transition-all ${
+                active
+                    ? 'bg-indigo-600/10 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400'
+                    : 'text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-border)]'
+            }`}
+        >
+            {icon}
+            {label}
+        </button>
     );
 }

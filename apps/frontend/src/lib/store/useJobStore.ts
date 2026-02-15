@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { JobStatus, CreateJobRequest, createJob as apiCreateJob } from '../api';
+import { JobStatus, JobRequest, createJob as apiCreateJob } from '../api/client';
 
 interface JobState {
     currentJob: JobStatus | null;
@@ -15,7 +15,7 @@ interface JobState {
     setRenderProgress: (progress: number | ((prev: number) => number)) => void;
     setIsSubmitting: (loading: boolean) => void;
     
-    createJob: (data: CreateJobRequest) => Promise<void>;
+    createJob: (data: JobRequest) => Promise<void>;
     resetJob: () => void;
 }
 

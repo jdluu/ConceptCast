@@ -1,25 +1,60 @@
-import { useEffect, useState } from 'react';
-import { listJobs, retryJob, deleteJob, type JobSummary } from '../../lib/api';
+import { useEffect, useState, useMemo } from 'react';
+import { listJobs, retryJob, deleteJob, getJobStatus, type JobSummary, type JobStatus } from '../../lib/api/client';
+import { useDeveloperMode } from '../../lib/contexts/developer-mode';
+import { StatusBadge } from '../ui/StatusBadge';
+import { JobDetailPanel } from '../jobs/JobDetailPanel';
+import { 
+    Play, 
+    RotateCcw, 
+    Download, 
+    Trash2, 
+    ChevronDown, 
+    ChevronUp,
+    Filter,
+    ArrowUpDown,
+    CheckSquare,
+    Square
+} from 'lucide-react';
+import { formatDuration, cn } from '../../lib/utils';
 
-const statusColors = {
-    planning: 'text-blue-400',
-    validating: 'text-purple-400',
-    architecting: 'text-indigo-400',
-    rendering: 'text-yellow-400',
-    reviewing: 'text-orange-400',
-    completed: 'text-green-400',
-    failed: 'text-red-400',
+const formatTime = (isoString: string | null | undefined) => {
+    if (!isoString) return '-';
+    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
 export function JobsPage() {
     const [jobs, setJobs] = useState<JobSummary[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [retryingId, setRetryingId] = useState<string | null>(null);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
+    const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+    const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+    const [fullJobDetails, setFullJobDetails] = useState<Record<string, JobStatus>>({});
+    
+    // Filters
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [sortBy, setBy] = useState<'newest' | 'duration' | 'cost'>('newest');
+
+    const { developerMode } = useDeveloperMode();
+
+    const filteredJobs = useMemo(() => {
+        let result = developerMode ? jobs : jobs.filter(job => job.mode !== 'mock');
+        
+        if (statusFilter !== 'all') result = result.filter(j => j.status === statusFilter);
+        
+        return result.sort((a, b) => {
+            if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            if (sortBy === 'duration') return (b.duration_seconds || 0) - (a.duration_seconds || 0);
+            if (sortBy === 'cost') return ((b as any).cost || 0) - ((a as any).cost || 0);
+            return 0;
+        });
+    }, [jobs, developerMode, statusFilter, sortBy]);
+
+    // const uniqueModels = useMemo(() => Array.from(new Set(jobs.map(j => j.model_id).filter(Boolean))), [jobs]);
 
     useEffect(() => {
         loadJobs();
+        const interval = setInterval(loadJobs, 5000); // Poll for updates
+        return () => clearInterval(interval);
     }, []);
 
     const loadJobs = async () => {
@@ -35,118 +70,282 @@ export function JobsPage() {
         }
     };
 
-    const handleRetry = async (jobId: string) => {
-        if (!confirm('Are you sure you want to retry this job? This will reset its progress from the last checkpoint.')) {
-            return;
+    const toggleExpand = async (jobId: string) => {
+        if (expandedJobId === jobId) {
+            setExpandedJobId(null);
+        } else {
+            setExpandedJobId(jobId);
+            if (!fullJobDetails[jobId]) {
+                try {
+                    const details = await getJobStatus(jobId);
+                    setFullJobDetails(prev => ({ ...prev, [jobId]: details }));
+                } catch (err) {
+                    console.error('Failed to fetch job details', err);
+                }
+            }
         }
+    };
 
-        setRetryingId(jobId);
+    const toggleSelect = (jobId: string) => {
+        const next = new Set(selectedJobIds);
+        if (next.has(jobId)) next.delete(jobId);
+        else next.add(jobId);
+        setSelectedJobIds(next);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedJobIds.size === filteredJobs.length) {
+            setSelectedJobIds(new Set());
+        } else {
+            setSelectedJobIds(new Set(filteredJobs.map(j => j.job_id)));
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!confirm(`Delete ${selectedJobIds.size} jobs?`)) return;
+        setLoading(true);
         try {
-            await retryJob(jobId);
+            await Promise.all(Array.from(selectedJobIds).map(id => deleteJob(id)));
+            setSelectedJobIds(new Set());
             await loadJobs();
         } catch (err) {
-            alert('Failed to retry job. Check console logs.');
-            console.error(err);
+            console.error('Bulk delete failed', err);
         } finally {
-            setRetryingId(null);
+            setLoading(false);
         }
     };
 
-    const handleDelete = async (jobId: string) => {
-        if (!confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
-            return;
-        }
-
-        setDeletingId(jobId);
-        try {
-            await deleteJob(jobId);
-            // Optimistic update or reload
-            setJobs(jobs.filter(job => job.job_id !== jobId));
-        } catch (err) {
-            alert('Failed to delete job. Check console logs.');
-            console.error(err);
-        } finally {
-            setDeletingId(null);
-        }
-    };
-
-    if (loading) {
+    if (loading && jobs.length === 0) {
         return <div className="p-8 text-neutral-400">Loading jobs...</div>;
     }
 
-    if (error) {
-        return <div className="p-8 text-red-400">{error}</div>;
-    }
-
     return (
-        <div className="max-w-5xl mx-auto">
-            <header className="mb-8">
-                <h1 className="text-2xl font-semibold text-white">Job History</h1>
-                <p className="text-neutral-400 mt-2">View and manage your recent generation jobs.</p>
+        <div className="max-w-[1400px] mx-auto px-6 py-8 transition-colors duration-300">
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                <div>
+                    <h1 className="text-3xl font-bold text-[var(--foreground)] tracking-tight">Job History</h1>
+                    <p className="text-[var(--text-muted)] mt-1">Monitor and manage your generation pipeline.</p>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-3">
+                    <FilterSelect 
+                        icon={<Filter className="w-3.5 h-3.5" />} 
+                        value={statusFilter} 
+                        onChange={setStatusFilter}
+                        options={[
+                            { label: 'All Statuses', value: 'all' },
+                            { label: 'Completed', value: 'completed' },
+                            { label: 'Failed', value: 'failed' },
+                            { label: 'Running', value: 'rendering' }
+                        ]}
+                    />
+                    <FilterSelect 
+                        icon={<ArrowUpDown className="w-3.5 h-3.5" />} 
+                        value={sortBy} 
+                        onChange={(v) => setBy(v as any)}
+                        options={[
+                            { label: 'Newest First', value: 'newest' },
+                            { label: 'Longest Duration', value: 'duration' },
+                            { label: 'Highest Cost', value: 'cost' }
+                        ]}
+                    />
+                    {selectedJobIds.size > 0 && (
+                        <button 
+                            onClick={handleBulkDelete}
+                            className="bg-red-500/10 text-red-500 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-500/20 transition-all flex items-center gap-2"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            Delete ({selectedJobIds.size})
+                        </button>
+                    )}
+                </div>
             </header>
 
-            <div className="overflow-x-auto rounded-lg border border-neutral-800 bg-neutral-900/50">
-                <table className="w-full text-left text-sm text-neutral-300">
-                    <thead className="bg-neutral-900 text-neutral-400 uppercase tracking-wider text-xs font-semibold">
-                        <tr>
-                            <th className="px-6 py-4">Topic</th>
-                            <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4">Mode</th>
-                            <th className="px-6 py-4">Retries</th>
-                            <th className="px-6 py-4">Created</th>
-                            <th className="px-6 py-4 text-right">Actions</th>
+            <div className="bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl overflow-hidden shadow-sm backdrop-blur-sm">
+                <table className="w-full text-left text-sm border-collapse">
+                    <thead>
+                        <tr className="bg-[var(--surface)] border-b border-[var(--surface-border)] text-[11px] uppercase tracking-[0.1em] font-bold text-[var(--text-muted)]">
+                            <th className="pl-6 pr-4 py-4 w-10">
+                                <button onClick={toggleSelectAll} className="p-1 hover:text-[var(--foreground)] transition-colors">
+                                    {selectedJobIds.size === filteredJobs.length && filteredJobs.length > 0 ? <CheckSquare className="w-4 h-4 text-indigo-500" /> : <Square className="w-4 h-4" />}
+                                </button>
+                            </th>
+                            <th className="px-4 py-4">Preview</th>
+                            <th className="px-4 py-4">Scene Name</th>
+                            <th className="px-4 py-4">Status</th>
+                            <th className="px-4 py-4">Duration</th>
+                            <th className="px-4 py-4">Output</th>
+                            <th className="px-4 py-4 text-right">Model & Cost</th>
+                            <th className="px-4 py-4 text-right">Created</th>
+                            <th className="pl-4 pr-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-800">
-                        {jobs.length === 0 ? (
+                    <tbody className="divide-y divide-[var(--surface-border)]/50">
+                        {filteredJobs.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-8 text-center text-neutral-500">
-                                    No jobs found. Start a new project to generate content.
+                                <td colSpan={9} className="px-6 py-20 text-center">
+                                    <p className="text-[var(--text-muted)] font-medium">No production jobs found.</p>
+                                    <p className="text-[var(--text-muted)] text-xs mt-1 opacity-70">Try changing your filters or starting a new project.</p>
                                 </td>
                             </tr>
                         ) : (
-                            jobs.map((job) => (
-                                <tr key={job.job_id} className="hover:bg-neutral-800/30 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-white max-w-xs truncate" title={job.topic}>
-                                        {job.topic}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/5 capitalize ${statusColors[job.status] || 'text-neutral-400'}`}>
-                                            {job.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 capitalize">{job.mode}</td>
-                                    <td className="px-6 py-4">{job.retry_count > 0 ? job.retry_count : '-'}</td>
-                                    <td className="px-6 py-4 text-neutral-500">
-                                        {new Date(job.created_at).toLocaleDateString()} {new Date(job.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </td>
-                                    <td className="px-6 py-4 text-right space-x-3">
-                                        {/* Retry Action */}
-                                        {job.status === 'failed' && (
-                                            <button
-                                                onClick={() => handleRetry(job.job_id)}
-                                                disabled={retryingId === job.job_id || deletingId === job.job_id}
-                                                className="text-indigo-400 hover:text-indigo-300 transition-colors text-xs font-medium disabled:opacity-50"
-                                            >
-                                                {retryingId === job.job_id ? 'Retrying...' : 'Retry'}
-                                            </button>
-                                        )}
-                                        
-                                        {/* Delete Action */}
-                                        <button
-                                            onClick={() => handleDelete(job.job_id)}
-                                            disabled={deletingId === job.job_id || retryingId === job.job_id}
-                                            className="text-red-400 hover:text-red-300 transition-colors text-xs font-medium disabled:opacity-50"
-                                        >
-                                            {deletingId === job.job_id ? 'Deleting...' : 'Delete'}
-                                        </button>
-                                    </td>
-                                </tr>
+                            filteredJobs.map((job) => (
+                                <JobRow 
+                                    key={job.job_id}
+                                    job={job}
+                                    isExpanded={expandedJobId === job.job_id}
+                                    isSelected={selectedJobIds.has(job.job_id)}
+                                    detail={fullJobDetails[job.job_id]}
+                                    onToggleExpand={() => toggleExpand(job.job_id)}
+                                    onToggleSelect={() => toggleSelect(job.job_id)}
+                                    onDelete={() => {
+                                        if (confirm('Are you sure you want to delete this job and all its artifacts?')) {
+                                            deleteJob(job.job_id).then(loadJobs);
+                                        }
+                                    }}
+                                    onRetry={() => retryJob(job.job_id).then(loadJobs)}
+                                />
                             ))
                         )}
                     </tbody>
                 </table>
             </div>
         </div>
+    );
+}
+
+interface JobRowProps {
+    job: JobSummary;
+    isExpanded: boolean;
+    isSelected: boolean;
+    detail?: JobStatus;
+    onToggleExpand: () => void;
+    onToggleSelect: () => void;
+    onDelete: () => void;
+    onRetry: () => void;
+}
+
+function JobRow({ job, isExpanded, isSelected, detail, onToggleExpand, onToggleSelect, onDelete, onRetry }: JobRowProps) {
+    const cost = (job as any).cost || 0;
+    const metadata = (job as any).video_metadata || {};
+
+    return (
+        <>
+            <tr className={cn(
+                "group transition-all duration-200 cursor-pointer",
+                isExpanded ? "bg-indigo-500/5" : "hover:bg-[var(--surface-border)]/20",
+                isSelected && "bg-indigo-500/5"
+            )} onClick={onToggleExpand}>
+                <td className="pl-6 pr-4 py-5" onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}>
+                    <button className={cn("p-1 transition-colors", isSelected ? "text-indigo-500" : "text-[var(--text-muted)] group-hover:text-[var(--foreground)]")}>
+                        {isSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                    </button>
+                </td>
+                <td className="px-4 py-5">
+                    <div className="w-20 aspect-video rounded-md bg-[var(--background)] border border-[var(--surface-border)] overflow-hidden relative shadow-inner">
+                        {job.thumbnail_url ? (
+                            <img src={job.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                                <Play className="w-4 h-4 text-[var(--text-muted)]" />
+                            </div>
+                        )}
+                    </div>
+                </td>
+                <td className="px-4 py-5 max-w-xs">
+                    <span className="block font-semibold text-[var(--foreground)] truncate">{job.topic}</span>
+                    <span className="block text-[10px] text-[var(--text-muted)] font-mono mt-0.5 uppercase tracking-tighter">{job.job_id.split('-')[0]}</span>
+                </td>
+                <td className="px-4 py-5">
+                    <StatusBadge status={job.status as any} />
+                </td>
+                <td className="px-4 py-5 text-[var(--text-muted)] font-medium whitespace-nowrap">
+                    {formatDuration(job.duration_seconds)}
+                </td>
+                <td className="px-4 py-5">
+                    <div className="flex flex-col">
+                        <span className="text-[var(--foreground)] font-medium text-xs">{metadata.resolution || '—'}</span>
+                        <span className="text-[10px] text-[var(--text-muted)]">{metadata.file_size || ''}</span>
+                    </div>
+                </td>
+                <td className="px-4 py-5 text-right">
+                    <span className="block text-indigo-600 dark:text-indigo-400 font-bold">{cost > 0 ? `$${cost.toFixed(2)}` : '—'}</span>
+                    <span className="block text-[10px] text-[var(--text-muted)] truncate">{job.model_id || '—'}</span>
+                </td>
+                <td className="px-4 py-5 text-right whitespace-nowrap">
+                    <span className="block text-[var(--foreground)] opacity-80">{new Date(job.created_at).toLocaleDateString()}</span>
+                    <span className="block text-[10px] text-[var(--text-muted)]">{formatTime(job.created_at)}</span>
+                </td>
+                <td className="pl-4 pr-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1 px-1">
+                        {job.status === 'completed' && <ActionButton icon={<Play className="w-3.5 h-3.5" />} title="Play" onClick={() => {}} />}
+                        <ActionButton icon={<RotateCcw className="w-3.5 h-3.5" />} title="Retry" onClick={onRetry} />
+                        {job.status === 'completed' && <ActionButton icon={<Download className="w-3.5 h-3.5" />} title="Download" onClick={() => {}} />}
+                        <ActionButton icon={<Trash2 className="w-3.5 h-3.5" />} title="Delete" variant="danger" onClick={onDelete} />
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+                            className="ml-2 pl-2 border-l border-[var(--surface-border)] hover:text-[var(--foreground)] transition-colors"
+                        >
+                            {isExpanded ? <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" /> : <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />}
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {isExpanded && (
+                <tr>
+                    <td colSpan={9} className="p-0 border-b border-[var(--surface-border)]">
+                        {detail ? <JobDetailPanel job={detail} /> : (
+                            <div className="p-12 text-center bg-[var(--surface)]/50">
+                                <Loader2 className="w-6 h-6 text-indigo-500 animate-spin mx-auto mb-2" />
+                                <span className="text-[var(--text-muted)] text-sm">Loading job artifacts...</span>
+                            </div>
+                        )}
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+}
+
+function ActionButton({ icon, title, onClick, variant = 'default' }: { icon: React.ReactNode; title: string, onClick: () => void, variant?: 'default' | 'danger' }) {
+    return (
+        <button 
+            title={title} 
+            onClick={onClick}
+            className={cn(
+                "p-2 rounded-lg transition-all active:scale-95 shadow-sm",
+                variant === 'danger' ? "hover:bg-red-500/10 hover:text-red-500 text-[var(--text-muted)]" : "hover:bg-indigo-500/10 hover:text-indigo-600 text-[var(--text-muted)]"
+            )}
+        >
+            {icon}
+        </button>
+    );
+}
+
+function FilterSelect({ icon, value, onChange, options }: { icon: React.ReactNode, value: string, onChange: (v: string) => void, options: { label: string, value: string }[] }) {
+    return (
+        <div className="relative group">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors pointer-events-none">
+                {icon}
+            </div>
+            <select 
+                value={value} 
+                onChange={(e) => onChange(e.target.value)}
+                className="pl-8 pr-10 py-2 bg-[var(--surface)] border border-[var(--surface-border)] rounded-xl text-xs font-bold text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none appearance-none cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-600 transition-all shadow-sm"
+            >
+                {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none group-hover:text-indigo-500 transition-colors">
+                <ChevronDown className="w-3.5 h-3.5" />
+            </div>
+        </div>
+    );
+}
+
+function Loader2({ className }: { className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+        </svg>
     );
 }

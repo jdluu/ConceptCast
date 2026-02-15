@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { JobStatus } from '../../lib/api';
+import { JobStatus } from '../../lib/api/types';
 
 interface PipelineStepsProps {
     status: JobStatus['status'];
@@ -10,6 +10,7 @@ const STEPS = [
     { id: 'planning', label: 'Planning', description: 'Analyst creating curriculum' },
     { id: 'validating', label: 'Validating', description: 'Validator checking accuracy' },
     { id: 'architecting', label: 'Architecting', description: 'Architect designing scenes' },
+    { id: 'animating', label: 'Animating', description: 'Generating Manim code' },
     { id: 'rendering', label: 'Rendering', description: 'Animator generating video' },
     { id: 'reviewing', label: 'Reviewing', description: 'Reviewing quality' },
 ];
@@ -43,7 +44,7 @@ export function PipelineSteps({ status }: PipelineStepsProps) {
                     const isPending = currentStepIndex < index && status !== 'completed';
 
                     return (
-                        <div key={step.id} className="flex flex-col items-center relative group">
+                        <div key={step.id} className="flex flex-col items-center relative flex-1 min-w-0">
                             {/* Step Circle */}
                             <motion.div 
                                 layout
@@ -53,7 +54,7 @@ export function PipelineSteps({ status }: PipelineStepsProps) {
                                     borderColor: (isCompleted || isCurrent) ? '#6366f1' : '#262626',
                                     boxShadow: isCurrent ? '0 0 20px rgba(99,102,241,0.4)' : 'none'
                                 }}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors z-10
+                                className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors z-10 shrink-0
                                     ${isCompleted ? 'text-white' : ''}
                                     ${isCurrent ? 'text-indigo-400' : ''}
                                     ${isPending ? 'text-neutral-600' : ''}
@@ -86,26 +87,26 @@ export function PipelineSteps({ status }: PipelineStepsProps) {
                             </motion.div>
 
                             {/* Label */}
-                            <div className="absolute top-10 flex flex-col items-center text-center w-32">
+                            <div className="absolute top-10 w-full flex flex-col items-center">
                                 <motion.span 
                                     animate={{ 
                                         color: isCurrent ? '#ffffff' : (isCompleted ? '#a3a3a3' : '#525252'),
                                         opacity: isCurrent ? 1 : 0.7 
                                     }}
-                                    className="text-[11px] font-bold uppercase tracking-wider mb-0.5"
+                                    className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider mb-0.5 whitespace-nowrap px-1"
                                 >
-                                    {step.label}
+                                    {isCurrent ? step.label : (window.innerWidth > 640 ? step.label : (index + 1))}
                                 </motion.span>
                                 <AnimatePresence>
                                     {isCurrent && (
-                                        <motion.span 
+                                        <motion.div
                                             initial={{ opacity: 0, y: 5 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, y: -5 }}
-                                            className="text-[10px] text-indigo-300 hidden md:block italic"
+                                            className="text-[9px] sm:text-[10px] text-indigo-300 italic text-center w-max max-w-[120px] px-2 leading-tight"
                                         >
                                             {step.description}
-                                        </motion.span>
+                                        </motion.div>
                                     )}
                                 </AnimatePresence>
                             </div>

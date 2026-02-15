@@ -5,8 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { getAvailableModels } from '../../lib/api';
-import { useDeveloperMode } from '../../lib/DeveloperModeContext';
+import { getAvailableModels } from '../../lib/api/client';
+import { useDeveloperMode } from '../../lib/contexts/developer-mode';
+import { useAppSettings } from '../../lib/contexts/app-settings';
 import { useJobStore } from '../../lib/store/useJobStore';
 import { Button, Card } from '../ui/common';
 
@@ -26,31 +27,31 @@ interface FieldProps {
 
 const TopicField = ({ register, errors }: FieldProps) => (
     <div>
-        <label htmlFor="topic" className="block text-sm font-medium text-neutral-300 mb-1">
+        <label htmlFor="topic" className="block text-sm font-semibold text-[var(--foreground)] mb-2">
             What would you like to learn?
         </label>
         <input
             {...register('topic')}
             type="text"
             id="topic"
-            className="w-full bg-neutral-950 border border-neutral-800 rounded px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder:text-neutral-600"
+            className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-3 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder:text-[var(--text-muted)] opacity-80"
             placeholder="e.g. Quantum Entanglement, The French Revolution..."
         />
         {errors.topic && (
-            <p className="mt-1 text-sm text-red-400">{errors.topic.message as string}</p>
+            <p className="mt-1.5 text-xs font-medium text-red-500">{errors.topic.message as string}</p>
         )}
     </div>
 );
 
 const AudienceField = ({ register }: { register: UseFormRegister<JobFormData> }) => (
     <div>
-        <label htmlFor="target_audience" className="block text-sm font-medium text-neutral-300 mb-1">
+        <label htmlFor="target_audience" className="block text-sm font-semibold text-[var(--foreground)] mb-2">
             Target Audience
         </label>
         <select
             {...register('target_audience')}
             id="target_audience"
-            className="w-full bg-neutral-950 border border-neutral-800 rounded px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+            className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-600 transition-all shadow-sm"
         >
             <option value="5-year-old">5-year-old</option>
             <option value="High School Student">High School Student</option>
@@ -78,13 +79,13 @@ const ModelSelectionFields = ({
     return (
         <>
             <div>
-                <label htmlFor="provider" className="block text-sm font-medium text-neutral-300 mb-1">
+                <label htmlFor="provider" className="block text-sm font-semibold text-[var(--foreground)] mb-2">
                     AI Provider
                 </label>
                 <select
                     {...register('provider')}
                     id="provider"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-600 transition-all shadow-sm"
                 >
                     {realProvidersOnly.map((providerGroup) => (
                         <option key={providerGroup.provider} value={providerGroup.provider}>
@@ -96,13 +97,13 @@ const ModelSelectionFields = ({
             </div>
 
             <div>
-                <label htmlFor="model_id" className="block text-sm font-medium text-neutral-300 mb-1">
+                <label htmlFor="model_id" className="block text-sm font-semibold text-[var(--foreground)] mb-2">
                     Model
                 </label>
                 <select
                     {...register('model_id')}
                     id="model_id"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50"
+                    className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50 appearance-none cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-600 transition-all shadow-sm"
                     disabled={!selectedProvider}
                 >
                     {models.map((model: string) => (
@@ -123,17 +124,17 @@ const LoadingOverlay = ({ isLoading }: { isLoading: boolean }) => (
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-neutral-900/80 backdrop-blur-md z-50 flex flex-col items-center justify-center gap-4"
+                className="absolute inset-0 bg-[var(--surface)]/90 backdrop-blur-md z-50 flex flex-col items-center justify-center gap-4"
             >
                 <motion.div 
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full" 
+                    className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full shadow-lg shadow-indigo-500/10" 
                 />
                 <motion.p 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-white font-semibold tracking-wide uppercase text-sm"
+                    className="text-[var(--foreground)] font-bold tracking-widest uppercase text-xs"
                 >
                     Summoning the Council...
                 </motion.p>
@@ -174,6 +175,7 @@ const NoKeysAlert = ({
 
 export function JobCreationForm() {
     const { developerMode } = useDeveloperMode();
+    const { settings } = useAppSettings();
     const { createJob, isSubmitting: isLoading } = useJobStore();
     const [showNoKeysToast, setShowNoKeysToast] = useState(true);
 
@@ -237,6 +239,7 @@ export function JobCreationForm() {
                 target_audience: data.target_audience || 'General Audience',
                 provider: data.provider || null,
                 model_id: data.model_id || null,
+                fast_mode: settings.fastMocking,
             });
             toast.success('Council consulting started!');
         } catch (err: any) {
@@ -252,6 +255,7 @@ export function JobCreationForm() {
                 target_audience: values.target_audience || 'General Audience',
                 provider: 'mock',
                 model_id: 'mock-llm',
+                fast_mode: settings.fastMocking,
             });
             toast.info('Running mock demo sequence');
         } catch {
@@ -271,8 +275,8 @@ export function JobCreationForm() {
             <Card className="max-w-xl relative overflow-hidden">
                 <LoadingOverlay isLoading={isLoading} />
 
-                <h2 className="text-xl font-bold mb-1 text-white">Create New Concept</h2>
-                <p className="text-sm text-neutral-400 mb-8">Ask the Council to explain a topic in depth.</p>
+                <h2 className="text-xl font-bold mb-1 text-[var(--foreground)]">Create New Concept</h2>
+                <p className="text-sm text-[var(--text-muted)] mb-8">Ask the Council to explain a topic in depth.</p>
 
                 {noKeys && showNoKeysToast && (
                     <NoKeysAlert 
@@ -294,8 +298,8 @@ export function JobCreationForm() {
                             />
                         )}
                         {noKeys && (
-                            <div className="md:col-span-2 flex items-center gap-2 text-neutral-500 text-sm font-medium italic">
-                                <span className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
+                            <div className="md:col-span-2 flex items-center gap-2 text-[var(--text-muted)] text-sm font-medium italic opacity-70">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--surface-border)]" />
                                 No providers configured
                             </div>
                         )}
@@ -305,7 +309,7 @@ export function JobCreationForm() {
                         <Button
                             type="submit"
                             disabled={isLoading || noKeys}
-                            className="w-full h-12 text-base font-bold shadow-indigo-500/20 shadow-lg"
+                            className="w-full h-12 text-base font-bold shadow-indigo-500/20 shadow-lg rounded-xl"
                         >
                             {isLoading ? 'Consulting Council...' : 'Generate Lesson'}
                         </Button>
@@ -314,7 +318,7 @@ export function JobCreationForm() {
                                 type="button"
                                 onClick={runMockDemo}
                                 disabled={isLoading}
-                                className="w-full h-11 border-2 border-indigo-500 bg-transparent text-indigo-400 hover:bg-indigo-500/5 hover:text-indigo-300 transition-all font-semibold"
+                                className="w-full h-11 border-2 border-indigo-500 bg-transparent text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300 transition-all font-bold rounded-xl"
                             >
                                 Run mock demo
                             </Button>
