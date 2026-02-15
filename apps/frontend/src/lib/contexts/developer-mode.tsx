@@ -16,8 +16,18 @@ type DeveloperModeContextValue = {
     setDeveloperMode: (value: boolean) => void;
 };
 
+/**
+ * Context for managing Developer Mode state.
+ */
 const DeveloperModeContext = createContext<DeveloperModeContextValue | null>(null);
 
+/**
+ * Provider for Developer Mode, which enables mock data and advanced debugging features.
+ * Persists state to localStorage.
+ * 
+ * @param {Object} props - Component props.
+ * @param {React.ReactNode} props.children - Child elements.
+ */
 export function DeveloperModeProvider({ children }: { children: React.ReactNode }) {
     const [developerMode, setDeveloperModeState] = useState(readStored);
 
@@ -44,6 +54,12 @@ export function DeveloperModeProvider({ children }: { children: React.ReactNode 
     );
 }
 
+/**
+ * Custom hook to access Developer Mode state.
+ * 
+ * @returns {DeveloperModeContextValue} The current developer mode state and setter.
+ * @throws {Error} If used outside of a DeveloperModeProvider.
+ */
 export function useDeveloperMode(): DeveloperModeContextValue {
     const ctx = useContext(DeveloperModeContext);
     if (!ctx) {

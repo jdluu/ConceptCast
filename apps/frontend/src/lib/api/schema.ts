@@ -14,9 +14,8 @@ export interface paths {
         /**
          * Get Available Models
          * @description Retrieves the list of supported AI providers and their models.
-         *
-         *     Only includes providers for which the user has an API key configured; mock is always included.
-         *     No tiered priority.
+         *     Only includes providers for which the user has an API key configured;
+         *     mock is always included. No tiered priority.
          */
         get: operations["get_available_models_models_available_get"];
         put?: never;
@@ -59,8 +58,8 @@ export interface paths {
         /**
          * Create Job
          * @description Initializes a new asynchronous video generation job.
-         *
-         *     Creates a job record in the database and triggers the background processing workflow.
+         *     Creates a job record in the database and triggers
+         *     the background processing workflow.
          *
          *     Args:
          *         request: The job configuration (topic, audience, provider).
@@ -96,7 +95,8 @@ export interface paths {
          *         db: The asynchronous database session.
          *
          *     Returns:
-         *         JobStatus: Detailed state including plan, storyboard, and video URL if available.
+         *         JobStatus: Detailed state including plan, storyboard,
+         *         and video URL if available.
          *
          *     Raises:
          *         HTTPException: If job is not found.
@@ -167,6 +167,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Jobs
+         * @description Lists all jobs sorted by creation date (newest first).
+         */
+        get: operations["list_jobs_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{job_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Job
+         * @description Retries a failed or stuck job from the last successful checkpoint.
+         */
+        post: operations["retry_job_jobs__job_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Job
+         * @description Deletes a job and its associated data.
+         */
+        delete: operations["delete_job_jobs__job_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -207,6 +267,11 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** JobListResponse */
+        JobListResponse: {
+            /** Jobs */
+            jobs: components["schemas"]["JobSummary"][];
+        };
         /**
          * JobRequest
          * @description Request model for creating a new job.
@@ -239,6 +304,12 @@ export interface components {
              * @description Explicit model ID
              */
             model_id?: string | null;
+            /**
+             * Fast Mode
+             * @description If true, mock generation runs significantly faster
+             * @default false
+             */
+            fast_mode?: boolean;
         };
         /**
          * JobStatus
@@ -269,7 +340,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "planning" | "validating" | "architecting" | "rendering" | "reviewing" | "completed" | "failed";
+            status: "planning" | "validating" | "architecting" | "rendering" | "reviewing" | "completed" | "failed" | "pending_retry";
             /** Current Step */
             current_step?: string | null;
             plan?: components["schemas"]["CurriculumPlan"] | null;
@@ -288,6 +359,61 @@ export interface components {
              * @enum {string}
              */
             mode: "live" | "mock";
+            /** Provider */
+            provider?: string | null;
+            /** Model Id */
+            model_id?: string | null;
+            /** Target Audience */
+            target_audience?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+        };
+        /**
+         * JobSummary
+         * @description Lightweight job representation for the jobs list.
+         */
+        JobSummary: {
+            /** Job Id */
+            job_id: string;
+            /** Topic */
+            topic: string;
+            /** Status */
+            status: string;
+            /** Mode */
+            mode: string;
+            /** Created At */
+            created_at: string;
+            /** Retry Count */
+            retry_count: number;
+            /** Error */
+            error: string | null;
+            /** Provider */
+            provider?: string | null;
+            /** Model Id */
+            model_id?: string | null;
+            /** Target Audience */
+            target_audience?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+            /**
+             * Cost
+             * @default 0
+             */
+            cost: number;
+            /** Thumbnail Url */
+            thumbnail_url?: string | null;
+            /** Video Metadata */
+            video_metadata?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** ProviderModels */
         ProviderModels: {
@@ -671,147 +797,84 @@ export interface operations {
             };
         };
     };
-}
-
-// --- Generated API Helpers ---
-
-export type TeachingStep = components['schemas']['TeachingStep'];
-export type CurriculumPlan = components['schemas']['CurriculumPlan'];
-export type JobStatus = components['schemas']['JobStatus'];
-export type JobRequest = components['schemas']['JobRequest'];
-export type CreateJobRequest = components['schemas']['JobRequest'];
-export type AvailableModelsResponse = components['schemas']['AvailableModelsResponse'];
-export type ThoughtLog = components['schemas']['ThoughtLog'];
-export type Storyboard = components['schemas']['Storyboard'];
-export type Scene = components['schemas']['Scene'];
-export type VisualObject = components['schemas']['VisualObject'];
-export type ValidationResult = components['schemas']['ValidationResult'];
-
-export interface JobSummary {
-    job_id: string;
-    topic: string;
-    status: JobStatus["status"];
-    created_at: string;
-    updated_at: string;
-    mode: "live" | "mock";
-    retry_count: number;
-}
-
-export interface JobListResponse {
-    jobs: JobSummary[];
-}
-
-/** Backend base URL for REST and SSE; used by api helpers and useJobEvents. */
-export const API_BASE_url =
-    (import.meta.env.VITE_API_url as string | undefined) ?? 'http://localhost:8000';
-
-/**
- * Creates a new video generation job on the server.
- * 
- * @param request - The job configuration details (topic, audience, provider, model).
- * @returns A promise resolving to the initial job status.
- * @throws Error if the request fails.
- */
-export async function createJob(request: CreateJobRequest): Promise<JobStatus> {
-    const response = await fetch(`${API_BASE_url}/jobs/create`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to create job');
-    }
-
-    return response.json();
-}
-
-/**
- * Retrieves the current status and artifacts for a specific job.
- * 
- * @param jobId - The unique UUID of the job.
- * @returns A promise resolving to the comprehensive job status.
- * @throws Error if the status cannot be retrieved.
- */
-export async function getJobStatus(jobId: string): Promise<JobStatus> {
-    const response = await fetch(`${API_BASE_url}/jobs/${jobId}/status`);
-
-    if (!response.ok) {
-        throw new Error('Failed to get job status');
-    }
-
-    return response.json();
-}
-
-export async function getCurriculumPlan(jobId: string): Promise<CurriculumPlan> {
-    const response = await fetch(`${API_BASE_url}/jobs/${jobId}/plan`);
-    if (!response.ok) {
-        throw new Error('Failed to get curriculum plan');
-    }
-    return response.json();
-}
-
-export async function getStoryboard(jobId: string): Promise<Storyboard> {
-    const response = await fetch(`${API_BASE_url}/jobs/${jobId}/storyboard`);
-    if (!response.ok) {
-        throw new Error('Failed to get storyboard');
-    }
-    return response.json();
-}
-
-/**
- * Lists all jobs sorted by creation date (newest first).
- */
-export async function listJobs(): Promise<JobListResponse> {
-    const response = await fetch(`${API_BASE_url}/jobs`);
-    if (!response.ok) {
-        throw new Error('Failed to list jobs');
-    }
-    return response.json();
-}
-
-/**
- * Retries a failed or stuck job from the last successful checkpoint.
- * @param jobId - The unique UUID of the job.
- */
-export async function retryJob(jobId: string): Promise<JobStatus> {
-    const response = await fetch(`${API_BASE_url}/jobs/${jobId}/retry`, {
-        method: 'POST',
-    });
-    
-    if (!response.ok) {
-        throw new Error('Failed to retry job');
-    }
-    
-    return response.json();
-}
-
-/**
- * Retrieves the list of available AI models and their providers from the backend.
- * 
- * @returns A promise resolving to the list of available providers and models.
- * @throws Error if the models cannot be fetched.
- */
-export async function getAvailableModels(): Promise<AvailableModelsResponse> {
-    const response = await fetch(`${API_BASE_url}/models/available`);
-    if (!response.ok) {
-        throw new Error('Failed to get available models');
-    }
-    return response.json();
-}
-
-/**
- * Deletes a job from the database.
- * @param jobId - The unique UUID of the job.
- */
-export async function deleteJob(jobId: string): Promise<void> {
-    const response = await fetch(`${API_BASE_url}/jobs/${jobId}`, {
-        method: 'DELETE',
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to delete job');
-    }
+    list_jobs_jobs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobListResponse"];
+                };
+            };
+        };
+    };
+    retry_job_jobs__job_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_job_jobs__job_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
 }
