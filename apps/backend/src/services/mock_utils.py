@@ -22,22 +22,30 @@ async def run_mock_flow(
     Executes the mock generation flow for testing or demonstration purposes.
     Simulates the exact timing and steps of a live run.
     """
+    from datetime import UTC, datetime
+
     try:
+        # Record start time
+        await update_job({"started_at": datetime.now(UTC)})
+
+        # Determine sleep multiplier
+        sleep_mult = 0.1 if request.fast_mode else 1.0
+
         # Step 1: Planning
         await update_job({"status": "planning", "current_step": "planning"})
 
         await on_thought(
             "analyst", "Curriculum Design", f"Analyzing topic '{request.topic}'..."
         )
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(1.5 * sleep_mult)
 
         await on_thought(
             "analyst", "Curriculum Design", "Identifying key pedagogical concepts..."
         )
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(1.5 * sleep_mult)
 
         await on_thought("analyst", "Curriculum Design", "Structuring lesson plan...")
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(1.0 * sleep_mult)
 
         plan = generate_mock_plan(
             request.topic, request.target_audience or "General Audience"
@@ -56,7 +64,7 @@ async def run_mock_flow(
             "Validation",
             "Reviewing curriculum plan against pedagogical standards...",
         )
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(1.5 * sleep_mult)
 
         validation = generate_mock_validation()
         await update_job(
@@ -71,14 +79,14 @@ async def run_mock_flow(
         await on_thought(
             "architect", "Visual Design", "Translate concepts into visual metaphors..."
         )
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(1.5 * sleep_mult)
 
         await on_thought(
             "architect",
             "Visual Design",
             "Drafting scene composition and transitions...",
         )
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(1.5 * sleep_mult)
 
         storyboard = generate_mock_storyboard(plan)
         await update_job(
@@ -91,14 +99,14 @@ async def run_mock_flow(
 
         # Step 4: Animating (Simulated Loop)
         await on_thought("animator", "Code Generation", "Initializing Manim scene...")
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(1.5 * sleep_mult)
 
         await on_thought(
             "animator",
             "Code Generation",
             "Generating Pythagorean theorem visualization code...",
         )
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(1.5 * sleep_mult)
 
         code = generate_mock_code()
 
@@ -107,14 +115,14 @@ async def run_mock_flow(
         await on_thought(
             "reviewer", "Visual QA", "Reviewing generated animation code..."
         )
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(1.0 * sleep_mult)
         await on_thought("reviewer", "Visual QA", "Code looks correct. Approving.")
 
         await update_job({"status": "rendering", "current_step": "animating_complete"})
 
         # Step 5: Rendering
         await on_thought("system", "Rendering", "Starting render process...")
-        await asyncio.sleep(2.0)
+        await asyncio.sleep(2.0 * sleep_mult)
 
         # Mock doesn't produce a real video URL unless we have a static asset?
         # For now, null video_url triggers "Mock runs skip rendering" message in UI.
@@ -125,11 +133,24 @@ async def run_mock_flow(
                 "status": "completed",
                 "mode": "mock",
                 "current_step": "rendering_complete",
+                "finished_at": datetime.now(UTC),
+                "cost": 0.05,
+                "thumbnail_url": "https://placehold.co/600x400/1e1e1e/white?text=Mock+Scene",
+                "video_metadata": {
+                    "resolution": "1080p",
+                    "file_size": "14MB",
+                    "format": "mp4",
+                    "bitrate": "5.2Mbps",
+                },
             }
         )
 
     except Exception as e:
-        await update_job({"status": "failed", "error": str(e)})
+        from datetime import UTC, datetime
+
+        await update_job(
+            {"status": "failed", "error": str(e), "finished_at": datetime.now(UTC)}
+        )
 
 
 def generate_mock_plan(topic: str, target_audience: str) -> CurriculumPlan:

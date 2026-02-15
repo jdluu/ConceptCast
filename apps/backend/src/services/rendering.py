@@ -4,6 +4,7 @@ import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -68,9 +69,7 @@ class ASTSanitizer(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         # Check for calls to banned builtins (e.g., eval("..."))
         if isinstance(node.func, ast.Name) and node.func.id in _BANNED_BUILTINS:
-            raise RuntimeError(
-                f"Call to unsafe builtin '{node.func.id}' is forbidden."
-            )
+            raise RuntimeError(f"Call to unsafe builtin '{node.func.id}' is forbidden.")
         self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
@@ -126,7 +125,7 @@ def extract_and_validate_manim_code(raw: str) -> str:
         str: Cleaned, validated Python code.
 
     Raises:
-        RuntimeError: If code cannot be extracted, is invalid Python, 
+        RuntimeError: If code cannot be extracted, is invalid Python,
             or missing SceneGen.
     """
     code = raw.strip()
@@ -186,6 +185,15 @@ def _quality_to_flag(quality: str) -> str:
 
 
 @dataclass
+class VideoResult:
+    """Result of a full-quality video render."""
+
+    video_url: str
+    thumbnail_url: str | None = None
+    metadata: dict[str, Any] | None = None
+
+
+@dataclass
 class PreviewResult:
     """Result of a low-quality preview render."""
 
@@ -195,7 +203,7 @@ class PreviewResult:
     error: str | None
 
 
-async def render_storyboard(code: str, job_id: str) -> str:
+async def render_storyboard(code: str, job_id: str) -> VideoResult:
     """
     Renders the Manim animation for the given code.
 
@@ -204,7 +212,7 @@ async def render_storyboard(code: str, job_id: str) -> str:
         job_id: Unique job identifier for artifact isolation.
 
     Returns:
-        The web-accessible URL path to the generated video.
+        VideoResult: Object containing URLs and metadata.
 
     Raises:
         AnimationGenerationError: If rendering fails or code is invalid.
@@ -221,7 +229,7 @@ async def render_storyboard(code: str, job_id: str) -> str:
     host_data_dir = os.getenv("HOST_DATA_DIR")
     base_dir = Path("/app/data") if host_data_dir else get_settings().data_dir
 
-    job_dir = base_dir / "jobs" / "artifacts" / job_id
+    job_dir = base_dir / "jobs" / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
     code_file = job_dir / "scene.py"
@@ -231,9 +239,7 @@ async def render_storyboard(code: str, job_id: str) -> str:
     logger.info(f"Starting render for job {job_id}")
 
     # If running in Docker (HOST_DATA_DIR set), we need to pass the host path
-    host_job_dir = (
-        Path(host_data_dir) / "jobs" / "artifacts" / job_id if host_data_dir else None
-    )
+    host_job_dir = Path(host_data_dir) / "jobs" / job_id if host_data_dir else None
 
     # Retry logic for transient rendering issues
     max_retries = 2
@@ -258,10 +264,10 @@ async def render_storyboard(code: str, job_id: str) -> str:
                 raise AnimationGenerationError("Rendering sandbox unavailable")
 
             # Check for output file
-            # Manim -ql produces 480p15 video strings in 
+            # Manim -ql produces 480p15 video strings in
             # media/videos/scene/480p15/SceneGen.mp4
             # We need to find where it actually went.
-            # With --media_dir ., it should be in 
+            # With --media_dir ., it should be in
             # ./videos/scene/480p15/SceneGen.mp4 if code uses defaults?
             # Actually, defaults are media/videos/...
             # Let's find the .mp4 file
@@ -283,8 +289,15 @@ async def render_storyboard(code: str, job_id: str) -> str:
 
             # Cleanup media dir? kept for debugging/cache
 
-            # Return web path
-            return f"/jobs/artifacts/{job_id}/video.mp4"
+            # Generate thumbnail and extract metadata
+            thumbnail_url = _generate_thumbnail(final_video_path, job_id)
+            metadata = _get_video_metadata(final_video_path)
+
+            return VideoResult(
+                video_url=f"/jobs/artifacts/{job_id}/video.mp4",
+                thumbnail_url=thumbnail_url,
+                metadata=metadata,
+            )
 
         except RuntimeError as e:
             logger.warning(f"Render attempt {attempt + 1} failed: {e}")
@@ -311,15 +324,13 @@ async def render_preview(code: str, job_id: str) -> PreviewResult:
     # 2. Setup (Reuse logic - simpler path)
     host_data_dir = os.getenv("HOST_DATA_DIR")
     base_dir = Path("/app/data") if host_data_dir else get_settings().data_dir
-    job_dir = base_dir / "jobs" / "artifacts" / job_id
+    job_dir = base_dir / "jobs" / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
     code_file = job_dir / "scene.py"
     code_file.write_text(validated_code)
 
-    host_job_dir = (
-        Path(host_data_dir) / "jobs" / "artifacts" / job_id if host_data_dir else None
-    )
+    host_job_dir = Path(host_data_dir) / "jobs" / job_id if host_data_dir else None
 
     # 3. Run with low quality
     try:
@@ -359,3 +370,66 @@ async def render_preview(code: str, job_id: str) -> PreviewResult:
 
     except RuntimeError as e:
         return PreviewResult(success=False, logs=str(e), frame_path=None, error=str(e))
+
+
+def _get_video_metadata(video_path: Path) -> dict[str, Any]:
+    """Extracts resolution, duration, bitrate, etc. using ffprobe."""
+    import json
+    import subprocess
+
+    try:
+        cmd = [
+            "ffprobe",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_format",
+            "-show_streams",
+            str(video_path),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        data = json.loads(result.stdout)
+
+        video_stream = next(
+            (s for s in data["streams"] if s["codec_type"] == "video"), {}
+        )
+        format_data = data.get("format", {})
+
+        return {
+            "resolution": f"{video_stream.get('width')}x{video_stream.get('height')}",
+            "duration": float(format_data.get("duration", 0)),
+            "bitrate": format_data.get("bit_rate"),
+            "file_size": f"{int(format_data.get('size', 0)) // (1024 * 1024)}MB",
+            "format": format_data.get("format_name"),
+        }
+    except Exception as e:
+        logger.error(f"Metadata extraction failed: {e}")
+        return {}
+
+
+def _generate_thumbnail(video_path: Path, job_id: str) -> str | None:
+    """Generates a JPG thumbnail from the middle of the video."""
+    import subprocess
+
+    thumb_path = video_path.parent / "thumbnail.jpg"
+    try:
+        # Seek to 1 second in or half way
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video_path),
+            "-ss",
+            "00:00:01",
+            "-vframes",
+            "1",
+            "-q:v",
+            "2",
+            str(thumb_path),
+        ]
+        subprocess.run(cmd, capture_output=True, check=True)
+        return f"/jobs/artifacts/{job_id}/thumbnail.jpg"
+    except Exception as e:
+        logger.error(f"Thumbnail generation failed: {e}")
+        return None

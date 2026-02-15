@@ -26,7 +26,7 @@ class DockerSandbox:
             self.client = docker.from_env()
             self.image = image
             # Ensure image is available
-            # self.client.images.pull(self.image) 
+            # self.client.images.pull(self.image)
             # Pulling can be slow, assume pre-installed or pulled on first run
         except Exception as e:
             logger.error(f"Failed to initialize Docker client: {e}")
@@ -43,16 +43,16 @@ class DockerSandbox:
         """Executes Manim rendering inside a Docker container.
 
         Args:
-            job_dir: Directory containing the Manim code 
+            job_dir: Directory containing the Manim code
             (container path when backend runs in Docker).
             code_file: Name of the Python file (relative to job_dir).
             scene_name: Name of the Scene class to render.
-            host_job_dir: When backend runs in Docker, pass the host path for this job 
-                so the daemon can mount it. If set, used as the volume source 
+            host_job_dir: When backend runs in Docker, pass the host path for this job
+                so the daemon can mount it. If set, used as the volume source
                 instead of job_dir.
 
         Returns:
-            Optional[SandboxResult]: Captured output from the container, 
+            Optional[SandboxResult]: Captured output from the container,
             or None if Docker is unavailable.
 
         Raises:
@@ -120,11 +120,11 @@ class DockerSandbox:
             )
 
             # Docker returns bytes, we need to split stdout/stderr if possible.
-            # However, .run(stdout=True, stderr=True) returns a single 
-            # byte stream combined if detach=False. To get separate streams, 
+            # However, .run(stdout=True, stderr=True) returns a single
+            # byte stream combined if detach=False. To get separate streams,
             # we utilize the logs() method usually, but run() is blocking.
             # workaround: The simplified run() mixes them.
-            # For iteration 1, we will treat the full output as both 
+            # For iteration 1, we will treat the full output as both
             # stdout/stderr mixture unless we switch to low-level API.
             # unless we switch to low-level API.
             # A simple improvement: use the returned bytes effectively.

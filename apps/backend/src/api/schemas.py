@@ -163,6 +163,15 @@ class JobSummary(BaseModel):
     created_at: str
     retry_count: int
     error: str | None
+    provider: str | None = None
+    model_id: str | None = None
+    target_audience: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    duration_seconds: float | None = None
+    cost: float = 0.0
+    thumbnail_url: str | None = None
+    video_metadata: dict[str, Any] | None = None
 
 
 class JobListResponse(BaseModel):
@@ -196,6 +205,7 @@ class JobStatus(BaseModel):
         "planning",
         "validating",
         "architecting",
+        "animating",
         "rendering",
         "reviewing",
         "completed",
@@ -216,6 +226,15 @@ class JobStatus(BaseModel):
             "'mock' uses local simulated responses"
         ),
     )
+    provider: str | None = None
+    model_id: str | None = None
+    target_audience: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    duration_seconds: float | None = None
+    cost: float = 0.0
+    thumbnail_url: str | None = None
+    video_metadata: dict[str, Any] | None = None
 
 
 class JobRequest(BaseModel):
@@ -235,6 +254,9 @@ class JobRequest(BaseModel):
     )
     provider: str | None = Field(None, description="Explicit model provider")
     model_id: str | None = Field(None, description="Explicit model ID")
+    fast_mode: bool = Field(
+        False, description="If true, mock generation runs significantly faster"
+    )
 
 
 class ProviderModels(BaseModel):

@@ -17,7 +17,7 @@ from .thinking import get_thinking_settings
 
 @dataclass(frozen=True)
 class ProviderEntry:
-    """Single source of truth for a provider: id, settings key, 
+    """Single source of truth for a provider: id, settings key,
     models, and optional display name."""
 
     id: str
@@ -162,7 +162,7 @@ def get_model(
             target = f"hf:{target}"
         return OpenAIChatModel(target, provider=provider, settings=thinking_settings)
     if entry.id == "mock":
-        # Mock has no real model; orchestrator uses mock flow 
+        # Mock has no real model; orchestrator uses mock flow
         # and should not call get_model for mock.
         # If called anyway, return None so callers get a clear failure.
         return None

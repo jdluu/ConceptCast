@@ -16,7 +16,15 @@ async def append_job_thought(
     phase: str,
     content: str,
 ) -> None:
-    """Appends a streamed thought to the job's streamed_thoughts and persists it."""
+    """Appends a streamed thought to the job's streamed_thoughts and persists it.
+
+    Args:
+        db_session_factory: Factory for DB sessions.
+        job_id: Job identifier.
+        agent: Agent name.
+        phase: Generation phase.
+        content: Reasoning content.
+    """
     max_entries = max(1, get_settings().streamed_thoughts_max_entries)
     entry = ThoughtLog(
         agent=agent,

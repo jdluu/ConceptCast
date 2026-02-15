@@ -1,4 +1,4 @@
-"""Shared streaming helpers for agent runs. 
+"""Shared streaming helpers for agent runs.
 Standardizes streamed thoughts across providers/models."""
 
 from collections.abc import Awaitable, Callable
@@ -18,7 +18,7 @@ async def run_agent_streamed(
     on_thought: Callable[[str, str, str], Awaitable[None]] | None,
     **run_kwargs: Any,
 ) -> Any:
-    """Runs an agent with run_stream_events, emits thoughts 
+    """Runs an agent with run_stream_events, emits thoughts
     via on_thought, returns final output.
 
     Same pattern for every provider/model: stream text and thinking deltas to the UI.

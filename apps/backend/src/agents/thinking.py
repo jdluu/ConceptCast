@@ -13,7 +13,7 @@ Pydantic AI docs) for current model settings and thinking APIs.
 
 from typing import Protocol
 
-# Use Pydantic AI's provider-specific settings so we extend 
+# Use Pydantic AI's provider-specific settings so we extend
 # the framework, not replace it.
 from pydantic_ai.models.google import GoogleModelSettings
 from pydantic_ai.models.groq import GroqModelSettings
@@ -21,7 +21,7 @@ from pydantic_ai.settings import ModelSettings
 
 
 class ThinkingAdapter(Protocol):
-    """Adapter that returns Pydantic AI model settings to enable 
+    """Adapter that returns Pydantic AI model settings to enable
     thinking for a provider/model."""
 
     def __call__(self, provider_id: str, model_id: str) -> ModelSettings | None:
@@ -59,7 +59,7 @@ def _adapter_noop(provider_id: str, model_id: str) -> ModelSettings | None:
     return None
 
 
-# Registry: provider_id -> adapter. 
+# Registry: provider_id -> adapter.
 # Extend with Pydantic AI's settings types per provider.
 THINKING_ADAPTERS: dict[str, ThinkingAdapter] = {
     "deepseek": _adapter_deepseek,
@@ -72,7 +72,7 @@ THINKING_ADAPTERS: dict[str, ThinkingAdapter] = {
 
 def get_thinking_settings(provider_id: str, model_id: str) -> ModelSettings | None:
     """
-    Returns Pydantic AI model settings to enable thinking 
+    Returns Pydantic AI model settings to enable thinking
     for the given provider and model.
 
     Uses the adapter for that provider; each adapter returns the appropriate

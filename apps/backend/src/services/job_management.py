@@ -86,8 +86,8 @@ async def prepare_job_for_retry_logic(
 ) -> JobRecord:
     """Resets a failed job to a state where it can be retried safely.
 
-    Clears error messages, render artifacts, and transient state while 
-    preserving foundational artifacts (like the plan) if they were completed. 
+    Clears error messages, render artifacts, and transient state while
+    preserving foundational artifacts (like the plan) if they were completed.
     Increments the retry counter and resets the status to 'pending_retry'.
 
     Args:

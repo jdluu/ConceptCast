@@ -56,11 +56,15 @@ class JobRecord(Base):
         video_url (str | None): URL to the rendered video file.
         error (str | None): Error message if the job failed.
         mode (str): Execution mode ('live' or 'mock').
-        provider (str | None): AI provider requested at job creation 
+        provider (str | None): AI provider requested at job creation
             (e.g. 'deepseek', 'google').
         model_id (str | None): Model ID requested at job creation.
-        streamed_thoughts (list | None): Live stream of agent thoughts/deltas 
+        streamed_thoughts (list | None): Live stream of agent thoughts/deltas
             for the UI.
+        cost (float): Estimated generation cost in USD.
+        thumbnail_url (str | None): URL to the generated preview image.
+        video_metadata (dict | None): JSON field for resolution, bit rate,
+            file size, etc.
         created_at (datetime): Timestamp when the job was created.
         updated_at (datetime): Timestamp when the job was last updated.
     """
@@ -85,9 +89,14 @@ class JobRecord(Base):
     streamed_thoughts: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSON, nullable=True, default=None
     )
+    cost: Mapped[float] = mapped_column(default=0.0)
+    thumbnail_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    video_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC)
     )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=lambda: datetime.now(UTC),

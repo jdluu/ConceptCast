@@ -35,7 +35,7 @@ async def generate_curriculum(
 ) -> CurriculumPlan:
     """
     Generates a pedagogical curriculum plan for a given topic.
-    Streams analyst (and validator, when critic is called) thoughts 
+    Streams analyst (and validator, when critic is called) thoughts
     if on_thought is provided.
     """
     agent = Agent(

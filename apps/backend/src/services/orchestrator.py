@@ -20,12 +20,10 @@ from services.job_management import (
 )
 from services.mock_utils import run_mock_flow
 from services.thought_stream import append_job_thought
-from services.workflow_steps import (
-    step_animating,
-    step_architecting,
-    step_planning,
-    step_rendering,
-)
+from services.workflow.animating import step_animating
+from services.workflow.architecting import step_architecting
+from services.workflow.planning import step_planning
+from services.workflow.rendering import step_rendering
 
 
 async def execute_workflow(
@@ -37,8 +35,8 @@ async def execute_workflow(
 ) -> None:
     """Executes the sequential steps of the ConceptCast workflow.
 
-    Coordinates the execution of planning, architecting, animating, and 
-    rendering steps. Each step persists its artifacts to the database and 
+    Coordinates the execution of planning, architecting, animating, and
+    rendering steps. Each step persists its artifacts to the database and
     streams progress to the frontend.
 
     Args:
@@ -52,22 +50,25 @@ async def execute_workflow(
         None
 
     Raises:
-        ConceptCastException: If any workflow step fails to generate required 
+        ConceptCastException: If any workflow step fails to generate required
             artifacts or if an unrecoverable error occurs.
     """
     # Step 1: Planning
+    await update_job({"status": "planning", "current_step": "planning_start"})
     plan = await step_planning(request, job_state, update_job, on_thought)
     if not plan:
         raise PlanGenerationError("Planning failed to produce a curriculum.")
 
     # Step 2: Validating
+    await update_job({"status": "validating", "current_step": "validating_start"})
     # Note: Validation step is currently static but tracked for pipeline consistency
     validation = ValidationResult(
         is_valid=True, feedback="Verified by Analyst A2A", suggestions=[]
     )
-    await update_job({"validation": validation.model_dump(), "status": "architecting"})
+    await update_job({"validation": validation.model_dump()})
 
     # Step 3: Architecting
+    await update_job({"status": "architecting", "current_step": "architecting_start"})
     storyboard = await step_architecting(
         plan, request, job_state, update_job, on_thought
     )
@@ -75,6 +76,7 @@ async def execute_workflow(
         raise StoryboardGenerationError("Architecting failed to produce a storyboard.")
 
     # Step 4: Animating
+    await update_job({"status": "animating", "current_step": "animating_start"})
     code = await step_animating(storyboard, request, job_state, update_job, on_thought)
     if not code:
         raise AnimationGenerationError("Animating failed to produce code.")
@@ -105,9 +107,11 @@ async def process_job_logic(
     use_mock = determine_execution_mode(request)
 
     async def update_job(updates: dict[str, Any]) -> None:
+        """Async callback to persist job modifications."""
         await update_job_record(db_session_factory, job_id, updates)
 
     async def on_thought(agent: str, phase: str, content: str) -> None:
+        """Callback to stream agent internal state updates."""
         await append_job_thought(db_session_factory, job_id, agent, phase, content)
 
     if use_mock:
@@ -124,20 +128,38 @@ async def process_job_logic(
                 logger.error(f"Job {job_id} not found for processing")
                 return
 
+        # Record start time
+        from datetime import UTC, datetime
+
+        await update_job({"started_at": datetime.now(UTC)})
+
         await execute_workflow(request, job_state, job_id, update_job, on_thought)
+
+        # Record finish time on success
+        await update_job({"finished_at": datetime.now(UTC)})
 
     except ConceptCastException as e:
         logger.error(f"Job {job_id} failed: {e.message}")
+        from datetime import UTC, datetime
+
         await update_job(
-            {"status": "failed", "error": e.message, "current_step": "failed"}
+            {
+                "status": "failed",
+                "error": e.message,
+                "current_step": "failed",
+                "finished_at": datetime.now(UTC),
+            }
         )
     except Exception as e:
         logger.exception(f"Job {job_id} failed unexpectedly")
+        from datetime import UTC, datetime
+
         await update_job(
             {
                 "status": "failed",
                 "error": f"An unexpected error occurred: {str(e)}",
                 "current_step": "failed",
+                "finished_at": datetime.now(UTC),
             }
         )
 

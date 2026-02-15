@@ -189,7 +189,7 @@ async def search_manim_docs(ctx: RunContext[Storyboard], query: str) -> str:
         query: The search term or question (e.g., 'Circle', 'FadeIn animation').
 
     Returns:
-        str: JSON string with key "documentation" so providers 
+        str: JSON string with key "documentation" so providers
         that parse tool results as JSON succeed.
     """
     api_key = get_settings().context7_api_key

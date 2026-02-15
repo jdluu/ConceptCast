@@ -1,7 +1,7 @@
 """Context7 API client for fetching documentation context.
 
 Uses the Context7 REST API (https://context7.com/docs/api-guide) to retrieve
-relevant docs. Manim Community is available as library ID 
+relevant docs. Manim Community is available as library ID
 /websites/manim_community_en_stable.
 Adds lightweight in-memory caching and retry/backoff for reliability.
 """
