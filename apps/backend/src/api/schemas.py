@@ -171,7 +171,10 @@ class JobSummary(BaseModel):
     duration_seconds: float | None = None
     cost: float = 0.0
     thumbnail_url: str | None = None
+    video_url: str | None = None
     video_metadata: dict[str, Any] | None = None
+    resolution: str = "720p"
+    frame_rate: int = 30
 
 
 class JobListResponse(BaseModel):
@@ -197,6 +200,7 @@ class JobStatus(BaseModel):
     """
 
     job_id: str
+    topic: str | None = None
     streamed_thoughts: list[ThoughtLog] = Field(
         default_factory=list,
         description="Live stream of agent thoughts (agent, phase, content, ts).",
@@ -235,6 +239,8 @@ class JobStatus(BaseModel):
     cost: float = 0.0
     thumbnail_url: str | None = None
     video_metadata: dict[str, Any] | None = None
+    resolution: str = "720p"
+    frame_rate: int = 30
 
 
 class JobRequest(BaseModel):
@@ -246,6 +252,8 @@ class JobRequest(BaseModel):
         target_audience (str): The intended audience knowledge level.
         provider (str | None): Explicit AI model provider to use.
         model_id (str | None): Explicit model ID to use.
+        resolution (str): Output video resolution (720p/1080p).
+        frame_rate (int): Frames per second (30/60).
     """
 
     topic: str = Field(..., description="The main concept to explain")
@@ -254,6 +262,8 @@ class JobRequest(BaseModel):
     )
     provider: str | None = Field(None, description="Explicit model provider")
     model_id: str | None = Field(None, description="Explicit model ID")
+    resolution: Literal["720p", "1080p"] = Field("720p", description="Output video resolution")
+    frame_rate: Literal[30, 60] = Field(30, description="Frames per second")
     fast_mode: bool = Field(
         False, description="If true, mock generation runs significantly faster"
     )

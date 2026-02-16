@@ -1,6 +1,10 @@
+import asyncio
 import json
+import os
+import shutil
 import uuid
 from collections.abc import AsyncGenerator, Callable
+from pathlib import Path
 from typing import Literal, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
@@ -17,6 +21,7 @@ from api.schemas import (
     JobSummary,
 )
 from core.database import AsyncSessionLocal, JobRecord, get_db
+from core.settings import get_settings
 from services.orchestrator import prepare_job_for_retry, process_job_logic
 
 router = APIRouter()
@@ -27,7 +32,6 @@ async def _stream_job_events(
     job_id: str, db_session_factory: Callable[[], AsyncSession]
 ) -> AsyncGenerator[str, None]:
     """Generates Server-Sent Events (SSE) for a specific job by polling the database."""
-    import asyncio
 
     last_status = None
     last_updated = None
@@ -116,6 +120,8 @@ async def create_job(
             mode=mode,
             provider=request.provider,
             model_id=request.model_id,
+            resolution=request.resolution,
+            frame_rate=request.frame_rate,
         )
 
         db.add(new_job)
@@ -130,11 +136,14 @@ async def create_job(
 
         return JobStatus(
             job_id=job_id,
+            topic=request.topic,
             status="planning",
             mode=mode,
             provider=request.provider,
             model_id=request.model_id,
             target_audience=request.target_audience,
+            resolution=request.resolution,
+            frame_rate=request.frame_rate,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -165,6 +174,7 @@ async def get_job_status(job_id: str, db: AsyncSession = Depends(get_db)) -> Job
 
     return JobStatus(
         job_id=job.job_id,
+        topic=job.topic,
         status=status_literal,
         plan=job.plan,
         validation=job.validation,
@@ -177,6 +187,8 @@ async def get_job_status(job_id: str, db: AsyncSession = Depends(get_db)) -> Job
         provider=job.provider,
         model_id=job.model_id,
         target_audience=job.target_audience,
+        resolution=job.resolution,
+        frame_rate=job.frame_rate,
         started_at=job.started_at.isoformat() if job.started_at else None,
         finished_at=job.finished_at.isoformat() if job.finished_at else None,
         duration_seconds=(
@@ -252,6 +264,8 @@ async def list_jobs(db: AsyncSession = Depends(get_db)) -> JobListResponse:
                     provider=job.provider,
                     model_id=job.model_id,
                     target_audience=job.target_audience,
+                    resolution=job.resolution,
+                    frame_rate=job.frame_rate,
                     started_at=(job.started_at.isoformat() if job.started_at else None),
                     finished_at=(
                         job.finished_at.isoformat() if job.finished_at else None
@@ -263,6 +277,7 @@ async def list_jobs(db: AsyncSession = Depends(get_db)) -> JobListResponse:
                     ),
                     cost=job.cost,
                     thumbnail_url=job.thumbnail_url,
+                    video_url=job.video_url,
                     video_metadata=job.video_metadata,
                 )
             )
@@ -292,6 +307,8 @@ async def retry_job(
         target_audience=job.target_audience or "General Audience",
         provider=job.provider,
         model_id=job.model_id,
+        resolution=job.resolution,
+        frame_rate=job.frame_rate,
     )
 
     # 3. Trigger background processing
@@ -314,6 +331,7 @@ async def retry_job(
 
     return JobStatus(
         job_id=job.job_id,
+        topic=job.topic,
         status=status_literal,
         plan=job.plan,
         validation=job.validation,
@@ -323,6 +341,8 @@ async def retry_job(
         error=job.error,
         mode=mode_literal,
         retry_count=job.retry_count,
+        resolution=job.resolution,
+        frame_rate=job.frame_rate,
         streamed_thoughts=[],
     )
 
@@ -345,18 +365,8 @@ async def delete_job(job_id: str, db: AsyncSession = Depends(get_db)):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # Delete associated files if they exist
-    import os
-    import shutil
-    from pathlib import Path
-
-    # We need to access JOBS_ROOT, which was defined in main.py
-    # Re-definition here or import from settings
-    _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
-    PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", _PROJECT_ROOT))
-    JOBS_ROOT = PROJECT_ROOT / "data" / "jobs"
-
-    job_dir = JOBS_ROOT / job_id
+    settings = get_settings()
+    job_dir = settings.jobs_dir / job_id
     if job_dir.exists() and job_dir.is_dir():
         try:
             shutil.rmtree(job_dir)
@@ -380,22 +390,16 @@ async def delete_all_jobs(db: AsyncSession = Depends(get_db)):
     Returns:
         None
     """
-    import os
-    import shutil
-    from pathlib import Path
-
-    # Re-definition of JOBS_ROOT
-    _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
-    PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", _PROJECT_ROOT))
-    JOBS_ROOT = PROJECT_ROOT / "data" / "jobs"
+    settings = get_settings()
+    jobs_root = settings.jobs_dir
 
     # Efficient bulk delete
     await db.execute(delete(JobRecord))
     await db.commit()
 
     # Clear filesystem
-    if JOBS_ROOT.exists() and JOBS_ROOT.is_dir():
-        for item in JOBS_ROOT.iterdir():
+    if jobs_root.exists() and jobs_root.is_dir():
+        for item in jobs_root.iterdir():
             if item.is_dir():
                 try:
                     shutil.rmtree(item)

@@ -16,6 +16,8 @@ const jobSchema = z.object({
     target_audience: z.string().optional(),
     provider: z.string().optional(),
     model_id: z.string().optional(),
+    resolution: z.enum(['720p', '1080p']),
+    frame_rate: z.coerce.number().pipe(z.enum([30, 60] as any)),
 });
 
 type JobFormData = z.infer<typeof jobSchema>;
@@ -51,7 +53,7 @@ const AudienceField = ({ register }: { register: UseFormRegister<JobFormData> })
         <select
             {...register('target_audience')}
             id="target_audience"
-            className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-600 transition-all shadow-sm"
+            className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-indigo-500 transition-all shadow-sm"
         >
             <option value="5-year-old">5-year-old</option>
             <option value="High School Student">High School Student</option>
@@ -85,7 +87,7 @@ const ModelSelectionFields = ({
                 <select
                     {...register('provider')}
                     id="provider"
-                    className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-600 transition-all shadow-sm"
+                    className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-indigo-500 transition-all shadow-sm"
                 >
                     {realProvidersOnly.map((providerGroup) => (
                         <option key={providerGroup.provider} value={providerGroup.provider}>
@@ -103,7 +105,7 @@ const ModelSelectionFields = ({
                 <select
                     {...register('model_id')}
                     id="model_id"
-                    className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50 appearance-none cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-600 transition-all shadow-sm"
+                    className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50 appearance-none cursor-pointer hover:border-indigo-500 transition-all shadow-sm"
                     disabled={!selectedProvider}
                 >
                     {models.map((model: string) => (
@@ -116,6 +118,38 @@ const ModelSelectionFields = ({
         </>
     );
 };
+
+const QualityFields = ({ register }: { register: UseFormRegister<JobFormData> }) => (
+    <>
+        <div>
+            <label htmlFor="resolution" className="block text-sm font-semibold text-[var(--foreground)] mb-2">
+                Resolution
+            </label>
+            <select
+                {...register('resolution')}
+                id="resolution"
+                className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-indigo-500 transition-all shadow-sm"
+            >
+                <option value="720p">720p (HD)</option>
+                <option value="1080p">1080p (Full HD)</option>
+            </select>
+        </div>
+
+        <div>
+            <label htmlFor="frame_rate" className="block text-sm font-semibold text-[var(--foreground)] mb-2">
+                Frame Rate
+            </label>
+            <select
+                {...register('frame_rate')}
+                id="frame_rate"
+                className="w-full bg-[var(--background)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-indigo-500 transition-all shadow-sm"
+            >
+                <option value={30}>30 FPS</option>
+                <option value={60}>60 FPS</option>
+            </select>
+        </div>
+    </>
+);
 
 const LoadingOverlay = ({ isLoading }: { isLoading: boolean }) => (
     <AnimatePresence>
@@ -153,7 +187,7 @@ const NoKeysAlert = ({
     <motion.div
         initial={{ opacity: 0, height: 0 }}
         animate={{ opacity: 1, height: 'auto' }}
-        className="mb-8 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm flex items-start justify-between gap-4"
+        className="mb-8 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-200 text-sm flex items-start justify-between gap-4"
         role="alert"
     >
         <span>
@@ -205,12 +239,14 @@ export function JobCreationForm() {
         getValues,
         formState: { errors },
     } = useForm<JobFormData>({
-        resolver: zodResolver(jobSchema),
+        resolver: zodResolver(jobSchema as any),
         defaultValues: {
             topic: '',
             target_audience: 'General Audience',
             provider: 'mock',
             model_id: 'mock-llm',
+            resolution: settings.resolution as "720p" | "1080p",
+            frame_rate: settings.frameRate as 30 | 60,
         },
     });
 
@@ -239,6 +275,8 @@ export function JobCreationForm() {
                 target_audience: data.target_audience || 'General Audience',
                 provider: data.provider || null,
                 model_id: data.model_id || null,
+                resolution: data.resolution,
+                frame_rate: data.frame_rate as 30 | 60,
                 fast_mode: settings.fastMocking,
             });
             toast.success('Council consulting started!');
@@ -255,6 +293,8 @@ export function JobCreationForm() {
                 target_audience: values.target_audience || 'General Audience',
                 provider: 'mock',
                 model_id: 'mock-llm',
+                resolution: values.resolution,
+                frame_rate: values.frame_rate as 30 | 60,
                 fast_mode: settings.fastMocking,
             });
             toast.info('Running mock demo sequence');
@@ -297,6 +337,7 @@ export function JobCreationForm() {
                                 realProvidersOnly={realProvidersOnly}
                             />
                         )}
+                        <QualityFields register={register} />
                         {noKeys && (
                             <div className="md:col-span-2 flex items-center gap-2 text-[var(--text-muted)] text-sm font-medium italic opacity-70">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--surface-border)]" />
@@ -316,9 +357,10 @@ export function JobCreationForm() {
                         {showMockButton && (
                             <Button
                                 type="button"
+                                variant="outline"
                                 onClick={runMockDemo}
                                 disabled={isLoading}
-                                className="w-full h-11 border-2 border-indigo-500 bg-transparent text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300 transition-all font-bold rounded-xl"
+                                className="w-full h-11"
                             >
                                 Run mock demo
                             </Button>

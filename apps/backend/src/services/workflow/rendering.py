@@ -46,7 +46,9 @@ async def step_rendering(
     """
     await update_job({"status": "rendering", "current_step": "rendering"})
     try:
-        render_result = await render_storyboard(code, job_id)
+        render_result = await render_storyboard(
+            code, job_id, resolution=job.resolution, frame_rate=job.frame_rate
+        )
 
         # Calculate approximate cost
         # Base cost + duration-based cost (simulated for now)
@@ -103,7 +105,12 @@ async def step_rendering(
                         "current_step": "rendering_retry",
                     }
                 )
-                render_result = await render_storyboard(retry_code, job_id)
+                render_result = await render_storyboard(
+                    retry_code,
+                    job_id,
+                    resolution=job.resolution,
+                    frame_rate=job.frame_rate,
+                )
 
                 duration = (
                     render_result.metadata.get("duration", 0)
