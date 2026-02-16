@@ -59,12 +59,12 @@ export function VideoPlayer({
     };
 
     return (
-        <div className={cn("relative group overflow-hidden rounded-xl bg-neutral-950 border border-neutral-800 shadow-2xl", className)}>
+        <div className={cn("relative group overflow-hidden rounded-xl bg-[var(--background)] border border-[var(--surface-border)] shadow-2xl", className)}>
             {/* Main Video Element */}
             {src ? (
                 <video
                     ref={videoRef}
-                    className={cn("w-full h-full object-cover transition-opacity duration-700", 
+                    className={cn("w-full h-full object-contain transition-opacity duration-700", 
                         isLoading ? "opacity-0" : "opacity-100"
                     )}
                     playsInline
@@ -79,8 +79,8 @@ export function VideoPlayer({
                     Your browser does not support the video tag.
                 </video>
             ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-neutral-900/50">
-                    <p className="text-neutral-500 text-sm font-medium">No video source available</p>
+                <div className="absolute inset-0 flex items-center justify-center bg-[var(--surface)]/50">
+                    <p className="text-[var(--text-muted)] text-sm font-medium">No video source available</p>
                 </div>
             )}
 
@@ -91,10 +91,10 @@ export function VideoPlayer({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-900/80 backdrop-blur-sm z-10"
+                        className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--surface)]/80 backdrop-blur-sm z-10"
                     >
                         <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mb-3" />
-                        <p className="text-neutral-400 text-xs font-medium uppercase tracking-widest animate-pulse">
+                        <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-widest animate-pulse">
                             Loading Stream...
                         </p>
                     </motion.div>
@@ -108,16 +108,16 @@ export function VideoPlayer({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-900/90 z-20 p-6 text-center"
+                        className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--surface)]/95 z-20 p-6 text-center"
                     >
                         <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20">
                             <AlertCircle className="w-6 h-6 text-red-500" />
                         </div>
-                        <h3 className="text-white font-semibold mb-2">Stream Error</h3>
-                        <p className="text-neutral-400 text-sm mb-6 max-w-xs">{error}</p>
+                        <h3 className="text-[var(--foreground)] font-bold mb-2 uppercase tracking-tight">Stream Error</h3>
+                        <p className="text-[var(--text-muted)] text-sm mb-6 max-w-xs">{error}</p>
                         <button 
                             onClick={handleRetry}
-                            className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors text-sm font-medium border border-neutral-700"
+                            className="flex items-center gap-2 px-4 py-2 bg-[var(--surface)] hover:bg-[var(--surface-border)] text-[var(--foreground)] rounded-lg transition-colors text-sm font-bold border border-[var(--surface-border)]"
                         >
                             <RefreshCw className="w-4 h-4" />
                             Retry Connection
@@ -128,8 +128,8 @@ export function VideoPlayer({
 
             {/* Overlay: Description / Caption */}
             {description && !isLoading && !error && (
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <p className="text-white font-medium text-shadow-sm">{description}</p>
+                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--background)] via-[var(--background)]/40 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <p className="text-[var(--foreground)] font-bold text-shadow-sm">{description}</p>
                 </div>
             )}
         </div>

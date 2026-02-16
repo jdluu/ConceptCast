@@ -73,7 +73,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {sidebarOpen && (
                 <div
-                    className="lg:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+                    className="lg:hidden fixed inset-0 z-30 bg-[var(--background)]/60 backdrop-blur-sm"
                     onClick={() => setSidebarOpen(false)}
                     aria-hidden="true"
                 />
@@ -98,7 +98,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         active={currentNav === 'new-project'} 
                         onClick={() => setCurrentNav('new-project')} 
                         icon={<IconNewProject />} 
-                        label="New Project" 
+                        label="New Concept" 
                     />
                     <NavItem 
                         active={currentNav === 'jobs'} 

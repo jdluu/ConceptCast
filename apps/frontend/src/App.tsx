@@ -108,6 +108,8 @@ function AppContent() {
                     storyboard={storyboard!}
                     validation={job.validation}
                     manimCode={job.manim_code}
+                    durationSeconds={job.duration_seconds}
+                    videoMetadata={job.video_metadata}
                     onReset={resetJob}
                 />
             );
@@ -116,7 +118,7 @@ function AppContent() {
         return (
             <div className="max-w-3xl mx-auto">
                 <header className="mb-8">
-                    <h1 className="text-2xl font-semibold text-white">Create New Project</h1>
+                    <h1 className="text-2xl font-bold text-[var(--foreground)] tracking-tight">Consult the Council</h1>
                 </header>
 
                 <section className="mb-12">
