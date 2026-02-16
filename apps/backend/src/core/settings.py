@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     data_dir: Path = PROJECT_ROOT / "data"
 
+    @property
+    def jobs_dir(self) -> Path:
+        """Returns the absolute path to the jobs artifact directory."""
+        return self.data_dir / "jobs"
+
     model_config = {"env_file": str(PROJECT_ROOT / ".env"), "extra": "ignore"}
 
     def has_any_api_key(self) -> bool:

@@ -72,7 +72,7 @@ export async function deleteJob(jobId: string): Promise<void> {
 }
 
 export async function getAvailableModels(): Promise<components["schemas"]["AvailableModelsResponse"]> {
-    const response = await fetch(`${API_BASE_URL}/models/available`);
+    const response = await fetch(`${API_BASE_URL}/models`);
     if (!response.ok) throw new Error('Failed to get available models');
     return response.json();
 }

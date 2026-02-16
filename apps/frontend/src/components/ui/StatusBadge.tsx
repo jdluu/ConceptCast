@@ -23,7 +23,7 @@ const statusColors: Record<string, string> = {
     reviewing: 'bg-orange-400/10 text-orange-400 border-orange-400/20',
     completed: 'bg-green-400/10 text-green-400 border-green-400/20',
     failed: 'bg-red-400/10 text-red-400 border-red-400/20',
-    queued: 'bg-neutral-400/10 text-neutral-400 border-neutral-400/20',
+    queued: 'bg-[var(--surface-border)]/20 text-[var(--text-muted)] border-[var(--surface-border)]/40',
     pending_retry: 'bg-amber-400/10 text-amber-400 border-amber-400/20',
 };
 
@@ -35,7 +35,7 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, showIcon = true, className = "" }: StatusBadgeProps) {
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${statusColors[status] || 'bg-neutral-400/10 text-neutral-400 border-neutral-400/20'} ${className}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold border ${statusColors[status] || 'bg-[var(--surface-border)]/20 text-[var(--text-muted)] border-[var(--surface-border)]/40'} ${className}`}>
             {showIcon && <StatusIcon status={status} className="w-3 h-3" />}
             {statusLabels[status] || status}
         </span>

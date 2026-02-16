@@ -9,11 +9,11 @@ import { VideoPlayer } from '../ui/VideoPlayer';
 import { API_BASE_URL } from '../../lib/api/client';
 
 const agentBadgeColors: Record<string, string> = {
-    analyst: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
-    validator: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
-    architect: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
-    animator: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
-    reviewer: 'bg-teal-500/20 text-teal-300 border-teal-500/40',
+    analyst: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20',
+    validator: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20',
+    architect: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 border-yellow-500/20',
+    animator: 'bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20',
+    reviewer: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20',
 };
 
 function currentActionLabel(job: JobStatus, storyboard: Storyboard | null): string {
@@ -69,25 +69,14 @@ interface LiveArtifactPreviewProps {
     storyboard: Storyboard | null;
     status: string;
     renderProgress: number;
-    thoughts: Array<{ agent: string; phase: string; content: string }>;
 }
 
-function LiveArtifactPreview({ plan, storyboard, status, renderProgress, thoughts }: LiveArtifactPreviewProps) {
+
+function LiveArtifactPreview({ plan, storyboard, status, renderProgress }: LiveArtifactPreviewProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const isRendering = status === 'rendering';
     const hasStoryboard = !!storyboard;
     const hasPlan = !!plan;
-
-    const relevantThoughts = useMemo(() => {
-        if (hasStoryboard) return [];
-        if (hasPlan && status === 'architecting') {
-             return thoughts.filter(t => t.agent === 'architect');
-        }
-        if (!hasPlan && status === 'planning') {
-            return thoughts.filter(t => t.agent === 'analyst' || t.agent === 'validator');
-        }
-        return [];
-    }, [hasPlan, hasStoryboard, status, thoughts]);
 
     return (
         <>
@@ -121,52 +110,14 @@ function LiveArtifactPreview({ plan, storyboard, status, renderProgress, thought
                     )}
                 </div>
 
-                <div className="p-6 min-h-[300px] max-h-[500px] overflow-y-auto custom-scrollbar">
+                <div className="p-6 overflow-y-auto custom-scrollbar">
                     <AnimatePresence mode="wait">
-                        {!hasPlan && !hasStoryboard && relevantThoughts.length === 0 ? (
-                            <motion.div 
-                                key="loading"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] space-y-4 py-24"
-                            >
-                                <div className="w-10 h-10 rounded-full border-2 border-[var(--surface-border)] border-t-indigo-500 animate-spin shadow-sm" />
-                                <p className="text-sm font-medium italic">Agents are assembling the framework...</p>
-                            </motion.div>
-                        ) : (!hasPlan || (status === 'architecting' && !hasStoryboard)) && relevantThoughts.length > 0 ? (
-                            <motion.div 
-                                key="live-thoughts"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="space-y-4"
-                            >
-                                <div className="text-xs font-bold text-indigo-400/60 uppercase tracking-widest mb-4">Live Activity Stream</div>
-                                {relevantThoughts.slice(-5).map((t, i) => (
-                                    <motion.div 
-                                        key={i}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        className="flex gap-4 items-start p-4 rounded-xl bg-[var(--background)] border border-[var(--surface-border)] shadow-sm"
-                                    >
-                                        <div className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${agentBadgeColors[t.agent]}`}>
-                                            {t.agent}
-                                        </div>
-                                        <p className="text-[var(--foreground)] text-sm leading-relaxed opacity-90">{t.content}</p>
-                                    </motion.div>
-                                ))}
-                                <div className="flex items-center gap-3 px-4">
-                                    <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
-                                    <span className="text-xs text-[var(--text-muted)] font-medium italic">Synthesizing artifacts...</span>
-                                </div>
-                            </motion.div>
-                        ) : (hasStoryboard ? (
+                        {/* 1. Show Storyboard if it exists */}
+                        {hasStoryboard ? (
                             <motion.div 
                                 key="storyboard"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
                                 className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                             >
                                 {storyboard.scenes.slice(0, 4).map((scene) => (
@@ -185,12 +136,12 @@ function LiveArtifactPreview({ plan, storyboard, status, renderProgress, thought
                                     </button>
                                 )}
                             </motion.div>
-                        ) : (
+                        ) : hasPlan ? (
+                            /* 2. Show Plan if it exists */
                             <motion.div 
                                 key="plan"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
                                 className="space-y-4"
                             >
                                 {plan!.teaching_steps.slice(0, 5).map((step) => (
@@ -215,7 +166,18 @@ function LiveArtifactPreview({ plan, storyboard, status, renderProgress, thought
                                     </button>
                                 )}
                             </motion.div>
-                        ))}
+                        ) : (
+                            /* 3. Loading state */
+                            <motion.div 
+                                key="loading"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] space-y-4 py-24"
+                            >
+                                <div className="w-10 h-10 rounded-full border-2 border-[var(--surface-border)] border-t-indigo-500 animate-spin shadow-sm" />
+                                <p className="text-sm font-medium italic opacity-60">Connecting to Council...</p>
+                            </motion.div>
+                        )}
                     </AnimatePresence>
                 </div>
             </motion.div>
@@ -231,16 +193,16 @@ function LiveArtifactPreview({ plan, storyboard, status, renderProgress, thought
                             <div key={scene.scene_id} className="space-y-3">
                                 <div className="flex items-center gap-3">
                                     <span className="px-2 py-1 bg-indigo-500 text-white text-[10px] font-bold rounded">SCENE {scene.scene_id}</span>
-                                    <h3 className="text-lg font-bold text-white">{scene.title}</h3>
+                                    <h3 className="text-lg font-bold text-[var(--foreground)]">{scene.title}</h3>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="p-4 rounded-lg bg-neutral-800/50 border border-neutral-700">
-                                        <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2">Visual Composition</div>
-                                        <p className="text-neutral-300 text-sm leading-relaxed">{scene.description}</p>
+                                    <div className="p-4 rounded-lg bg-[var(--background)] border border-[var(--surface-border)]">
+                                        <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-2">Visual Composition</div>
+                                        <p className="text-[var(--text-muted)] text-sm leading-relaxed">{scene.description}</p>
                                     </div>
                                     <div className="p-4 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
-                                        <div className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-2">Narration Script</div>
-                                        <p className="text-sm italic text-neutral-300">"{scene.narration}"</p>
+                                        <div className="text-[10px] font-bold text-indigo-500 dark:text-indigo-300 uppercase tracking-widest mb-2">Narration Script</div>
+                                        <p className="text-sm italic text-[var(--foreground)]">"{scene.narration}"</p>
                                     </div>
                                 </div>
                             </div>
@@ -249,19 +211,19 @@ function LiveArtifactPreview({ plan, storyboard, status, renderProgress, thought
                 ) : hasPlan ? (
                     <div className="space-y-6">
                         <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 mb-8">
-                             <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Target Audience</div>
-                             <p className="text-white text-lg font-medium">{plan!.target_audience}</p>
+                             <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-1">Target Audience</div>
+                             <p className="text-[var(--foreground)] text-lg font-bold">{plan!.target_audience}</p>
                         </div>
                         {plan!.teaching_steps.map((step) => (
-                            <div key={step.step_id} className="flex gap-6 p-4 rounded-xl hover:bg-neutral-800/40 transition-colors">
-                                <div className="shrink-0 w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center text-white font-bold border border-neutral-700">
+                            <div key={step.step_id} className="flex gap-6 p-4 rounded-xl hover:bg-[var(--background)]/40 transition-colors">
+                                <div className="shrink-0 w-10 h-10 rounded-full bg-[var(--background)] flex items-center justify-center text-[var(--foreground)] font-bold border border-[var(--surface-border)]">
                                     {step.step_id}
                                 </div>
                                 <div className="space-y-2">
-                                    <h3 className="text-xl font-bold text-white">{step.concept}</h3>
+                                    <h3 className="text-xl font-bold text-[var(--foreground)]">{step.concept}</h3>
                                     <div className="flex flex-col gap-1">
-                                         <p className="text-sm text-neutral-300 leading-relaxed"><span className="text-indigo-400 font-semibold italic">Metaphor:</span> {step.visual_metaphor}</p>
-                                         <p className="text-sm text-neutral-400 mt-2 p-3 bg-neutral-800/50 rounded-lg border border-neutral-800 whitespace-pre-wrap"><span className="text-[10px] font-bold block mb-1 text-neutral-500">NARRATION</span>"{step.narration}"</p>
+                                         <p className="text-sm text-[var(--text-muted)] leading-relaxed"><span className="text-indigo-500 font-semibold italic">Metaphor:</span> {step.visual_metaphor}</p>
+                                         <p className="text-sm text-[var(--text-muted)] mt-2 p-3 bg-[var(--background)]/50 rounded-lg border border-[var(--surface-border)] whitespace-pre-wrap"><span className="text-[10px] font-bold block mb-1 text-indigo-500 opacity-60">NARRATION</span>"{step.narration}"</p>
                                     </div>
                                 </div>
                             </div>
@@ -322,15 +284,15 @@ export function GeneratingLessonView({
                             {currentLabel}
                         </div>
                         {(job.provider || job.target_audience) && (
-                            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-neutral-600">
-                                <span className="w-1 h-1 rounded-full bg-neutral-800" />
+                            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] opacity-60">
+                                <span className="w-1 h-1 rounded-full bg-[var(--surface-border)]" />
                                 {job.provider && (
-                                    <span className="flex items-center gap-1.5">
+                                    <span className="flex items-center gap-1.5 text-indigo-500">
                                         {job.provider}
-                                        {job.model_id && <span className="text-neutral-700 lowercase">({job.model_id})</span>}
+                                        {job.model_id && <span className="text-[var(--text-muted)] lowercase font-medium">({job.model_id})</span>}
                                     </span>
                                 )}
-                                {job.provider && job.target_audience && <span className="w-1 h-1 rounded-full bg-neutral-800" />}
+                                {job.provider && job.target_audience && <span className="w-1 h-1 rounded-full bg-[var(--surface-border)]" />}
                                 {job.target_audience && <span className="truncate max-w-[200px]">{job.target_audience}</span>}
                             </div>
                         )}
@@ -358,50 +320,153 @@ export function GeneratingLessonView({
                     />
                 </div>
             ) : (
-                <LiveArtifactPreview 
-                    plan={plan} 
-                    storyboard={storyboard} 
-                    status={job.status} 
-                    renderProgress={renderProgress} 
-                    thoughts={thoughts}
-                />
+                <div className="space-y-8">
+                    <LiveArtifactPreview 
+                        plan={plan} 
+                        storyboard={storyboard} 
+                        status={job.status} 
+                        renderProgress={renderProgress} 
+                    />
+                    <CouncilDeliberation 
+                        status={job.status}
+                        thoughts={thoughts} 
+                        agentBadgeColors={agentBadgeColors} 
+                    />
+                </div>
             )}
-
-                <SystemLogsSection thoughts={thoughts} agentBadgeColors={agentBadgeColors} />
         </div>
     );
 }
 
-function SystemLogsSection({ thoughts, agentBadgeColors }: { thoughts: any[], agentBadgeColors: Record<string, string> }) {
+function CouncilDeliberation({ 
+    status, 
+    thoughts, 
+    agentBadgeColors 
+}: { 
+    status: string;
+    thoughts: any[]; 
+    agentBadgeColors: Record<string, string> 
+}) {
     const { settings } = useAppSettings();
-    const [showThoughts, setShowThoughts] = useState(false);
-    const thoughtsEndRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (showThoughts) {
-             thoughtsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [thoughts.length, showThoughts]);
-
-    if (!settings.agentTransparency) return null;
+    const [showSystemLogs, setShowSystemLogs] = useState(false);
+    
+    const relevantThoughts = useMemo(() => {
+        if (status === 'architecting') return thoughts.filter(t => t.agent === 'architect');
+        if (status === 'planning' || status === 'validating') return thoughts.filter(t => t.agent === 'analyst' || t.agent === 'validator');
+        if (status === 'animating' || status === 'rendering' || status === 'reviewing') return thoughts.filter(t => t.agent === 'animator' || t.agent === 'reviewer');
+        return [];
+    }, [status, thoughts]);
 
     return (
-        <div className="bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl overflow-hidden shadow-lg group">
+        <div className="space-y-6">
+            {/* Live Activity Feed */}
+            <div className="bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl overflow-hidden shadow-lg">
+                <div className="px-6 py-4 border-b border-[var(--surface-border)] bg-[var(--surface)]/50 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                        <span className="text-[10px] font-bold text-[var(--foreground)] uppercase tracking-[0.2em]">Council Deliberation</span>
+                    </div>
+                    <span className="text-[9px] font-bold text-indigo-500/60 uppercase tracking-widest italic">Live Feedback</span>
+                </div>
+                <div className="p-6">
+                    <LiveActivityStream thoughts={relevantThoughts} agentBadgeColors={agentBadgeColors} />
+                </div>
+            </div>
+
+            {/* System Logs (Audit Trail) */}
+            {settings.agentTransparency && (
+                <SystemLogsToggle 
+                    show={showSystemLogs} 
+                    onToggle={() => setShowSystemLogs(!showSystemLogs)} 
+                    thoughts={thoughts}
+                    agentBadgeColors={agentBadgeColors}
+                />
+            )}
+        </div>
+    );
+}
+
+function LiveActivityStream({ thoughts, agentBadgeColors }: { thoughts: any[], agentBadgeColors: Record<string, string> }) {
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    }, [thoughts.length]);
+
+    if (thoughts.length === 0) {
+        return (
+            <div className="py-8 flex flex-col items-center justify-center text-[var(--text-muted)] space-y-3">
+                <div className="w-6 h-6 rounded-full border border-[var(--surface-border)] border-t-indigo-500/50 animate-spin" />
+                <p className="text-xs font-medium italic">Agents are deliberating...</p>
+            </div>
+        );
+    }
+
+    return (
+        <div 
+            ref={scrollRef}
+            className="max-h-[200px] overflow-y-auto custom-scrollbar space-y-4 pr-2"
+        >
+            {thoughts.map((t, i) => (
+                <motion.div 
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex gap-4 items-start"
+                >
+                    <div className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${agentBadgeColors[t.agent]}`}>
+                        {t.agent}
+                    </div>
+                    <p className="text-[var(--foreground)] text-[13px] leading-relaxed opacity-80">{t.content}</p>
+                </motion.div>
+            ))}
+        </div>
+    );
+}
+
+function SystemLogsToggle({ 
+    show, 
+    onToggle, 
+    thoughts, 
+    agentBadgeColors 
+}: { 
+    show: boolean; 
+    onToggle: () => void; 
+    thoughts: any[];
+    agentBadgeColors: Record<string, string>;
+}) {
+    const logRef = useRef<HTMLDivElement>(null);
+    const [isAtBottom, setIsAtBottom] = useState(true);
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const target = e.currentTarget;
+        const bottom = Math.abs(target.scrollHeight - target.clientHeight - target.scrollTop) < 50;
+        setIsAtBottom(bottom);
+    };
+
+    useEffect(() => {
+        if (show && isAtBottom) {
+             logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' });
+        }
+    }, [thoughts.length, show, isAtBottom]);
+
+    return (
+        <div className="bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl overflow-hidden shadow-sm group">
             <button 
-                onClick={() => setShowThoughts(!showThoughts)}
-                className="w-full flex items-center justify-between px-6 py-4 bg-[var(--surface)] group-hover:bg-[var(--background)]/50 transition-colors"
+                onClick={onToggle}
+                className="w-full flex items-center justify-between px-6 py-4 bg-[var(--surface)] hover:bg-[var(--background)]/50 transition-colors"
             >
                 <div className="flex items-center gap-4">
-                    <div className={`p-1.5 rounded-lg bg-[var(--background)] border border-[var(--surface-border)] transition-colors ${showThoughts ? 'text-indigo-500 border-indigo-500/30' : 'text-[var(--text-muted)]'}`}>
+                    <div className={`p-1.5 rounded-lg bg-[var(--background)] border border-[var(--surface-border)] transition-colors ${show ? 'text-indigo-500 border-indigo-500/30' : 'text-[var(--text-muted)]'}`}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
-                    <span className="text-sm font-bold text-[var(--foreground)] uppercase tracking-widest">System Logs</span>
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Full Session Logs</span>
                 </div>
                 <motion.svg 
-                    animate={{ rotate: showThoughts ? 180 : 0 }}
-                    className={`w-4 h-4 text-[var(--text-muted)] transition-colors duration-300 ${showThoughts ? 'text-indigo-500' : ''}`} 
+                    animate={{ rotate: show ? 180 : 0 }}
+                    className={`w-4 h-4 text-[var(--text-muted)] ${show ? 'text-indigo-500' : ''}`} 
                     fill="none" viewBox="0 0 24 24" stroke="currentColor"
                 >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -409,37 +474,26 @@ function SystemLogsSection({ thoughts, agentBadgeColors }: { thoughts: any[], ag
             </button>
             
             <AnimatePresence>
-                {showThoughts && (
+                {show && (
                     <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
                     >
                         <div
-                            className="font-mono text-[13px] overflow-y-auto max-h-[250px] p-6 space-y-3 bg-neutral-950/50"
+                            ref={logRef}
+                            onScroll={handleScroll}
+                            className="font-mono text-[12px] overflow-y-auto max-h-[300px] p-6 space-y-3 bg-[var(--background)]/30 border-t border-[var(--surface-border)]"
                             role="log"
-                            aria-live="polite"
                         >
-                            {thoughts.length === 0 && (
-                                <p className="text-neutral-600 italic animate-pulse">Establishing secure connection to agents...</p>
-                            )}
                             {thoughts.map((t, i) => (
-                                <motion.div 
-                                    key={i} 
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    className="flex gap-3 items-start"
-                                >
-                                    <span
-                                        className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tighter border ${agentBadgeColors[t.agent ?? ''] ?? 'bg-neutral-800 text-neutral-400 border-neutral-700'}`}
-                                    >
+                                <div key={i} className="flex gap-3 items-start opacity-60">
+                                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold border ${agentBadgeColors[t.agent] ?? 'bg-[var(--surface)] text-[var(--text-muted)] border-[var(--surface-border)]'}`}>
                                         {t.agent ?? 'SYS'}
                                     </span>
-                                    <span className="text-neutral-400 leading-relaxed break-words whitespace-pre-wrap">{t.content ?? ''}</span>
-                                </motion.div>
+                                    <span className="text-[var(--foreground)] break-words whitespace-pre-wrap">{t.content ?? ''}</span>
+                                </div>
                             ))}
-                            <div ref={thoughtsEndRef} />
                         </div>
                     </motion.div>
                 )}

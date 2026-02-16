@@ -1,7 +1,9 @@
 import ast
+import json
 import os
 import re
 import shutil
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -10,6 +12,7 @@ from loguru import logger
 
 from core.exceptions import AnimationGenerationError
 from core.settings import get_settings
+from services.sandbox import docker_sandbox
 
 # Opening code fence (optional "python" / "py")
 _CODE_FENCE_START = re.compile(r"^\s*```(?:python|py)?\s*\n?", re.IGNORECASE)
@@ -111,22 +114,23 @@ def _sanitize_code(code: str) -> None:
 
 
 def extract_and_validate_manim_code(raw: str) -> str:
-    """
-    Extracts raw Python from animator output (strips markdown fences) and validates.
+    """Extracts raw Python from animator output and validates it.
 
-    - Removes leading ```python / ``` and trailing ``` so Manim receives valid .py.
-    - Validates Python syntax with ast.parse.
-    - Ensures a class named SceneGen exists (required for rendering).
+    This function:
+    1. Strips markdown fences (e.g., ```python).
+    2. Validates Python syntax using AST parsing.
+    3. Runs an AST-based sanitizer to block unsafe operations.
+    4. Ensures a 'SceneGen' class exists, which is required for Manim rendering.
 
     Args:
-        raw: The animator output (may be wrapped in markdown code blocks).
+        raw: The animator output, potentially wrapped in markdown code blocks.
 
     Returns:
-        str: Cleaned, validated Python code.
+        str: Cleaned and validated Python code.
 
     Raises:
-        RuntimeError: If code cannot be extracted, is invalid Python,
-            or missing SceneGen.
+        RuntimeError: If code extraction fails, syntax is invalid, unsafe patterns
+            are detected, or the required 'SceneGen' class is missing.
     """
     code = raw.strip()
     # Strip opening fence (e.g. ```python or ```)
@@ -168,20 +172,6 @@ def extract_and_validate_manim_code(raw: str) -> str:
     return code
 
 
-def _quality_to_flag(quality: str) -> str:
-    normalized = quality.strip().lower()
-    mapping = {
-        "ql": "-ql",
-        "low": "-ql",
-        "dev": "-ql",
-        "qm": "-qm",
-        "medium": "-qm",
-        "prod": "-qh",
-        "production": "-qh",
-        "qh": "-qh",
-        "high": "-qh",
-    }
-    return mapping.get(normalized, "-ql")
 
 
 @dataclass
@@ -203,19 +193,23 @@ class PreviewResult:
     error: str | None
 
 
-async def render_storyboard(code: str, job_id: str) -> VideoResult:
-    """
-    Renders the Manim animation for the given code.
+async def render_storyboard(
+    code: str, job_id: str, resolution: str = "720p", frame_rate: int = 30
+) -> VideoResult:
+    """Renders the Manim animation for the given code with specified quality.
 
     Args:
         code: The Manim Python code to execute.
         job_id: Unique job identifier for artifact isolation.
+        resolution: Output video resolution (e.g., '720p', '1080p').
+        frame_rate: Frames per second for the output video.
 
     Returns:
-        VideoResult: Object containing URLs and metadata.
+        VideoResult: Object containing URLs to the video and thumbnail, and metadata.
 
     Raises:
-        AnimationGenerationError: If rendering fails or code is invalid.
+        AnimationGenerationError: If rendering fails, code is invalid, or no video
+            output is produced by Manim.
     """
     # 1. Validate and sanitize code
     try:
@@ -245,18 +239,17 @@ async def render_storyboard(code: str, job_id: str) -> VideoResult:
     max_retries = 2
     last_error = None
 
-    from services.sandbox import docker_sandbox
-
     for attempt in range(max_retries + 1):
         try:
+            # Determine quality flag: 720p -> -qm, 1080p -> -qh
+            quality_flag = "-qh" if resolution == "1080p" else "-qm"
+
             result = docker_sandbox.run_rendering(
                 job_dir=job_dir,
                 code_file="scene.py",
                 scene_name="SceneGen",
                 host_job_dir=host_job_dir,
-                quality_flag=_quality_to_flag(
-                    get_settings().render_quality
-                ),  # Use configured quality
+                quality_flag=quality_flag,
             )
 
             if not result:
@@ -311,9 +304,16 @@ async def render_storyboard(code: str, job_id: str) -> VideoResult:
 
 
 async def render_preview(code: str, job_id: str) -> PreviewResult:
-    """
-    Generates a low-quality preview execution to capture logs and potential errors.
-    Does not halt on video missing, but returns logs for analysis.
+    """Generates a low-quality preview execution to capture logs and errors.
+
+    Used during the iterative generation loop to provide feedback to the LLM.
+
+    Args:
+        code: The Manim Python code to test.
+        job_id: Unique job identifier.
+
+    Returns:
+        PreviewResult: Success status, execution logs, and optional error message.
     """
     # 1. Validate
     try:
@@ -334,7 +334,6 @@ async def render_preview(code: str, job_id: str) -> PreviewResult:
 
     # 3. Run with low quality
     try:
-        from services.sandbox import docker_sandbox
 
         result = docker_sandbox.run_rendering(
             job_dir=job_dir,
@@ -374,9 +373,6 @@ async def render_preview(code: str, job_id: str) -> PreviewResult:
 
 def _get_video_metadata(video_path: Path) -> dict[str, Any]:
     """Extracts resolution, duration, bitrate, etc. using ffprobe."""
-    import json
-    import subprocess
-
     try:
         cmd = [
             "ffprobe",
@@ -410,8 +406,6 @@ def _get_video_metadata(video_path: Path) -> dict[str, Any]:
 
 def _generate_thumbnail(video_path: Path, job_id: str) -> str | None:
     """Generates a JPG thumbnail from the middle of the video."""
-    import subprocess
-
     thumb_path = video_path.parent / "thumbnail.jpg"
     try:
         # Seek to 1 second in or half way

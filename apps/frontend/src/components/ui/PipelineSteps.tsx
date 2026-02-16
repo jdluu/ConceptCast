@@ -26,7 +26,7 @@ export function PipelineSteps({ status }: PipelineStepsProps) {
         <div className="w-full pt-6 pb-14">
             <div className="relative flex items-center justify-between w-full">
                 {/* Background Line */}
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-neutral-800 rounded-full -z-10" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-[var(--surface-border)] rounded-full -z-10" />
                 
                 {/* Active Line (Progress) */}
                 <motion.div 
@@ -50,14 +50,14 @@ export function PipelineSteps({ status }: PipelineStepsProps) {
                                 layout
                                 animate={{
                                     scale: isCurrent ? 1.15 : 1,
-                                    backgroundColor: isCompleted ? '#6366f1' : '#0a0a0a',
-                                    borderColor: (isCompleted || isCurrent) ? '#6366f1' : '#262626',
+                                    backgroundColor: isCompleted ? '#6366f1' : 'var(--background)',
+                                    borderColor: (isCompleted || isCurrent) ? '#6366f1' : 'var(--surface-border)',
                                     boxShadow: isCurrent ? '0 0 20px rgba(99,102,241,0.4)' : 'none'
                                 }}
                                 className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors z-10 shrink-0
                                     ${isCompleted ? 'text-white' : ''}
-                                    ${isCurrent ? 'text-indigo-400' : ''}
-                                    ${isPending ? 'text-neutral-600' : ''}
+                                    ${isCurrent ? 'text-indigo-500' : ''}
+                                    ${isPending ? 'text-[var(--text-muted)]' : ''}
                                 `}
                             >
                                 <AnimatePresence mode="wait">
@@ -90,8 +90,8 @@ export function PipelineSteps({ status }: PipelineStepsProps) {
                             <div className="absolute top-10 w-full flex flex-col items-center">
                                 <motion.span 
                                     animate={{ 
-                                        color: isCurrent ? '#ffffff' : (isCompleted ? '#a3a3a3' : '#525252'),
-                                        opacity: isCurrent ? 1 : 0.7 
+                                        color: isCurrent ? 'var(--foreground)' : (isCompleted ? 'var(--text-muted)' : 'var(--text-muted)'),
+                                        opacity: isCurrent ? 1 : 0.6 
                                     }}
                                     className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider mb-0.5 whitespace-nowrap px-1"
                                 >

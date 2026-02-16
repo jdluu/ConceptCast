@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 
 from loguru import logger
@@ -103,15 +104,32 @@ async def process_job_logic(
         request: The user request containing topic, audience, and provider settings.
         db_session_factory: A factory for creating new asynchronous database sessions
             to persist progress at each step.
+
+    Returns:
+        None
+
+    Raises:
+        ConceptCastException: If a known workflow step fails.
+        Exception: For unexpected system failures during orchestration.
     """
     use_mock = determine_execution_mode(request)
 
     async def update_job(updates: dict[str, Any]) -> None:
-        """Async callback to persist job modifications."""
+        """Async callback to persist job modifications.
+
+        Args:
+            updates: Dictionary of fields to update in the JobRecord.
+        """
         await update_job_record(db_session_factory, job_id, updates)
 
     async def on_thought(agent: str, phase: str, content: str) -> None:
-        """Callback to stream agent internal state updates."""
+        """Callback to stream agent internal state updates.
+
+        Args:
+            agent: The identifier of the agent (e.g., 'animator').
+            phase: The current execution phase (e.g., 'Generation').
+            content: The reasoning or status text to stream.
+        """
         await append_job_thought(db_session_factory, job_id, agent, phase, content)
 
     if use_mock:
@@ -129,8 +147,6 @@ async def process_job_logic(
                 return
 
         # Record start time
-        from datetime import UTC, datetime
-
         await update_job({"started_at": datetime.now(UTC)})
 
         await execute_workflow(request, job_state, job_id, update_job, on_thought)
@@ -140,7 +156,6 @@ async def process_job_logic(
 
     except ConceptCastException as e:
         logger.error(f"Job {job_id} failed: {e.message}")
-        from datetime import UTC, datetime
 
         await update_job(
             {
@@ -152,7 +167,6 @@ async def process_job_logic(
         )
     except Exception as e:
         logger.exception(f"Job {job_id} failed unexpectedly")
-        from datetime import UTC, datetime
 
         await update_job(
             {
@@ -167,7 +181,15 @@ async def process_job_logic(
 async def prepare_job_for_retry(
     job_id: str, db_session_factory: Callable[[], AsyncSession]
 ) -> JobRecord:
-    """Interface for retrying a job, delegates to job_management."""
+    """Interface for retrying a job, delegates to job_management.
+
+    Args:
+        job_id: The UUID of the job to retry.
+        db_session_factory: Factory for DB sessions.
+
+    Returns:
+        JobRecord: The updated job record in a retry-ready state.
+    """
     job = await prepare_job_for_retry_logic(job_id, db_session_factory)
     logger.debug(f"Job {job_id} prepared for retry (Count: {job.retry_count})")
     return job

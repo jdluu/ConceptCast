@@ -3,6 +3,7 @@ import { listJobs, retryJob, deleteJob, getJobStatus, type JobSummary, type JobS
 import { useDeveloperMode } from '../../lib/contexts/developer-mode';
 import { StatusBadge } from '../ui/StatusBadge';
 import { JobDetailPanel } from '../jobs/JobDetailPanel';
+import { VideoPlayer } from '../ui/VideoPlayer';
 import { 
     Play, 
     RotateCcw, 
@@ -13,9 +14,12 @@ import {
     Filter,
     ArrowUpDown,
     CheckSquare,
-    Square
+    Square,
+    Clock,
+    PlayCircle
 } from 'lucide-react';
-import { formatDuration, cn } from '../../lib/utils';
+import { formatDuration, formatGenerationTime } from '../../lib/utils/duration-utils';
+import { cn } from '../../lib/utils';
 
 const formatTime = (isoString: string | null | undefined) => {
     if (!isoString) return '-';
@@ -29,6 +33,7 @@ export function JobsPage() {
     const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
     const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
     const [fullJobDetails, setFullJobDetails] = useState<Record<string, JobStatus>>({});
+    const [playingJob, setPlayingJob] = useState<JobSummary | null>(null);
     
     // Filters
     const [statusFilter, setStatusFilter] = useState('all');
@@ -43,7 +48,7 @@ export function JobsPage() {
         
         return result.sort((a, b) => {
             if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-            if (sortBy === 'duration') return (b.duration_seconds || 0) - (a.duration_seconds || 0);
+            if (sortBy === 'duration') return (Number((b as any).video_metadata?.duration) || 0) - (Number((a as any).video_metadata?.duration) || 0);
             if (sortBy === 'cost') return ((b as any).cost || 0) - ((a as any).cost || 0);
             return 0;
         });
@@ -116,7 +121,7 @@ export function JobsPage() {
     };
 
     if (loading && jobs.length === 0) {
-        return <div className="p-8 text-neutral-400">Loading jobs...</div>;
+        return <div className="p-8 text-[var(--text-muted)]">Loading jobs...</div>;
     }
 
     return (
@@ -204,12 +209,39 @@ export function JobsPage() {
                                         }
                                     }}
                                     onRetry={() => retryJob(job.job_id).then(loadJobs)}
+                                    onPlay={() => setPlayingJob(job)}
                                 />
                             ))
                         )}
                     </tbody>
                 </table>
             </div>
+
+            {/* Video Preview Modal */}
+            {playingJob && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/95 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="relative w-full max-w-5xl">
+                        <button 
+                            onClick={() => setPlayingJob(null)}
+                            className="absolute -top-12 right-0 text-white/60 hover:text-white transition-colors flex items-center gap-2 uppercase text-xs font-bold tracking-widest"
+                        >
+                            Close
+                        </button>
+                        <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black">
+                            <VideoPlayer src={playingJob.video_url!} />
+                        </div>
+                        <div className="mt-6 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-xl font-bold text-white">{playingJob.topic || 'Untitled Concept'}</h3>
+                                <p className="text-white/50 text-sm mt-1">{playingJob.model_id || 'ConceptCast Engine v1'}</p>
+                            </div>
+                            <div className="flex gap-4">
+                                <button className="px-6 py-2.5 bg-white/10 border border-white/10 rounded-xl text-sm font-bold text-white hover:bg-white/20 transition-all">Download HD</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -223,9 +255,10 @@ interface JobRowProps {
     onToggleSelect: () => void;
     onDelete: () => void;
     onRetry: () => void;
+    onPlay: () => void;
 }
 
-function JobRow({ job, isExpanded, isSelected, detail, onToggleExpand, onToggleSelect, onDelete, onRetry }: JobRowProps) {
+function JobRow({ job, isExpanded, isSelected, detail, onToggleExpand, onToggleSelect, onDelete, onRetry, onPlay }: JobRowProps) {
     const cost = (job as any).cost || 0;
     const metadata = (job as any).video_metadata || {};
 
@@ -259,8 +292,17 @@ function JobRow({ job, isExpanded, isSelected, detail, onToggleExpand, onToggleS
                 <td className="px-4 py-5">
                     <StatusBadge status={job.status as any} />
                 </td>
-                <td className="px-4 py-5 text-[var(--text-muted)] font-medium whitespace-nowrap">
-                    {formatDuration(job.duration_seconds)}
+                <td className="px-4 py-5 font-medium whitespace-nowrap">
+                    <div className="flex flex-col">
+                        <span className="text-[var(--foreground)] text-xs flex items-center gap-1.5">
+                            <PlayCircle className="w-3 h-3 text-indigo-500/50" />
+                            {formatDuration(Number(metadata.duration))}
+                        </span>
+                        <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
+                            <Clock className="w-2.5 h-2.5" />
+                            {formatGenerationTime(job.duration_seconds)}
+                        </span>
+                    </div>
                 </td>
                 <td className="px-4 py-5">
                     <div className="flex flex-col">
@@ -278,8 +320,8 @@ function JobRow({ job, isExpanded, isSelected, detail, onToggleExpand, onToggleS
                 </td>
                 <td className="pl-4 pr-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1 px-1">
-                        {job.status === 'completed' && <ActionButton icon={<Play className="w-3.5 h-3.5" />} title="Play" onClick={() => {}} />}
-                        <ActionButton icon={<RotateCcw className="w-3.5 h-3.5" />} title="Retry" onClick={onRetry} />
+                        {job.status === 'completed' && <ActionButton icon={<Play className="w-3.5 h-3.5" />} title="Play" onClick={onPlay} />}
+                        {job.status === 'failed' && <ActionButton icon={<RotateCcw className="w-3.5 h-3.5" />} title="Retry" onClick={onRetry} />}
                         {job.status === 'completed' && <ActionButton icon={<Download className="w-3.5 h-3.5" />} title="Download" onClick={() => {}} />}
                         <ActionButton icon={<Trash2 className="w-3.5 h-3.5" />} title="Delete" variant="danger" onClick={onDelete} />
                         <button 
@@ -307,11 +349,15 @@ function JobRow({ job, isExpanded, isSelected, detail, onToggleExpand, onToggleS
     );
 }
 
-function ActionButton({ icon, title, onClick, variant = 'default' }: { icon: React.ReactNode; title: string, onClick: () => void, variant?: 'default' | 'danger' }) {
+function ActionButton({ icon, title, onClick, variant = 'default' }: { icon: React.ReactNode; title: string, onClick: (e: React.MouseEvent) => void, variant?: 'default' | 'danger' }) {
     return (
         <button 
             title={title} 
-            onClick={onClick}
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClick(e);
+            }}
             className={cn(
                 "p-2 rounded-lg transition-all active:scale-95 shadow-sm",
                 variant === 'danger' ? "hover:bg-red-500/10 hover:text-red-500 text-[var(--text-muted)]" : "hover:bg-indigo-500/10 hover:text-indigo-600 text-[var(--text-muted)]"
@@ -331,7 +377,7 @@ function FilterSelect({ icon, value, onChange, options }: { icon: React.ReactNod
             <select 
                 value={value} 
                 onChange={(e) => onChange(e.target.value)}
-                className="pl-8 pr-10 py-2 bg-[var(--surface)] border border-[var(--surface-border)] rounded-xl text-xs font-bold text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none appearance-none cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-600 transition-all shadow-sm"
+                className="pl-8 pr-10 py-2 bg-[var(--surface)] border border-[var(--surface-border)] rounded-xl text-xs font-bold text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none appearance-none cursor-pointer hover:border-[var(--surface-border)] transition-all shadow-sm"
             >
                 {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>

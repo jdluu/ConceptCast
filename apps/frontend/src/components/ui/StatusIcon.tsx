@@ -16,7 +16,7 @@ export function StatusIcon({ status, className = "w-5 h-5" }: StatusIconProps) {
     switch (status) {
         case 'queued':
         case 'pending_retry':
-            return <Clock className={`${className} text-neutral-500`} />;
+            return <Clock className={`${className} text-[var(--text-muted)]`} />;
         case 'planning':
         case 'validating':
         case 'architecting':
@@ -29,6 +29,6 @@ export function StatusIcon({ status, className = "w-5 h-5" }: StatusIconProps) {
         case 'failed':
             return <XCircle className={`${className} text-red-400`} />;
         default:
-            return <Square className={`${className} text-neutral-400`} />;
+            return <Square className={`${className} text-[var(--text-muted)] opacity-50`} />;
     }
 }

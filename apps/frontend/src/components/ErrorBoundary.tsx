@@ -25,15 +25,15 @@ class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-red-50 text-red-900 p-4">
-          <div className="bg-white p-8 rounded-lg shadow-lg max-w-lg w-full">
-            <h2 className="text-2xl font-bold mb-4 text-red-600">Something went wrong.</h2>
-            <p className="mb-4 text-gray-700">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)] text-[var(--foreground)] p-4">
+          <div className="bg-[var(--surface)] border border-[var(--surface-border)] p-8 rounded-2xl shadow-2xl max-w-lg w-full">
+            <h2 className="text-2xl font-bold mb-4 text-red-500">Something went wrong.</h2>
+            <p className="mb-4 text-[var(--text-muted)] font-medium">
               An unexpected error occurred. Please try refreshing the page.
             </p>
             {this.state.error && (
-              <details className="mb-6 p-4 bg-gray-100 rounded text-sm overflow-auto max-h-48 whitespace-pre-wrap font-mono text-red-800">
-                <summary className="cursor-pointer mb-2 font-semibold">Error Details</summary>
+              <details className="mb-6 p-4 bg-[var(--background)] border border-[var(--surface-border)] rounded-xl text-xs overflow-auto max-h-48 whitespace-pre-wrap font-mono text-red-500/80">
+                <summary className="cursor-pointer mb-2 font-bold uppercase tracking-widest opacity-60">Error Details</summary>
                 {this.state.error.toString()}
               </details>
             )}

@@ -8,11 +8,12 @@ import {
     Download,
     Calendar,
     Clock,
+    PlayCircle,
     ChevronDown
 } from 'lucide-react';
 import { useDeveloperMode } from '../../lib/contexts/developer-mode';
 import { VideoPlayer } from '../ui/VideoPlayer';
-import { formatDuration } from '../../lib/utils';
+import { formatDuration, formatGenerationTime } from '../../lib/utils/duration-utils';
 
 export function LibraryPage() {
     const [jobs, setJobs] = useState<JobSummary[]>([]);
@@ -60,7 +61,7 @@ export function LibraryPage() {
             if (sortBy === 'latest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
             if (sortBy === 'topic') return a.topic.localeCompare(b.topic);
-            if (sortBy === 'duration') return (b.duration_seconds || 0) - (a.duration_seconds || 0);
+            if (sortBy === 'duration') return (Number(b.video_metadata?.duration) || 0) - (Number(a.video_metadata?.duration) || 0);
             return 0;
         });
     }, [jobs, search, developerMode, sortBy, topicFilter]);
@@ -75,7 +76,7 @@ export function LibraryPage() {
     };
     
     if (loading) {
-        return <div className="p-8 text-neutral-400">Loading library...</div>;
+        return <div className="p-8 text-[var(--text-muted)]">Loading library...</div>;
     }
     
     return (
@@ -155,8 +156,9 @@ export function LibraryPage() {
                                 <div className="absolute inset-0 bg-gradient-to-t from-[var(--surface)]/90 via-transparent to-transparent opacity-60 group-hover:opacity-100 transition-opacity" />
                                 
                                 {/* Duration Badge */}
-                                <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/80 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase tracking-wider border border-white/10">
-                                    {formatDuration(job.duration_seconds)}
+                                <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/80 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase tracking-wider border border-white/10 flex items-center gap-1.5">
+                                    <PlayCircle className="w-3 h-3 text-indigo-400" />
+                                    {formatDuration(Number(job.video_metadata?.duration))}
                                 </div>
 
                                 {/* Hover Play Button */}
@@ -175,10 +177,15 @@ export function LibraryPage() {
                                 <h2 className="text-lg font-bold text-[var(--foreground)] mb-2 line-clamp-2 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                                     {job.topic}
                                 </h2>
-                                <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] mb-6">
+                                <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] mb-6 flex-wrap">
                                     <span className="flex items-center gap-1">
-                                        <Clock className="w-3.5 h-3.5" />
+                                        <Calendar className="w-3.5 h-3.5" />
                                         {new Date(job.created_at).toLocaleDateString()}
+                                    </span>
+                                    <span className="w-1 h-1 bg-[var(--surface-border)] rounded-full" />
+                                    <span className="flex items-center gap-1">
+                                        <Clock className="w-3.5 h-3.5 text-indigo-500/50" />
+                                        {formatGenerationTime(job.duration_seconds)} gen
                                     </span>
                                     <span className="w-1 h-1 bg-[var(--surface-border)] rounded-full" />
                                     <span className="font-mono text-[10px] uppercase tracking-tighter text-[var(--text-muted)] opacity-80">{job.model_id?.split(':')[0] || 'Unknown'}</span>
@@ -250,7 +257,7 @@ function FilterSelect({ icon, value, onChange, options }: { icon: React.ReactNod
             <select 
                 value={value} 
                 onChange={(e) => onChange(e.target.value)}
-                className="pl-11 pr-10 py-3 bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl text-sm font-bold text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-[var(--foreground)] transition-all shadow-sm"
+                className="pl-11 pr-10 py-3 bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl text-sm font-bold text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none cursor-pointer hover:border-indigo-500 hover:text-[var(--foreground)] transition-all shadow-sm"
             >
                 {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>

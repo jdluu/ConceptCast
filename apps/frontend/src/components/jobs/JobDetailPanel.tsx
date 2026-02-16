@@ -3,7 +3,7 @@ import { JobStatus, ThoughtLog } from '../../lib/api/client';
 import { StatusBadge } from '../ui/StatusBadge';
 import { VideoPlayer } from '../ui/VideoPlayer';
 import { format } from 'date-fns';
-import { formatDuration } from '../../lib/utils';
+import { formatDuration } from '../../lib/utils/duration-utils';
 
 interface JobDetailPanelProps {
     job: JobStatus;
@@ -14,21 +14,21 @@ export function JobDetailPanel({ job }: JobDetailPanelProps) {
     const audience = job.target_audience || 'General';
 
     return (
-        <div className="p-8 bg-neutral-900/80 border-t border-neutral-800 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="p-8 bg-[var(--surface)] border-t border-[var(--surface-border)] animate-in fade-in slide-in-from-top-4 duration-300">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Left Column: Preview & Metadata */}
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider">Video Preview</h3>
+                        <h3 className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-wider">Video Preview</h3>
                         <StatusBadge status={job.status} />
                     </div>
                     {job.video_url ? (
-                        <div className="rounded-xl overflow-hidden border border-neutral-800 shadow-2xl shadow-black/50">
+                        <div className="rounded-xl overflow-hidden border border-[var(--surface-border)] shadow-2xl shadow-indigo-500/10">
                             <VideoPlayer src={job.video_url} />
                         </div>
                     ) : (
-                        <div className="aspect-video bg-neutral-800/50 rounded-xl flex items-center justify-center border border-dashed border-neutral-700">
-                            <span className="text-neutral-500 text-sm">Video not yet rendered</span>
+                        <div className="aspect-video bg-[var(--background)]/50 rounded-xl flex items-center justify-center border border-dashed border-[var(--surface-border)]">
+                            <span className="text-[var(--text-muted)] text-sm">Video not yet rendered</span>
                         </div>
                     )}
 
@@ -62,24 +62,24 @@ export function JobDetailPanel({ job }: JobDetailPanelProps) {
 
 function DataCard({ label, value, subValue }: { label: string; value: string; subValue?: string }) {
     return (
-        <div className="p-4 bg-neutral-800/30 rounded-lg border border-neutral-800">
-            <span className="block text-[10px] text-neutral-500 uppercase font-bold tracking-tight mb-1">{label}</span>
-            <span className="block text-sm text-white font-medium truncate" title={value}>{value}</span>
-            {subValue && <span className="block text-[10px] text-neutral-600 truncate">{subValue}</span>}
+        <div className="p-4 bg-[var(--background)]/30 rounded-lg border border-[var(--surface-border)]">
+            <span className="block text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-tight mb-1">{label}</span>
+            <span className="block text-sm text-[var(--foreground)] font-bold truncate" title={value}>{value}</span>
+            {subValue && <span className="block text-[10px] text-[var(--text-muted)] opacity-60 truncate">{subValue}</span>}
         </div>
     );
 }
 
 function PromptView({ topic, audience }: { topic: string; audience: string | null | undefined }) {
     return (
-        <div className="bg-neutral-800/30 p-4 rounded-lg border border-neutral-800 min-h-[200px]">
+        <div className="bg-[var(--background)]/30 p-4 rounded-lg border border-[var(--surface-border)] min-h-[200px]">
             <div className="mb-4">
-                <span className="text-[10px] text-neutral-500 uppercase font-bold">Topic</span>
-                <p className="text-sm text-neutral-300 mt-1">{topic}</p>
+                <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Topic</span>
+                <p className="text-sm text-[var(--foreground)] font-medium mt-1">{topic}</p>
             </div>
             <div>
-                <span className="text-[10px] text-neutral-500 uppercase font-bold">Target Audience</span>
-                <p className="text-sm text-neutral-300 mt-1">{audience || 'General'}</p>
+                <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Target Audience</span>
+                <p className="text-sm text-[var(--foreground)] font-medium mt-1">{audience || 'General'}</p>
             </div>
         </div>
     );
@@ -88,13 +88,13 @@ function PromptView({ topic, audience }: { topic: string; audience: string | nul
 function CodeView({ code }: { code: string | null | undefined }) {
     return (
         <div className="relative group">
-            <pre className="p-4 bg-neutral-950 rounded-lg border border-neutral-800 overflow-x-auto max-h-[400px] text-[12px] leading-relaxed font-mono text-indigo-300/90 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
+            <pre className="p-4 bg-[var(--background)] rounded-lg border border-[var(--surface-border)] overflow-x-auto max-h-[400px] text-[12px] leading-relaxed font-mono text-indigo-400 dark:text-indigo-300/90 scrollbar-thin scrollbar-thumb-[var(--surface-border)] scrollbar-track-transparent">
                 <code>{code || '# No code generated yet'}</code>
             </pre>
-            {code && (
+                {code && (
                 <button 
                     onClick={() => navigator.clipboard.writeText(code)}
-                    className="absolute top-2 right-2 p-2 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-white"
+                    className="absolute top-2 right-2 p-2 bg-[var(--surface)] border border-[var(--surface-border)] rounded-md text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--foreground)]"
                 >
                     Copy
                 </button>
@@ -105,17 +105,17 @@ function CodeView({ code }: { code: string | null | undefined }) {
 
 function ThoughtsView({ thoughts }: { thoughts: ThoughtLog[] | undefined }) {
     return (
-        <div className="bg-neutral-950 p-4 rounded-lg border border-neutral-800 max-h-[400px] overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-neutral-800">
+        <div className="bg-[var(--background)] p-4 rounded-lg border border-[var(--surface-border)] max-h-[400px] overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-[var(--surface-border)]">
             {(!thoughts || thoughts.length === 0) ? (
-                <p className="text-neutral-500 text-sm italic py-4 text-center">No thoughts recorded</p>
+                <p className="text-[var(--text-muted)] text-sm italic py-4 text-center">No thoughts recorded</p>
             ) : (
                 thoughts.map((t, i) => (
                     <div key={i} className="border-l-2 border-indigo-500/30 pl-3 py-0.5">
                         <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded uppercase font-bold tracking-tighter">{t.agent}</span>
-                            <span className="text-[10px] text-neutral-600 font-mono">{t.phase}</span>
+                            <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-1.5 py-0.5 rounded uppercase font-bold tracking-tighter">{t.agent}</span>
+                            <span className="text-[10px] text-[var(--text-muted)] opacity-60 font-mono">{t.phase}</span>
                         </div>
-                        <p className="text-sm text-neutral-400 leading-snug">{t.content}</p>
+                        <p className="text-sm text-[var(--text-muted)] leading-snug">{t.content}</p>
                     </div>
                 ))
             )}
@@ -127,15 +127,15 @@ function TabsSection({ tabs }: { tabs: { id: string; label: string; content: Rea
     const [activeTab, setActiveTab] = React.useState(tabs[0].id);
     return (
         <div>
-            <div className="flex border-b border-neutral-800 mb-4">
+            <div className="flex border-b border-[var(--surface-border)] mb-4">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
+                        className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
                             activeTab === tab.id 
-                            ? 'text-indigo-400 border-indigo-500 bg-indigo-500/5' 
-                            : 'text-neutral-500 border-transparent hover:text-neutral-300'
+                            ? 'text-indigo-500 border-indigo-500 bg-indigo-500/5' 
+                            : 'text-[var(--text-muted)] border-transparent hover:text-[var(--foreground)]'
                         }`}
                     >
                         {tab.label}
