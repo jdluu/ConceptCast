@@ -16,10 +16,10 @@ import {
     ChevronDown,
     PlayCircle
 } from 'lucide-react';
-import type { CurriculumPlan, Storyboard } from '../../lib/api/client';
-import { Button } from '../ui/button';
-import { Card } from '../ui/card';
-import { formatDuration, formatGenerationTime } from '../../lib/utils/duration-utils';
+import type { CurriculumPlan, Storyboard } from '@/lib/api/client';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { formatDuration, formatGenerationTime } from '@/lib/utils/durationUtils';
 
 interface VideoResultPageProps {
     videoUrl: string | null;

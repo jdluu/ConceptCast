@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react';
-import { useNavStore } from '../../lib/store/useNavStore';
+import { useNavStore } from '@/lib/store/useNavStore';
 
 const iconClass = 'w-5 h-5 shrink-0';
 
@@ -39,14 +39,20 @@ function IconSettings() {
 }
 
 interface DashboardLayoutProps {
+    /** The main content area of the application. */
     children: ReactNode;
 }
 
 /**
- * Provides the primary application layout and navigation structure.
+ * The primary structural component for the application dashboard.
  *
- * Sidebar: circular logo, app name, and nav items (New Project, Jobs, Library, Settings).
- * No Templates, no user profile. Responsive: collapsible on mobile via hamburger.
+ * This component provides a consistent layout with a responsive sidebar
+ * containing the main navigation links. It manages the sidebar's open/closed
+ * state on mobile devices and integrates with the navigation store to
+ * track the current active view.
+ *
+ * @param {DashboardLayoutProps} props - Component properties.
+ * @returns {JSX.Element} The rendered dashboard layout.
  */
 export function DashboardLayout({ children }: DashboardLayoutProps) {
     const { currentNav, setCurrentNav } = useNavStore();
@@ -129,6 +135,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     );
 }
 
+/**
+ * Individual navigation button displayed in the sidebar.
+ *
+ * @param {Object} props - Component properties.
+ * @param {boolean} props.active - Whether the item is the currently active route.
+ * @param {() => void} props.onClick - Selection callback.
+ * @param {React.ReactNode} props.icon - SVG or node to display.
+ * @param {string} props.label - Human-readable name.
+ */
 function NavItem({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
     return (
         <button

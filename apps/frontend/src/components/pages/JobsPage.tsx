@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
-import { listJobs, retryJob, deleteJob, getJobStatus, type JobSummary, type JobStatus } from '../../lib/api/client';
-import { useDeveloperMode } from '../../lib/contexts/developer-mode';
-import { StatusBadge } from '../ui/StatusBadge';
-import { JobDetailPanel } from '../jobs/JobDetailPanel';
-import { VideoPlayer } from '../ui/VideoPlayer';
+import { listJobs, retryJob, deleteJob, getJobStatus, type JobSummary, type JobStatus } from '@/lib/api/client';
+import { useDeveloperMode } from '@/lib/contexts/developerMode';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { JobDetailPanel } from '@/components/jobs/JobDetailPanel';
+import { VideoPlayer } from '@/components/ui/VideoPlayer';
 import { 
     Play, 
     RotateCcw, 
@@ -18,8 +18,8 @@ import {
     Clock,
     PlayCircle
 } from 'lucide-react';
-import { formatDuration, formatGenerationTime } from '../../lib/utils/duration-utils';
-import { cn } from '../../lib/utils';
+import { formatDuration, formatGenerationTime } from '@/lib/utils/durationUtils';
+import { cn } from '@/lib/utils';
 
 const formatTime = (isoString: string | null | undefined) => {
     if (!isoString) return '-';

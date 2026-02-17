@@ -1,5 +1,5 @@
-import { JobStatus } from '../../lib/api/types';
-import { StatusIcon } from './StatusIcon';
+import { JobStatus } from '@/lib/api/types';
+import { StatusIcon } from '@/components/ui/StatusIcon';
 
 const statusLabels: Record<string, string> = {
     planning: 'Planning',

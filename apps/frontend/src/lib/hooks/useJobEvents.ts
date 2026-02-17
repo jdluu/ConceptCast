@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { type JobStatus, getJobStatus, API_BASE_URL } from '../api/client';
+import { type JobStatus, getJobStatus, API_BASE_URL } from '@/lib/api/client';
 
 interface UseJobEventsReturn {
     jobStatus: JobStatus | null;

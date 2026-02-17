@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { listJobs, getJobStatus, type JobSummary, type JobStatus, deleteJob } from '../../lib/api/client';
+import { listJobs, getJobStatus, type JobSummary, type JobStatus, deleteJob } from '@/lib/api/client';
 import { 
     Play, 
     Search, 
@@ -11,9 +11,9 @@ import {
     PlayCircle,
     ChevronDown
 } from 'lucide-react';
-import { useDeveloperMode } from '../../lib/contexts/developer-mode';
-import { VideoPlayer } from '../ui/VideoPlayer';
-import { formatDuration, formatGenerationTime } from '../../lib/utils/duration-utils';
+import { useDeveloperMode } from '@/lib/contexts/developerMode';
+import { VideoPlayer } from '@/components/ui/VideoPlayer';
+import { formatDuration, formatGenerationTime } from '@/lib/utils/durationUtils';
 
 export function LibraryPage() {
     const [jobs, setJobs] = useState<JobSummary[]>([]);

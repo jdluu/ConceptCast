@@ -1,39 +1,24 @@
 import { useEffect } from 'react';
 import { Toaster, toast } from 'sonner';
-import { DashboardLayout } from './components/layout/DashboardLayout';
-import { JobCreationForm } from './components/forms/JobCreationForm';
-import { GeneratingLessonView } from './components/council/GeneratingLessonView';
-import { LibraryPage } from './components/pages/LibraryPage';
-import { SettingsPage } from './components/pages/SettingsPage';
-import { JobsPage } from './components/pages/JobsPage';
-import { VideoResultPage } from './components/pages/VideoResultPage';
-import { API_BASE_URL, JobStatus, CurriculumPlan, Storyboard } from './lib/api/client';
-import { useJobEvents } from './lib/hooks/useJobEvents';
-import { useJobStore } from './lib/store/useJobStore';
-import { useNavStore } from './lib/store/useNavStore';
-import { ThemeProvider, useTheme } from './lib/contexts/theme';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { JobCreationForm } from '@/components/forms/JobCreationForm';
+import { GeneratingLessonView } from '@/components/orchestration/GeneratingLessonView';
+import { LibraryPage } from '@/components/pages/LibraryPage';
+import { SettingsPage } from '@/components/pages/SettingsPage';
+import { JobsPage } from '@/components/pages/JobsPage';
+import { VideoResultPage } from '@/components/pages/VideoResultPage';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CurriculumPlan, Storyboard } from '@/lib/api/client';
+import { useJobEvents } from '@/lib/hooks/useJobEvents';
+import { useJobStore } from '@/lib/store/useJobStore';
+import { useNavStore } from '@/lib/store/useNavStore';
+import { ThemeProvider, useTheme } from '@/lib/contexts/theme';
+import { isJobInProgress, resolveVideoUrl } from '@/lib/utils/jobUtils';
 
 /**
- * The root application component for ConceptCast.
- *
- * Orchestrates the global state for job generation, including SSE-based
- * real-time updates, simulated progress tracking, and view coordination
- * between job creation and result displays.
+ * AppContent orchestrates the global state and view coordination.
  */
-const isJobInProgress = (job: JobStatus) =>
-    job.status !== 'completed' && job.status !== 'failed';
-
-/** Resolve video URL for playback: prepend API base when path is relative. */
-function resolveVideoUrl(videoUrl: string | null | undefined): string | null {
-    if (!videoUrl) return null;
-    if (videoUrl.startsWith('http')) return videoUrl;
-    const base = API_BASE_URL.replace(/\/$/, '');
-    const path = videoUrl.startsWith('/') ? videoUrl : `/${videoUrl}`;
-    return `${base}${path}`;
-}
-
 function AppContent() {
-    // Stores
     const { 
         currentJob: initialJob, 
         setRenderProgress,
@@ -43,28 +28,31 @@ function AppContent() {
     const { currentNav } = useNavStore();
     const { theme } = useTheme();
 
-    // Live job state from backend (GET /jobs/:id/status + SSE /jobs/:id/events)
-    // We use the job_id from the store's initialJob
+    // Live job state from backend
     const { jobStatus: liveJobStatus, connectionState, error: streamError } = useJobEvents(initialJob?.job_id);
     
-    // The "source of truth" for the current job state is the live status if available, else the fallback
     const job = liveJobStatus ?? initialJob;
+
+    // Use real progress from backend if available, else fallback to simulation
+    const realProgress = job?.render_progress || 0;
 
     useEffect(() => {
         if (job?.status === 'rendering') {
+            if (realProgress > 0) {
+                setRenderProgress(realProgress);
+                return;
+            }
+            // Fallback simulation if real progress hasn't started yet
             const interval = window.setInterval(() => {
-                setRenderProgress(prev => {
-                    if (prev >= 95) return prev;
-                    return prev + (100 - prev) * 0.05; // Asymptotic progress
-                });
+                setRenderProgress(prev => (prev >= 95 ? prev : prev + (100 - prev) * 0.05));
             }, 2000);
             return () => clearInterval(interval);
         } else if (!job || job.status === 'completed' || job.status === 'failed') {
             setRenderProgress(0);
         }
-    }, [job?.status, setRenderProgress]);
+    }, [job?.status, realProgress, setRenderProgress]);
 
-    // Handle background errors/success via toasts
+    // Background notifications
     useEffect(() => {
         if (job?.status === 'failed' && job.error) {
             toast.error(`Generation failed: ${job.error}`);
@@ -74,38 +62,30 @@ function AppContent() {
         }
     }, [job?.status, job?.error]);
 
-    const showGeneratingView = job && isJobInProgress(job);
-
-    const showVideoResultPage =
-        job?.status === 'completed' &&
-        job.plan &&
-        job.storyboard;
-
-    const plan = job?.plan as unknown as CurriculumPlan | null;
-    const storyboard = job?.storyboard as unknown as Storyboard | null;
-
-    const mainContent = () => {
+    const renderMainContent = () => {
         if (currentNav === 'jobs') return <JobsPage />;
         if (currentNav === 'library') return <LibraryPage />;
         if (currentNav === 'settings') return <SettingsPage />;
         
-        if (showGeneratingView) {
+        if (job && isJobInProgress(job)) {
             return (
                 <GeneratingLessonView
-                    job={job!}
+                    job={job}
                     streamState={connectionState}
                     streamError={streamError}
                 />
             );
         }
 
-        if (showVideoResultPage) {
+        if (job?.status === 'completed' && job.plan && job.storyboard) {
+            const plan = job.plan as unknown as CurriculumPlan;
+            const storyboard = job.storyboard as unknown as Storyboard;
             return (
                 <VideoResultPage
                     videoUrl={resolveVideoUrl(job.video_url)}
-                    conceptTitle={plan?.concept_title || 'Concept'}
-                    plan={plan!}
-                    storyboard={storyboard!}
+                    conceptTitle={plan.concept_title || 'Concept'}
+                    plan={plan}
+                    storyboard={storyboard}
                     validation={job.validation}
                     manimCode={job.manim_code}
                     durationSeconds={job.duration_seconds}
@@ -120,10 +100,7 @@ function AppContent() {
                 <header className="mb-8">
                     <h1 className="text-2xl font-bold text-[var(--foreground)] tracking-tight">Consult the Council</h1>
                 </header>
-
-                <section className="mb-12">
-                    <JobCreationForm />
-                </section>
+                <JobCreationForm />
             </div>
         );
     };
@@ -132,7 +109,17 @@ function AppContent() {
         <>
             <Toaster position="top-right" richColors theme={theme === 'system' ? 'system' : theme} />
             <DashboardLayout>
-                {mainContent()}
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={currentNav + (job?.job_id ?? '')}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        {renderMainContent()}
+                    </motion.div>
+                </AnimatePresence>
             </DashboardLayout>
         </>
     );

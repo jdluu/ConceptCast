@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { JobStatus } from '../../lib/api/types';
+import { JobStatus } from '@/lib/api/types';
 
 interface PipelineStepsProps {
     status: JobStatus['status'];

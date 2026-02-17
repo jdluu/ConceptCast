@@ -1,4 +1,4 @@
-import type { components } from './schema';
+import type { components } from '@/lib/api/schema';
 
 export type JobStatus = Omit<components["schemas"]["JobStatus"], 'status'> & {
     topic?: string | null;
@@ -8,6 +8,7 @@ export type JobStatus = Omit<components["schemas"]["JobStatus"], 'status'> & {
     video_metadata?: any | null;
     resolution?: string;
     frame_rate?: number;
+    render_progress?: number;
 };
 export type JobSummary = components["schemas"]["JobSummary"] & {
     cost?: number;
@@ -16,6 +17,7 @@ export type JobSummary = components["schemas"]["JobSummary"] & {
     video_metadata?: any | null;
     resolution?: string;
     frame_rate?: number;
+    render_progress?: number;
 };
 export type JobRequest = components["schemas"]["JobRequest"] & {
     resolution: "720p" | "1080p";

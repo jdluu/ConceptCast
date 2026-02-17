@@ -1,9 +1,9 @@
 import React from 'react';
-import { JobStatus, ThoughtLog } from '../../lib/api/client';
-import { StatusBadge } from '../ui/StatusBadge';
-import { VideoPlayer } from '../ui/VideoPlayer';
+import { JobStatus, ThoughtLog } from '@/lib/api/client';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { VideoPlayer } from '@/components/ui/VideoPlayer';
 import { format } from 'date-fns';
-import { formatDuration } from '../../lib/utils/duration-utils';
+import { formatDuration } from '@/lib/utils/durationUtils';
 
 interface JobDetailPanelProps {
     job: JobStatus;

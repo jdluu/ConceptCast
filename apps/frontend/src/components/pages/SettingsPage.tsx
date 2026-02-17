@@ -1,6 +1,6 @@
-import { useDeveloperMode } from '../../lib/contexts/developer-mode';
-import { useTheme } from '../../lib/contexts/theme';
-import { useAppSettings } from '../../lib/contexts/app-settings';
+import { useDeveloperMode } from '@/lib/contexts/developerMode';
+import { useTheme } from '@/lib/contexts/theme';
+import { useAppSettings } from '@/lib/contexts/appSettings';
 import { Moon, Sun, Laptop, Eye, EyeOff, Zap, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 

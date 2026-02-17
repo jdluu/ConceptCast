@@ -1,4 +1,4 @@
-import { type JobSummary, type JobStatus } from './types';
+import { type JobSummary, type JobStatus } from '@/lib/api/types';
 
 export const MOCK_JOBS_SUMMARY: JobSummary[] = [
     {

@@ -1,18 +1,22 @@
 import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { Button as ShadcnButton } from './button';
-import { Card as ShadcnCard } from './card';
+import { Button as ShadcnButton } from '@/components/ui/Button';
+import { Card as ShadcnCard } from '@/components/ui/Card';
 import { 
     Dialog, 
     DialogContent, 
     DialogHeader, 
     DialogTitle,
     DialogDescription
-} from './dialog';
+} from '@/components/ui/Dialog';
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
     return (
-        <ShadcnCard className={cn("rounded-xl p-6", className)}>
+        <ShadcnCard className={cn(
+            "rounded-2xl p-6 border-[var(--surface-border)] bg-[var(--surface)]/50 backdrop-blur-xl shadow-2xl relative overflow-hidden",
+            "before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/5 before:to-transparent before:pointer-events-none",
+            className
+        )}>
             {children}
         </ShadcnCard>
     );
@@ -43,8 +47,13 @@ export function Button({
             title={title}
             variant={variant === "primary" ? "default" : "outline"}
             className={cn(
-                "rounded-xl font-bold active:scale-[0.98]",
-                variant === "primary" && "shadow-lg shadow-indigo-500/20",
+                "rounded-xl font-extrabold transition-all duration-300 active:scale-[0.97]",
+                variant === "primary" && [
+                    "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500",
+                    "shadow-xl shadow-indigo-500/25 border-none text-white",
+                    "hover:shadow-indigo-500/40 hover:-translate-y-0.5"
+                ],
+                variant === "outline" && "border-2 hover:bg-[var(--surface)]",
                 className
             )}
         >

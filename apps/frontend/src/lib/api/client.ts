@@ -1,5 +1,5 @@
-import { MOCK_JOBS_SUMMARY, MOCK_JOB_DETAILS } from './mock';
-import type { components } from './schema';
+import { MOCK_JOBS_SUMMARY, MOCK_JOB_DETAILS } from '@/lib/api/mock';
+import type { components } from '@/lib/api/schema';
 import {
     type JobStatus,
     type JobSummary,
@@ -9,7 +9,7 @@ import {
     type Storyboard,
     type TeachingStep,
     type Scene
-} from './types';
+} from '@/lib/api/types';
 
 export const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
 

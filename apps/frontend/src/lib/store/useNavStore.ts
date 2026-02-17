@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { NavId } from '../../components/layout/DashboardLayout';
+import { NavId } from '@/components/layout/DashboardLayout';
 
 interface NavState {
     currentNav: NavId;
