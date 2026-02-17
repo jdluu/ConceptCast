@@ -10,8 +10,24 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
-# Load environment variables from project root .env
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
+
+def _discover_project_root() -> Path:
+    """Discovers the project root by looking for a marker file."""
+    current = Path(__file__).resolve().parent
+    for _ in range(10):  # Limit search depth
+        if (current / "pnpm-workspace.yaml").exists() or (current / ".git").exists():
+            return current
+        if (current / "pyproject.toml").exists() and (current.parent / "apps").exists():
+            # If we're in apps/backend, the root is two levels up
+            return current.parent.parent
+        if current.parent == current:
+            break
+        current = current.parent
+    # Fallback to the current logic if discovery fails
+    return Path(__file__).resolve().parent.parent.parent.parent.parent
+
+
+PROJECT_ROOT = _discover_project_root()
 load_dotenv(PROJECT_ROOT / ".env")
 
 
@@ -52,6 +68,12 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///" + str(PROJECT_ROOT / "conceptcast.db")
     cors_origins: str = "http://localhost:5173"
     data_dir: Path = PROJECT_ROOT / "data"
+
+    # Pricing (USD)
+    pricing_input_rate: float = 0.005 / 1000
+    pricing_output_rate: float = 0.015 / 1000
+    pricing_render_rate_per_min: float = 0.10
+    pricing_base_overhead: float = 0.02
 
     @property
     def jobs_dir(self) -> Path:

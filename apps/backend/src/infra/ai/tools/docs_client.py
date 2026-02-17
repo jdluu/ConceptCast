@@ -14,7 +14,7 @@ from collections import OrderedDict
 
 import httpx
 
-from core.settings import get_settings
+from infra.settings import get_settings
 
 CONTEXT7_BASE = "https://context7.com/api/v2"
 MANIM_COMMUNITY_LIBRARY_ID = "/websites/manim_community_en_stable"
@@ -97,8 +97,8 @@ def _compute_backoff_delay(
             pass
     # Exponential backoff + small jitter spread.
     exp_delay = base_seconds * (2**attempt)
-    jitter = random.uniform(0.0, 0.25)
-    return exp_delay + jitter
+    jitter = random.uniform(0.0, 0.25)  # noqa: S311
+    return exp_delay + jitter  # type: ignore
 
 
 async def get_manim_docs_context(query: str, *, api_key: str) -> str:

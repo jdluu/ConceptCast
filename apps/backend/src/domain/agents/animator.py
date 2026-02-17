@@ -1,13 +1,13 @@
 import json
 from collections.abc import Awaitable, Callable
-from typing import Any
 
 from pydantic_ai import Agent
+from pydantic_ai.models import Model
+from pydantic_ai.usage import RunUsage
 
 from api.schemas import Storyboard
-
-from .streaming import run_agent_streamed
-from .tools import prepare_manim_docs, search_manim_docs
+from infra.ai.streaming import run_agent_streamed
+from infra.ai.tools import prepare_manim_docs, search_manim_docs
 
 system_prompt = """
 You are the **Animator Agent** for ConceptCast.
@@ -47,31 +47,27 @@ using the **Manim Community** library.
 
 async def generate_manim_code(
     storyboard: Storyboard,
-    model: Any,
+    model: Model,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
     retry_hint: str | None = None,
-) -> str:
-    """
-    Translates a storyboard into executable Manim Python code.
-    Streams animator thoughts if on_thought is provided.
-    retry_hint: If set, appended to the prompt (e.g. after a validation failure).
-    """
+) -> tuple[str, RunUsage]:
+    """Generates Manim Python code derived from a visual storyboard."""
     animator_agent = Agent(
         model,
         system_prompt=system_prompt,
         output_type=str,
         deps_type=Storyboard,
     )
-    animator_agent.tool(search_manim_docs, prepare=prepare_manim_docs)
+    animator_agent.tool(search_manim_docs, prepare=prepare_manim_docs)  # type: ignore
 
     prompt = f"Write Manim code for: {json.dumps(storyboard.model_dump())}"
     if retry_hint:
         prompt = f"{prompt}\n\nIMPORTANT: {retry_hint}"
-    result = await run_agent_streamed(
+    result, usage = await run_agent_streamed(
         "animator",
         animator_agent,
         prompt,
         on_thought=on_thought,
         deps=storyboard,
     )
-    return result  # type: ignore
+    return result, usage

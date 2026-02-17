@@ -1,11 +1,11 @@
 from collections.abc import Awaitable, Callable
-from typing import Any
 
 from pydantic_ai import Agent
+from pydantic_ai.models import Model
+from pydantic_ai.usage import RunUsage
 
 from api.schemas import CurriculumPlan, ValidationResult
-
-from .streaming import run_agent_streamed
+from infra.ai.streaming import run_agent_streamed
 
 # Define the Validator Agent
 # "The Critic" - Ensures curricula are pedagogically sound.
@@ -32,18 +32,17 @@ Be strict but constructive. If a plan is confusing or skips steps, fail it.
 
 async def validate_curriculum(
     plan: CurriculumPlan,
-    model: Any,
+    model: Model,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
-) -> ValidationResult:
-    """
-    Performs a pedagogical audit on a curriculum plan.
-    Streams validator thoughts if on_thought is provided.
-    """
+) -> tuple[ValidationResult, RunUsage]:
+    """Audits a curriculum plan for pedagogical and visual alignment."""
     agent = Agent(
         model,
         system_prompt=system_prompt,
         output_type=ValidationResult,
     )
     prompt = f"Perform a pedagogical audit on this plan:\n{plan.model_dump_json()}"
-    result = await run_agent_streamed("validator", agent, prompt, on_thought=on_thought)
-    return result  # type: ignore
+    result, usage = await run_agent_streamed(
+        "validator", agent, prompt, on_thought=on_thought
+    )
+    return result, usage

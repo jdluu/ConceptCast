@@ -1,12 +1,14 @@
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
 
+from loguru import logger
 from pydantic_ai import Agent
+from pydantic_ai.messages import BinaryContent, ModelRequestPart, UserPromptPart
+from pydantic_ai.models import Model
+from pydantic_ai.usage import RunUsage
 
 from api.schemas import AnimationReview, Storyboard
-
-from .streaming import run_agent_streamed
+from infra.ai.streaming import run_agent_streamed
 
 system_prompt = """
 You are the **Reviewer Agent** (Visual QA) for ConceptCast.
@@ -46,11 +48,11 @@ async def review_animation(
     storyboard: Storyboard,
     frame_path: Path | None,
     execution_logs: str,
-    model: Any,
+    model: Model,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
-) -> AnimationReview:
-    """
-    Validates a generated animation against the storyboard and execution logs.
+) -> tuple[AnimationReview, RunUsage]:
+    """Compares rendered frames against the storyboard for visual fidelity.
+
     Streams reviewer thoughts if on_thought is provided.
     """
     agent = Agent(
@@ -66,11 +68,13 @@ async def review_animation(
         f"**Execution Logs**:\n```\n{execution_logs}\n```",
     ]
 
-    if frame_path:
+    content_with_images = []
+    if frame_path and frame_path.exists():
         prompt_parts.append(
-            f"**Rendered Frame**: [Image at {frame_path}] "
-            "(Vision analysis not yet implemented)"
+            "**Rendered Frame**: Attached. Please analyze the visual layout, "
+            "text readability, and alignment with the storyboard."
         )
+        content_with_images.append(str(frame_path))
     else:
         prompt_parts.append("**Rendered Frame**: Not available (Log-based review only)")
 
@@ -80,11 +84,26 @@ async def review_animation(
 
     prompt = "\n\n".join(prompt_parts)
 
-    result = await run_agent_streamed(
+    # If we have an image, we pass it as a list of parts to run_agent_streamed
+    final_prompt: str | list[ModelRequestPart] = prompt
+    if content_with_images and frame_path:
+        try:
+            with open(frame_path, "rb") as f:
+                image_data = f.read()
+            final_prompt = [
+                UserPromptPart(content=prompt),
+                UserPromptPart(
+                    content=[BinaryContent(data=image_data, media_type="image/png")]
+                ),
+            ]
+        except Exception as e:
+            logger.warning(f"Failed to read frame image for vision: {e}")
+
+    result, usage = await run_agent_streamed(
         "reviewer",
         agent,
-        prompt,
+        final_prompt,
         on_thought=on_thought,
         deps=storyboard,
     )
-    return result  # type: ignore
+    return result, usage

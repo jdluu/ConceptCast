@@ -3,8 +3,9 @@ import json
 from pydantic_ai import RunContext, ToolDefinition
 
 from api.schemas import Storyboard
-from core.context7 import get_manim_docs_context
-from core.settings import get_settings
+from infra.settings import get_settings
+
+from .docs_client import get_manim_docs_context
 
 # Curated fallback when CONTEXT7_API_KEY is not set. With Context7 we use
 # Manim Community docs at /websites/manim_community_en_stable instead.

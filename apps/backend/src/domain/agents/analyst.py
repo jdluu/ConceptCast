@@ -1,11 +1,12 @@
 from collections.abc import Awaitable, Callable
-from typing import Any
 
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.models import Model
+from pydantic_ai.usage import RunUsage
 
 from api.schemas import CurriculumPlan, ValidationResult
+from infra.ai.streaming import run_agent_streamed
 
-from .streaming import run_agent_streamed
 from .validator import validate_curriculum
 
 # Define the Analyst Agent
@@ -13,7 +14,7 @@ from .validator import validate_curriculum
 
 system_prompt = """
 You are the **Analyst Agent** (The Pedagogue) for ConceptCast.
-Your goal is to deconstruct complex technical topics into a clear, 
+Your goal is deconstructing complex technical topics into a clear, 
 sequential dependency graph for visual learning.
 
 **Responsibility:**
@@ -30,13 +31,19 @@ sequential dependency graph for visual learning.
 async def generate_curriculum(
     topic: str,
     audience: str,
-    model: Any,
+    model: Model,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
-) -> CurriculumPlan:
-    """
-    Generates a pedagogical curriculum plan for a given topic.
-    Streams analyst (and validator, when critic is called) thoughts
-    if on_thought is provided.
+) -> tuple[CurriculumPlan, RunUsage]:
+    """Generates a pedagogical curriculum plan for a given topic.
+
+    Args:
+        topic: The complex technical topic to deconstruct.
+        audience: The target knowledge level of the audience.
+        model: The PydanticAI model to use for generation.
+        on_thought: Optional callback for streaming agent thoughts.
+
+    Returns:
+        tuple[CurriculumPlan, RunUsage]: The structured curriculum and AI usage data.
     """
     agent = Agent(
         model,
@@ -48,11 +55,14 @@ async def generate_curriculum(
     async def consult_critic(
         ctx: RunContext[None], plan: CurriculumPlan
     ) -> ValidationResult:
-        return await validate_curriculum(plan, model, on_thought=on_thought)
+        res, _ = await validate_curriculum(plan, model, on_thought=on_thought)
+        return res
 
     prompt = (
         f"Explain '{topic}' to a '{audience}' audience. "
         "Remember to consult the critic before finalizing your output."
     )
-    result = await run_agent_streamed("analyst", agent, prompt, on_thought=on_thought)
-    return result  # type: ignore
+    result, usage = await run_agent_streamed(
+        "analyst", agent, prompt, on_thought=on_thought
+    )
+    return result, usage

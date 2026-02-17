@@ -1,11 +1,11 @@
 from collections.abc import Awaitable, Callable
-from typing import Any
 
 from pydantic_ai import Agent
+from pydantic_ai.models import Model
+from pydantic_ai.usage import RunUsage
 
 from api.schemas import CurriculumPlan, Storyboard
-
-from .streaming import run_agent_streamed
+from infra.ai.streaming import run_agent_streamed
 
 # Define the Visual Architect Agent
 # "The Scenographer" - Translates pedagogy into visual scenes.
@@ -33,12 +33,18 @@ Your goal is to transform a `CurriculumPlan` into a detailed `Storyboard`.
 
 async def generate_storyboard(
     plan: CurriculumPlan,
-    model: Any,
+    model: Model,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
-) -> Storyboard:
-    """
-    Translates a curriculum plan into a visual storyboard.
-    Streams architect thoughts if on_thought is provided.
+) -> tuple[Storyboard, RunUsage]:
+    """Translates a curriculum plan into a visual storyboard.
+
+    Args:
+        plan: The pedagogically sound curriculum plan.
+        model: The PydanticAI model to use for generation.
+        on_thought: Optional callback for streaming agent thoughts.
+
+    Returns:
+        tuple[Storyboard, RunUsage]: The structured storyboard and AI usage data.
     """
     agent = Agent(
         model,
@@ -48,5 +54,7 @@ async def generate_storyboard(
     prompt = (
         f"Create a storyboard for the following curriculum:\n{plan.model_dump_json()}"
     )
-    result = await run_agent_streamed("architect", agent, prompt, on_thought=on_thought)
-    return result  # type: ignore
+    result, usage = await run_agent_streamed(
+        "architect", agent, prompt, on_thought=on_thought
+    )
+    return result, usage
