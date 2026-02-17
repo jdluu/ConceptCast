@@ -2,14 +2,17 @@ import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from api.routes import health, jobs, models
-from core.database import AsyncSessionLocal, init_db
-from core.settings import get_settings
+from api.middleware.logging import LoggingMiddleware
+from api.middleware.rate_limiting import RateLimitMiddleware
+from api.routes import ai_models, health, jobs
+from infra.settings import get_settings
+from infra.storage import AsyncSessionLocal, init_db
 
 
 @asynccontextmanager
@@ -38,19 +41,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(RateLimitMiddleware, limit=3, window=300)  # 3 jobs per 5 mins
 
-# Job Artifact Storage Configuration (PROJECT_ROOT set in Docker to /app)
-_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", _PROJECT_ROOT))
-JOBS_ROOT = PROJECT_ROOT / "data" / "jobs"
-JOBS_ROOT.mkdir(parents=True, exist_ok=True)
+# Job Artifact Storage Configuration
+settings = get_settings()
+settings.jobs_dir.mkdir(parents=True, exist_ok=True)
 app.mount(
-    "/jobs/artifacts", StaticFiles(directory=str(JOBS_ROOT)), name="job_artifacts"
+    "/jobs/artifacts",
+    StaticFiles(directory=str(settings.jobs_dir)),
+    name="job_artifacts",
 )
 
 # Include Routers
 app.include_router(health.router)
-app.include_router(models.router, prefix="/models", tags=["models"])
+app.include_router(ai_models.router, prefix="/models", tags=["models"])
 app.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
 
 _FRONTEND_DIST = os.environ.get("FRONTEND_DIST")
@@ -59,8 +64,11 @@ if _FRONTEND_DIST_PATH and _FRONTEND_DIST_PATH.is_dir():
     from fastapi.responses import FileResponse
 
     @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str) -> FileResponse:
+    async def serve_spa(full_path: str) -> Any:
         """Serve SPA: static file if it exists, else index.html."""
+        if _FRONTEND_DIST_PATH is None:
+            return {"detail": "Frontend assets not found"}
+
         if full_path and not full_path.startswith(".."):
             candidate = (_FRONTEND_DIST_PATH / full_path).resolve()
             if candidate.is_file() and candidate.is_relative_to(_FRONTEND_DIST_PATH):

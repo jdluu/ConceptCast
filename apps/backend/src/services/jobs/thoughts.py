@@ -5,8 +5,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.schemas import ThoughtLog
-from core.database import JobRecord
-from core.settings import get_settings
+from infra.settings import get_settings
+from infra.storage import JobRecord
+from services.jobs.events import job_event_manager
 
 
 async def append_job_thought(
@@ -46,6 +47,7 @@ async def append_job_thought(
                 job.streamed_thoughts = new_list
                 job.updated_at = datetime.now(UTC)
                 await db.commit()
+                await job_event_manager.notify(job_id)
         except Exception:
             await db.rollback()
             raise

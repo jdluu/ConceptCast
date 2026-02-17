@@ -10,11 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from core.database import JobRecord
-from core.settings import get_settings
+from infra.settings import get_settings
+from infra.storage import JobRecord
 
 
-async def cleanup_job_data():
+async def cleanup_job_data() -> None:
     settings = get_settings()
     data_jobs_dir = settings.data_dir / "jobs"
     legacy_artifacts_dir = data_jobs_dir / "artifacts"
@@ -25,7 +25,11 @@ async def cleanup_job_data():
         db_url = db_url.replace("sqlite:///", "sqlite+aiosqlite:///")
 
     engine = create_async_engine(db_url)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,  # type: ignore
+    )
 
     async with async_session() as session:
         result = await session.execute(select(JobRecord.job_id))

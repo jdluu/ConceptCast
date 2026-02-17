@@ -1,4 +1,3 @@
-import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -7,8 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.schemas import JobRequest
-from core.database import JobRecord
-from core.settings import get_settings
+from infra.settings import get_settings
+from infra.storage import JobRecord
+from services.jobs.events import job_event_manager
 
 
 def determine_execution_mode(request: JobRequest) -> bool:
@@ -49,36 +49,19 @@ async def update_job_record(
                     setattr(job, key, value)
                 job.updated_at = datetime.now(UTC)
                 await db.commit()
+                await job_event_manager.notify(job_id)
         except Exception:
             await db.rollback()
             raise
 
 
-async def create_new_job_record(db: AsyncSession, request: JobRequest) -> str:
-    """Initializes a new job record in the database.
-
-    Args:
-        db: The active asynchronous database session.
-        request: The job creation request details.
-
-    Returns:
-        str: The newly generated unique job_id (UUID).
-    """
-    job_id = str(uuid.uuid4())
-    job_record = JobRecord(
-        job_id=job_id,
-        status="planning",
-        topic=request.topic,
-        target_audience=request.target_audience,
-        mode="live" if get_settings().has_any_api_key() else "mock",
-    )
-    db.add(job_record)
-    try:
-        await db.commit()
-    except Exception:
-        await db.rollback()
-        raise
-    return job_id
+async def update_job_status(
+    job_id: str,
+    updates: dict[str, Any],
+    session_factory: Callable[[], AsyncSession],
+) -> None:
+    """Alias for update_job_record for backward compatibility and semantic clarity."""
+    await update_job_record(session_factory, job_id, updates)
 
 
 async def prepare_job_for_retry_logic(
@@ -89,10 +72,6 @@ async def prepare_job_for_retry_logic(
     Clears error messages, render artifacts, and transient state while
     preserving foundational artifacts (like the plan) if they were completed.
     Increments the retry counter and resets the status to 'pending_retry'.
-
-    Args:
-        job_id: The unique identifier of the job to retry.
-        db_session_factory: A factory for creating AsyncSession instances.
 
     Returns:
         JobRecord: The updated job record in its reset state.
@@ -107,7 +86,7 @@ async def prepare_job_for_retry_logic(
         if not job:
             raise ValueError(f"Job {job_id} not found")
 
-        updates = {
+        updates: dict[str, Any] = {
             "status": "pending_retry",
             "error": None,
             "manim_code": None,
@@ -122,5 +101,46 @@ async def prepare_job_for_retry_logic(
 
         job.updated_at = datetime.now(UTC)
         await db.commit()
+        await job_event_manager.notify(job_id)
         await db.refresh(job)
         return job
+
+
+async def append_job_thought(
+    db_session_factory: Callable[[], AsyncSession],
+    job_id: str,
+    agent: str,
+    phase: str,
+    content: str,
+) -> None:
+    """Appends an agent thought to the job's streamed_thoughts array.
+
+    Args:
+        db_session_factory: A factory function that returns an AsyncSession.
+        job_id: The unique identifier of the job.
+        agent: The name of the agent generating the thought.
+        phase: The current phase of the agent's work.
+        content: The text content of the thought.
+    """
+    async with db_session_factory() as db:
+        try:
+            result = await db.execute(
+                select(JobRecord).where(JobRecord.job_id == job_id)
+            )
+            job = result.scalar_one_or_none()
+            if job:
+                thoughts = list(getattr(job, "streamed_thoughts", None) or [])
+                thoughts.append(
+                    {
+                        "agent": agent,
+                        "phase": phase,
+                        "content": content,
+                        "ts": datetime.now(UTC).isoformat(),
+                    }
+                )
+                job.streamed_thoughts = thoughts
+                job.updated_at = datetime.now(UTC)
+                await db.commit()
+        except Exception:
+            await db.rollback()
+            raise

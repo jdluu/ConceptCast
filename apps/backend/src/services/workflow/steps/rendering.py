@@ -3,14 +3,13 @@ from typing import Any
 
 from loguru import logger
 
-from agents.animator import generate_manim_code
-from agents.factory import get_model
 from api.schemas import JobRequest, Storyboard
-from core.database import JobRecord
-from services.rendering import (
-    extract_and_validate_manim_code,
-    render_storyboard,
-)
+from domain.agents.animator import generate_manim_code
+from infra.engines.video import mock_render_storyboard, render_storyboard
+from infra.security.sanitizer import sanitize_manim_code
+from infra.storage import JobRecord
+from services.workflow.base import get_step_model
+from services.workflow.utils import calculate_job_cost
 
 
 async def step_rendering(
@@ -46,25 +45,29 @@ async def step_rendering(
     """
     await update_job({"status": "rendering", "current_step": "rendering"})
     try:
-        render_result = await render_storyboard(
-            code, job_id, resolution=job.resolution, frame_rate=job.frame_rate
-        )
+        if job.mode == "mock":
+            render_result = await mock_render_storyboard(job_id)
+        else:
+            render_result = await render_storyboard(
+                code,
+                job_id,
+                update_job=update_job,
+                resolution=job.resolution,
+                frame_rate=job.frame_rate,
+            )
 
-        # Calculate approximate cost
-        # Base cost + duration-based cost (simulated for now)
-        duration = (
-            render_result.metadata.get("duration", 0) if render_result.metadata else 0
+        total_cost = calculate_job_cost(
+            render_duration=render_result.metadata.get("duration", 0)
+            if render_result.metadata
+            else 0
         )
-        base_cost = 0.02  # Model overhead
-        render_cost = (duration / 60.0) * 0.10  # $0.10 per minute
-        total_cost = base_cost + render_cost
 
         await update_job(
             {
                 "video_url": render_result.video_url,
                 "thumbnail_url": render_result.thumbnail_url,
                 "video_metadata": render_result.metadata,
-                "cost": round(total_cost, 2),
+                "cost": total_cost,
                 "status": "completed",
                 "current_step": "rendering_complete",
             }
@@ -79,15 +82,9 @@ async def step_rendering(
             logger.warning(
                 f"Rendering failed, retrying animator with error feedback: {error_msg}"
             )
-            provider_arg = (
-                "mock"
-                if job.mode == "mock"
-                else (getattr(job, "provider", None) or request.provider)
-            )
-            model_arg = getattr(job, "model_id", None) or request.model_id
-            anim_model = get_model(provider_name=provider_arg, model_id=model_arg)
+            anim_model = get_step_model(request, job)
             if anim_model:
-                retry_code = await generate_manim_code(
+                retry_code, retry_usage = await generate_manim_code(
                     storyboard,
                     model=anim_model,
                     on_thought=on_thought,
@@ -97,7 +94,7 @@ async def step_rendering(
                         ".set_*() methods for styling instead of constructor kwargs."
                     ),
                 )
-                retry_code = extract_and_validate_manim_code(retry_code)
+                retry_code = sanitize_manim_code(retry_code)
                 await update_job(
                     {
                         "manim_code": retry_code,
@@ -108,6 +105,7 @@ async def step_rendering(
                 render_result = await render_storyboard(
                     retry_code,
                     job_id,
+                    update_job=update_job,
                     resolution=job.resolution,
                     frame_rate=job.frame_rate,
                 )
@@ -117,16 +115,16 @@ async def step_rendering(
                     if render_result.metadata
                     else 0
                 )
-                base_cost = 0.05  # Higher for retry
-                render_cost = (duration / 60.0) * 0.10
-                total_cost = base_cost + render_cost
+                total_cost = calculate_job_cost(
+                    usage=retry_usage, render_duration=duration
+                )
 
                 await update_job(
                     {
                         "video_url": render_result.video_url,
                         "thumbnail_url": render_result.thumbnail_url,
                         "video_metadata": render_result.metadata,
-                        "cost": round(total_cost, 2),
+                        "cost": total_cost,
                         "status": "completed",
                         "current_step": "rendering_complete",
                     }

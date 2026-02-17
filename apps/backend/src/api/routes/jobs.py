@@ -1,10 +1,7 @@
-import asyncio
 import json
-import os
 import shutil
 import uuid
 from collections.abc import AsyncGenerator, Callable
-from pathlib import Path
 from typing import Literal, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
@@ -20,9 +17,10 @@ from api.schemas import (
     JobStatus,
     JobSummary,
 )
-from core.database import AsyncSessionLocal, JobRecord, get_db
-from core.settings import get_settings
-from services.orchestrator import prepare_job_for_retry, process_job_logic
+from infra.settings import get_settings
+from infra.storage import AsyncSessionLocal, JobRecord, get_db
+from services.jobs.events import job_event_manager
+from services.workflow.orchestrator import prepare_job_for_retry, process_job_logic
 
 router = APIRouter()
 
@@ -50,54 +48,29 @@ async def _stream_job_events(
                 break
 
             thoughts = getattr(job, "streamed_thoughts", None) or []
-            thought_count = len(thoughts)
 
             # Stream on first connection or when any relevant field changes
             if (
                 first_emit
                 or job.status != last_status
                 or job.updated_at != last_updated
-                or thought_count != last_thought_count
+                or len(thoughts) != last_thought_count
             ):
-                data = {
-                    "job_id": job.job_id,
-                    "status": job.status,
-                    "plan": job.plan,
-                    "validation": job.validation,
-                    "storyboard": job.storyboard,
-                    "manim_code": job.manim_code,
-                    "video_url": job.video_url,
-                    "error": job.error,
-                    "mode": job.mode,
-                    "streamed_thoughts": thoughts,
-                    "provider": job.provider,
-                    "model_id": job.model_id,
-                    "target_audience": job.target_audience,
-                    "started_at": (
-                        job.started_at.isoformat() if job.started_at else None
-                    ),
-                    "finished_at": (
-                        job.finished_at.isoformat() if job.finished_at else None
-                    ),
-                    "duration_seconds": (
-                        (job.finished_at - job.started_at).total_seconds()
-                        if job.started_at and job.finished_at
-                        else None
-                    ),
-                    "cost": job.cost,
-                    "thumbnail_url": job.thumbnail_url,
-                    "video_metadata": job.video_metadata,
-                }
-                yield f"data: {json.dumps(data)}\n\n"
+                # Use get_job_status helper logic for consistent serialization
+                # We can't call the endpoint directly easily, so we manually construct
+                # or better yet, use a shared helper if we had one.
+                # For now, let's just make sure we include EVERYTHING.
+                yield f"data: {job.to_status_schema().model_dump_json()}\n\n"
                 last_status = job.status
                 last_updated = job.updated_at
-                last_thought_count = thought_count
+                last_thought_count = len(thoughts)
                 first_emit = False
 
             if job.status in ["completed", "failed"]:
                 break
 
-        await asyncio.sleep(0.5)  # Poll DB for streaming updates
+        # Wait for next event or timeout (keep-alive)
+        await job_event_manager.wait_for_update(job_id, timeout=15.0)
 
 
 @router.post("/create", response_model=JobStatus)
@@ -138,12 +111,13 @@ async def create_job(
             job_id=job_id,
             topic=request.topic,
             status="planning",
-            mode=mode,
+            mode=cast(Literal["live", "mock"], mode),
             provider=request.provider,
             model_id=request.model_id,
             target_audience=request.target_audience,
             resolution=request.resolution,
             frame_rate=request.frame_rate,
+            retry_count=0,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -158,48 +132,7 @@ async def get_job_status(job_id: str, db: AsyncSession = Depends(get_db)) -> Job
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    status_literal = cast(
-        Literal[
-            "planning",
-            "validating",
-            "architecting",
-            "rendering",
-            "reviewing",
-            "completed",
-            "failed",
-        ],
-        job.status,
-    )
-    mode_literal = cast(Literal["live", "mock"], job.mode)
-
-    return JobStatus(
-        job_id=job.job_id,
-        topic=job.topic,
-        status=status_literal,
-        plan=job.plan,
-        validation=job.validation,
-        storyboard=job.storyboard,
-        manim_code=job.manim_code,
-        video_url=job.video_url,
-        error=job.error,
-        mode=mode_literal,
-        streamed_thoughts=getattr(job, "streamed_thoughts", None) or [],
-        provider=job.provider,
-        model_id=job.model_id,
-        target_audience=job.target_audience,
-        resolution=job.resolution,
-        frame_rate=job.frame_rate,
-        started_at=job.started_at.isoformat() if job.started_at else None,
-        finished_at=job.finished_at.isoformat() if job.finished_at else None,
-        duration_seconds=(
-            (job.finished_at - job.started_at).total_seconds()
-            if job.started_at and job.finished_at
-            else None
-        ),
-        cost=job.cost,
-        thumbnail_url=job.thumbnail_url,
-        video_metadata=job.video_metadata,
-    )
+    return job.to_status_schema()
 
 
 @router.get("/{job_id}/events")
@@ -307,48 +240,19 @@ async def retry_job(
         target_audience=job.target_audience or "General Audience",
         provider=job.provider,
         model_id=job.model_id,
-        resolution=job.resolution,
-        frame_rate=job.frame_rate,
+        resolution=cast(Literal["720p", "1080p"], job.resolution),
+        frame_rate=cast(Literal[30, 60], job.frame_rate),
+        fast_mode=False,
     )
 
     # 3. Trigger background processing
     background_tasks.add_task(process_job_logic, job_id, request, session_factory)
 
-    status_literal = cast(
-        Literal[
-            "planning",
-            "validating",
-            "architecting",
-            "rendering",
-            "reviewing",
-            "completed",
-            "failed",
-            "pending_retry",
-        ],
-        job.status,
-    )
-    mode_literal = cast(Literal["live", "mock"], job.mode)
-
-    return JobStatus(
-        job_id=job.job_id,
-        topic=job.topic,
-        status=status_literal,
-        plan=job.plan,
-        validation=job.validation,
-        storyboard=job.storyboard,
-        manim_code=job.manim_code,
-        video_url=job.video_url,
-        error=job.error,
-        mode=mode_literal,
-        retry_count=job.retry_count,
-        resolution=job.resolution,
-        frame_rate=job.frame_rate,
-        streamed_thoughts=[],
-    )
+    return job.to_status_schema()
 
 
 @router.delete("/{job_id}", status_code=204)
-async def delete_job(job_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_job(job_id: str, db: AsyncSession = Depends(get_db)) -> None:
     """Deletes a job and its associated filesystem data.
 
     Args:
@@ -381,7 +285,7 @@ async def delete_job(job_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("", status_code=204)
-async def delete_all_jobs(db: AsyncSession = Depends(get_db)):
+async def delete_all_jobs(db: AsyncSession = Depends(get_db)) -> None:
     """Deletes ALL jobs from the database and clears the entire jobs filesystem root.
 
     Args:
