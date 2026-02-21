@@ -16,8 +16,9 @@ class SandboxResult(BaseModel):
 class LocalSandbox:
     """Isolated execution environment for Manim animations.
 
-    By default, it uses Podman to run a sandboxed container. 
-    If Podman is not available, it logs a warning and falls back to the local Manim installation.
+    By default, it uses Podman to run a sandboxed container.
+    If Podman is not available, it logs a warning and falls back
+    to the local Manim installation.
     """
 
     def __init__(self) -> None:
@@ -35,6 +36,47 @@ class LocalSandbox:
         except Exception as e:
             logger.error(f"Engine health check failed: {e}")
             return False
+
+    async def run_check(
+        self,
+        job_dir: Path,
+        code_file: str,
+    ) -> SandboxResult:
+        """Performs a lightweight syntax and integrity check on the code.
+
+        Args:
+            job_dir (Path): Local directory containing the source code.
+            code_file (str): The Python filename to check.
+
+        Returns:
+            SandboxResult: Captured output from the check.
+        """
+        try:
+            if self.use_podman:
+                cmd = [
+                    "podman", "run", "--rm", "--userns=keep-id",
+                    "-v", f"{job_dir.absolute()}:/manim",
+                    "docker.io/manimcommunity/manim:latest",
+                    "python3", "-m", "py_compile", code_file
+                ]
+            else:
+                cmd = ["python3", "-m", "py_compile", code_file]
+
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                cwd=job_dir if not self.use_podman else None,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+            
+            return SandboxResult(
+                stdout=stdout.decode("utf-8", errors="replace"),
+                stderr=stderr.decode("utf-8", errors="replace")
+            )
+        except Exception as e:
+            logger.error(f"Syntax check failed: {e}")
+            return SandboxResult(stdout="", stderr=str(e))
 
     async def run_rendering(
         self,
@@ -62,16 +104,18 @@ class LocalSandbox:
             if self.use_podman:
                 # Run via Podman container
                 cmd = [
-                    "podman", "run", "--rm",
+                    "podman", "run", "--rm", "--userns=keep-id",
                     "-v", f"{job_dir.absolute()}:/manim",
-                    "manimcommunity/manim:latest",
-                    quality_flag, "--media_dir", ".",
+                    "docker.io/manimcommunity/manim:latest",
+                    "manim", quality_flag, "--media_dir", ".",
                     code_file, scene_name
                 ]
                 logger.info(f"Starting Podman rendering: {' '.join(cmd)}")
             else:
                 # Fallback to local execution
-                logger.warning("Podman not found. Falling back to local Manim execution.")
+                logger.warning(
+                    "Podman not found. Falling back to local Manim execution."
+                )
                 cmd = ["manim", quality_flag, "--media_dir", ".", code_file, scene_name]
                 logger.info(f"Starting local rendering: {' '.join(cmd)} in {job_dir}")
 
