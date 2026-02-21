@@ -19,7 +19,7 @@ graph TD
     end
     
     Animator -- "Manim Script" --> Renderer[Rendering Service]
-    Renderer -- "Docker Sandbox" --> Manim[Manim Engine]
+    Renderer -- "Podman Sandbox" --> Manim[Manim Engine]
     Manim -- "MP4 Artifact" --> Storage[Local Storage /data/jobs]
     
     Backend -- "SSE Events" --> Frontend
@@ -29,4 +29,4 @@ graph TD
 ## Key Technologies
 - **Backend**: FastAPI, Pydantic AI, SQLAlchemy (Async), Manim Engine.
 - **Frontend**: React 19, Vite, Tailwind CSS 4, Framer Motion.
-- **Infrastructure**: Docker for sandboxed rendering.
+- **Infrastructure**: Podman for sandboxed rendering (with local execution fallback).

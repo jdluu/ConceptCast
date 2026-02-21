@@ -14,25 +14,26 @@ class SandboxResult(BaseModel):
 
 
 class LocalSandbox:
-    """Isolated execution environment for Manim animations using local subprocess.
+    """Isolated execution environment for Manim animations.
 
-    This service provides a standardized interface for running AI-generated 
-    Python code using the system's local Manim installation.
+    By default, it uses Podman to run a sandboxed container. 
+    If Podman is not available, it logs a warning and falls back to the local Manim installation.
     """
 
     def __init__(self) -> None:
-        """Initializes the sandbox."""
-        pass
+        """Initializes the sandbox execution strategy."""
+        import shutil
+        self.use_podman = shutil.which("podman") is not None
 
     def is_healthy(self) -> bool:
-        """Verifies if the Manim engine is available in the system path."""
+        """Verifies if either Podman or local Manim is available."""
         try:
-            # We don't use 'manim --version' here as it can be slow; 
-            # just checking if the command exists is usually enough for a fast check.
             import shutil
+            if shutil.which("podman") is not None:
+                return True
             return shutil.which("manim") is not None
         except Exception as e:
-            logger.error(f"Manim health check failed: {e}")
+            logger.error(f"Engine health check failed: {e}")
             return False
 
     async def run_rendering(
@@ -44,7 +45,7 @@ class LocalSandbox:
         quality_flag: str = "-ql",
         log_callback: Callable[[str], Any] | None = None,
     ) -> SandboxResult | None:
-        """Executes Manim rendering via local subprocess.
+        """Executes Manim rendering via Podman or local subprocess.
 
         Args:
             job_dir (Path): Local directory containing the source code.
@@ -58,12 +59,25 @@ class LocalSandbox:
             Optional[SandboxResult]: The captured stdout and stderr.
         """
         try:
-            cmd = ["manim", quality_flag, "--media_dir", ".", code_file, scene_name]
-            logger.info(f"Starting rendering: {' '.join(cmd)} in {job_dir}")
+            if self.use_podman:
+                # Run via Podman container
+                cmd = [
+                    "podman", "run", "--rm",
+                    "-v", f"{job_dir.absolute()}:/manim",
+                    "manimcommunity/manim:latest",
+                    quality_flag, "--media_dir", ".",
+                    code_file, scene_name
+                ]
+                logger.info(f"Starting Podman rendering: {' '.join(cmd)}")
+            else:
+                # Fallback to local execution
+                logger.warning("Podman not found. Falling back to local Manim execution.")
+                cmd = ["manim", quality_flag, "--media_dir", ".", code_file, scene_name]
+                logger.info(f"Starting local rendering: {' '.join(cmd)} in {job_dir}")
 
             process = await asyncio.create_subprocess_exec(
                 *cmd,
-                cwd=job_dir,
+                cwd=job_dir if not self.use_podman else None,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -92,13 +106,13 @@ class LocalSandbox:
                 stderr_str = "".join(stderr_lines)
             else:
                 stdout, stderr = await process.communicate()
-                stdout_str = stdout.decode()
-                stderr_str = stderr.decode()
+                stdout_str = stdout.decode("utf-8", errors="replace")
+                stderr_str = stderr.decode("utf-8", errors="replace")
 
             if process.returncode != 0:
                 err_msg = stderr_str or stdout_str
                 logger.error(f"Rendering failed (code {process.returncode}): {err_msg}")
-                raise RuntimeError(f"Manim rendering failed: {err_msg}")
+                raise RuntimeError(f"Rendering failed: {err_msg}")
 
             return SandboxResult(stdout=stdout_str, stderr=stderr_str)
 

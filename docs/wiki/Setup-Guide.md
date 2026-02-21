@@ -3,8 +3,8 @@
 ## Prerequisites
 - Node.js >= 24
 - Python >= 3.11
-- Docker (for Manim rendering)
-- Manim (locally if not using Docker)
+- Podman (recommended for sandboxing Manim rendering)
+- Manim (locally if fallback execution is needed)
 
 ## Installation
 
