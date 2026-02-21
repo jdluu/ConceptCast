@@ -26,6 +26,14 @@ export default defineConfig({
       '/jobs': {
         target: 'http://localhost:8000',
         changeOrigin: true
+      },
+      '/models': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
+      },
+      '/health': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
       }
     }
   },
