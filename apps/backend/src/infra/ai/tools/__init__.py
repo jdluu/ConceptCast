@@ -1,3 +1,3 @@
-from .manim import search_manim_docs
-
-__all__ = ["search_manim_docs"]
+from .manim import prepare_manim_docs, search_manim_docs
+ 
+__all__ = ["prepare_manim_docs", "search_manim_docs"]
