@@ -55,3 +55,5 @@ data/jobs/*
 !data/jobs/.gitkeep
 
 *.db
+*.db-shm
+*.db-wal
