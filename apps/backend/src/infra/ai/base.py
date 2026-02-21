@@ -13,13 +13,13 @@ class BaseProvider(ABC):
 
     @abstractmethod
     def create_model(self, model_id: str) -> Model:
-        """Instantiates the Pydantic AI model for this provider.
+        """Creates a Pydantic AI model instance for the given model ID.
 
         Args:
-            model_id: The unique identifier of the model to create.
+            model_id: The identifier of the model to create.
 
         Returns:
-            An instance of a Pydantic AI Model.
+            A configured Pydantic AI Model instance.
         """
         pass
 

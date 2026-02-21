@@ -25,5 +25,5 @@ def resolve_model_args(request: JobRequest, job: JobRecord) -> tuple[str, str | 
 
 def get_step_model(request: JobRequest, job: JobRecord) -> Any:
     """Convenience helper to get a model instance for a workflow step."""
-    provider, model_id = resolve_model_args(request, job)
-    return get_model(provider_name=provider, model_id=model_id)
+    provider_name, model_id = resolve_model_args(request, job)
+    return get_model(provider_name=provider_name, model_id=model_id)

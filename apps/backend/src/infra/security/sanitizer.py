@@ -46,6 +46,12 @@ _DANGEROUS_ATTRIBUTES = {
     "__dict__",
 }
 
+# Regex to detect lowercase color kwarg values, e.g. color="red" which
+# will raise at runtime. Manim constants are always CAPS (RED, BROWN, etc.).
+_LOWERCASE_COLOR_RE = re.compile(
+    r'(?:color|fill_color|stroke_color)\s*=\s*["\']([a-z]+)["\']'
+)
+
 
 class ASTSanitizer(ast.NodeVisitor):
     """AST-based sanitizer for validating AI-generated Manim code.
@@ -158,6 +164,15 @@ def sanitize_manim_code(code: str) -> str:
         raise RuntimeError(f"Python syntax error: {e}") from e
 
     ASTSanitizer().visit(tree)
+
+    # Fast-fail for lowercase color strings (common AI hallucination)
+    # Manim constants are CAPS (e.g. RED, BLUE). Strings like "red" fail.
+    bad_colors = _LOWERCASE_COLOR_RE.findall(cleaned)
+    if bad_colors:
+        raise RuntimeError(
+            f"Invalid color strings found: {', '.join(bad_colors)}. "
+            "Use uppercase Manim constants (e.g., RED, BROWN) or hex strings."
+        )
 
     has_scene_gen = any(
         isinstance(node, ast.ClassDef) and node.name == "SceneGen"

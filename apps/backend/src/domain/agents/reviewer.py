@@ -9,6 +9,7 @@ from pydantic_ai.usage import RunUsage
 
 from api.schemas import AnimationReview, Storyboard
 from infra.ai.streaming import run_agent_streamed
+from infra.ai.tools import lint_manim_code, prepare_manim_docs, search_manim_docs
 
 system_prompt = """
 You are the **Reviewer Agent** (Visual QA) for ConceptCast.
@@ -20,11 +21,17 @@ Your goal is to verify that a generated Manim animation matches the intended sto
 3. **Frame Image:** (Optional) A rendered frame from the animation.
 
 **Review Process:**
-1. **Log Analysis:** Check the logs for:
+1. **Code Validation:** Use the `lint_manim_code` tool to check for syntax errors 
+   and common pitfalls (like invalid color names). 
+   - DO NOT approve code with lowercase color strings (e.g., "brown"). 
+   - Ensure color constants are uppercase (e.g., BROWN).
+2. **Authoritative Docs:** Use the `search_manim_docs` tool to verify parameters 
+   and color constants if you are unsure.
+3. **Log Analysis:** Check the logs for:
    - Python errors or warnings.
    - Manim warnings (e.g., "Mobject not in scene").
    - LaTeX compilation errors.
-2. **Visual Verification:** (If frame provided, otherwise infer from logs/storyboard)
+4. **Visual Verification:** (If frame provided, otherwise infer from logs/storyboard)
    - Did the code run successfully?
    - Does the content match the storyboard description?
    - Are there any layout issues (overlapping text, off-screen elements)?
@@ -51,9 +58,22 @@ async def review_animation(
     model: Model,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
 ) -> tuple[AnimationReview, RunUsage]:
-    """Compares rendered frames against the storyboard for visual fidelity.
+    """Compares rendered output against the storyboard for visual fidelity.
 
-    Streams reviewer thoughts if on_thought is provided.
+    Runs the Reviewer Agent which uses sandbox-based linting and Context7
+    documentation to approve or request revisions for the generated animation.
+    Streams intermediate reasoning steps via ``on_thought`` if provided.
+
+    Args:
+        storyboard: The target visual sequence the animation should reproduce.
+        frame_path: Path to a rendered PNG frame, or None for log-only review.
+        execution_logs: Combined stdout/stderr from the Manim render process.
+        model: PydanticAI model instance to use for the review.
+        on_thought: Optional callback for streaming agent thoughts in real time.
+
+    Returns:
+        tuple[AnimationReview, RunUsage]: The structured review decision
+        and the token usage incurred by this agent run.
     """
     agent = Agent(
         model,
@@ -61,6 +81,8 @@ async def review_animation(
         output_type=AnimationReview,
         deps_type=Storyboard,
     )
+    agent.tool(lint_manim_code)
+    agent.tool(search_manim_docs, prepare=prepare_manim_docs)  # type: ignore
 
     # Construct the review prompt
     prompt_parts = [

@@ -38,6 +38,11 @@ using the **Manim Community** library.
   using any Manim object.
 - Use `.set_color()`, `.set_fill()`, `.set_stroke()` methods for styling, 
   not constructor kwargs unless the docs explicitly show them.
+- **COLORS:** NEVER use lowercase strings for colors (e.g., "red", "blue", "brown"). 
+  ALWAYS use uppercase Manim constants (e.g., `RED`, `BLUE`, `BROWN`) 
+  or hex strings (e.g., `"#FF0000"`).
+- If you are unsure of a color name, use a hex string or stick to basic 
+  constants like `WHITE`, `BLACK`, `RED`, `BLUE`, `GREEN`, `YELLOW`.
 
 **Output:**
 - You must return ONLY the raw Python code as a string.
