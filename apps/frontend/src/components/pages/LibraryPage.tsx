@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
-import { listJobs, getJobStatus, type JobSummary, type JobStatus, deleteJob } from '@/lib/api/client';
+import { useState, useMemo } from 'react';
+import { getJobStatus, type JobStatus, deleteJob } from '@/lib/api/client';
 import { 
     Play, 
     Search, 
@@ -8,38 +8,23 @@ import {
     Download,
     Calendar,
     Clock,
-    PlayCircle,
-    ChevronDown
+    PlayCircle
 } from 'lucide-react';
 import { useDeveloperMode } from '@/lib/contexts/developerMode';
 import { VideoPlayer } from '@/components/ui/VideoPlayer';
+import { FilterSelect } from '@/components/ui/FilterSelect';
+import { useLibrary } from '@/lib/hooks/useLibrary';
 import { formatDuration, formatGenerationTime } from '@/lib/utils/durationUtils';
 
 export function LibraryPage() {
-    const [jobs, setJobs] = useState<JobSummary[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data: jobs = [], isPending, refetch } = useLibrary();
+
     const [search, setSearch] = useState('');
     const [selectedJob, setSelectedJob] = useState<JobStatus | null>(null);
     const [sortBy, setBy] = useState<'latest' | 'oldest' | 'topic' | 'duration'>('latest');
     const [topicFilter, setTopicFilter] = useState('all');
     
     const { developerMode } = useDeveloperMode();
-    
-    useEffect(() => {
-        loadLibrary();
-    }, []);
-    
-    const loadLibrary = async () => {
-        try {
-            const data = await listJobs();
-            const completedJobs = data.jobs.filter(j => j.status === 'completed');
-            setJobs(completedJobs);
-        } catch (err) {
-            console.error('Failed to load library', err);
-        } finally {
-            setLoading(false);
-        }
-    };
     
     const uniqueTopics = useMemo(() => {
         const topics = new Set(jobs.map(j => j.topic));
@@ -75,7 +60,7 @@ export function LibraryPage() {
         }
     };
     
-    if (loading) {
+    if (isPending) {
         return <div className="p-8 text-[var(--text-muted)]">Loading library...</div>;
     }
     
@@ -205,7 +190,7 @@ export function LibraryPage() {
                                     <button 
                                         onClick={() => {
                                             if (confirm('Are you sure you want to delete this video from your library?')) {
-                                                deleteJob(job.job_id).then(loadLibrary);
+                                                deleteJob(job.job_id).then(() => refetch());
                                             }
                                         }}
                                         className="w-11 h-11 bg-[var(--background)] border border-[var(--surface-border)] rounded-xl flex items-center justify-center text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/20 transition-all active:scale-95 shadow-sm"
@@ -248,22 +233,3 @@ export function LibraryPage() {
     );
 }
 
-function FilterSelect({ icon, value, onChange, options }: { icon: React.ReactNode, value: string, onChange: (v: string) => void, options: { label: string, value: string }[] }) {
-    return (
-        <div className="relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors pointer-events-none">
-                {icon}
-            </div>
-            <select 
-                value={value} 
-                onChange={(e) => onChange(e.target.value)}
-                className="pl-11 pr-10 py-3 bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl text-sm font-bold text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none cursor-pointer hover:border-indigo-500 hover:text-[var(--foreground)] transition-all shadow-sm"
-            >
-                {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none group-hover:text-indigo-500 transition-colors">
-                <ChevronDown className="w-4 h-4" />
-            </div>
-        </div>
-    );
-}

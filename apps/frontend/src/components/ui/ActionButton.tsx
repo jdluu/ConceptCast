@@ -1,0 +1,37 @@
+import { cn } from '@/lib/utils';
+
+interface ActionButtonProps {
+    /** Icon node rendered inside the button. */
+    icon: React.ReactNode;
+    /** Tooltip title for the button. */
+    title: string;
+    /** Click handler. */
+    onClick: (e: React.MouseEvent) => void;
+    /** Visual variant controlling hover color. */
+    variant?: 'default' | 'danger';
+}
+
+/**
+ * A compact icon-only action button with hover color feedback.
+ *
+ * @param {ActionButtonProps} props - Component properties.
+ * @returns {JSX.Element} The rendered action button.
+ */
+export function ActionButton({ icon, title, onClick, variant = 'default' }: ActionButtonProps) {
+    return (
+        <button 
+            title={title} 
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClick(e);
+            }}
+            className={cn(
+                "p-2 rounded-lg transition-all active:scale-95 shadow-sm",
+                variant === 'danger' ? "hover:bg-red-500/10 hover:text-red-500 text-[var(--text-muted)]" : "hover:bg-indigo-500/10 hover:text-indigo-600 text-[var(--text-muted)]"
+            )}
+        >
+            {icon}
+        </button>
+    );
+}

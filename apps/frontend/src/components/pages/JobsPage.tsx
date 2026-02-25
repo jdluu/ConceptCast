@@ -1,35 +1,22 @@
-import { useEffect, useState, useMemo } from 'react';
-import { listJobs, retryJob, deleteJob, getJobStatus, type JobSummary, type JobStatus } from '@/lib/api/client';
+import { useState, useMemo, useCallback } from 'react';
+import { retryJob, deleteJob, getJobStatus, type JobSummary, type JobStatus } from '@/lib/api/client';
 import { useDeveloperMode } from '@/lib/contexts/developerMode';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { JobDetailPanel } from '@/components/jobs/JobDetailPanel';
 import { VideoPlayer } from '@/components/ui/VideoPlayer';
+import { FilterSelect } from '@/components/ui/FilterSelect';
+import { JobRow } from '@/components/jobs/JobRow';
+import { useJobs } from '@/lib/hooks/useJobs';
 import { 
-    Play, 
-    RotateCcw, 
-    Download, 
     Trash2, 
-    ChevronDown, 
-    ChevronUp,
     Filter,
     ArrowUpDown,
     CheckSquare,
-    Square,
-    Clock,
-    PlayCircle
+    Square
 } from 'lucide-react';
-import { formatDuration, formatGenerationTime } from '@/lib/utils/durationUtils';
-import { cn } from '@/lib/utils';
-
-const formatTime = (isoString: string | null | undefined) => {
-    if (!isoString) return '-';
-    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-};
 
 export function JobsPage() {
-    const [jobs, setJobs] = useState<JobSummary[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [, setError] = useState<string | null>(null);
+    const { data, isPending, refetch } = useJobs();
+    const jobs = data?.jobs ?? [];
+
     const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
     const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
     const [fullJobDetails, setFullJobDetails] = useState<Record<string, JobStatus>>({});
@@ -49,33 +36,11 @@ export function JobsPage() {
         return result.sort((a, b) => {
             if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             if (sortBy === 'duration') return (Number((b as any).video_metadata?.duration) || 0) - (Number((a as any).video_metadata?.duration) || 0);
-            if (sortBy === 'cost') return ((b as any).cost || 0) - ((a as any).cost || 0);
             return 0;
         });
     }, [jobs, developerMode, statusFilter, sortBy]);
 
-    // const uniqueModels = useMemo(() => Array.from(new Set(jobs.map(j => j.model_id).filter(Boolean))), [jobs]);
-
-    useEffect(() => {
-        loadJobs();
-        const interval = setInterval(loadJobs, 5000); // Poll for updates
-        return () => clearInterval(interval);
-    }, []);
-
-    const loadJobs = async () => {
-        try {
-            const response = await listJobs();
-            setJobs(response.jobs);
-            setError(null);
-        } catch (err) {
-            setError('Failed to load jobs');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const toggleExpand = async (jobId: string) => {
+    const toggleExpand = useCallback(async (jobId: string) => {
         if (expandedJobId === jobId) {
             setExpandedJobId(null);
         } else {
@@ -89,7 +54,7 @@ export function JobsPage() {
                 }
             }
         }
-    };
+    }, [expandedJobId, fullJobDetails]);
 
     const toggleSelect = (jobId: string) => {
         const next = new Set(selectedJobIds);
@@ -108,19 +73,16 @@ export function JobsPage() {
 
     const handleBulkDelete = async () => {
         if (!confirm(`Delete ${selectedJobIds.size} jobs?`)) return;
-        setLoading(true);
         try {
             await Promise.all(Array.from(selectedJobIds).map(id => deleteJob(id)));
             setSelectedJobIds(new Set());
-            await loadJobs();
+            await refetch();
         } catch (err) {
             console.error('Bulk delete failed', err);
-        } finally {
-            setLoading(false);
         }
     };
 
-    if (loading && jobs.length === 0) {
+    if (isPending) {
         return <div className="p-8 text-[var(--text-muted)]">Loading jobs...</div>;
     }
 
@@ -150,8 +112,7 @@ export function JobsPage() {
                         onChange={(v) => setBy(v as any)}
                         options={[
                             { label: 'Newest First', value: 'newest' },
-                            { label: 'Longest Duration', value: 'duration' },
-                            { label: 'Highest Cost', value: 'cost' }
+                            { label: 'Longest Duration', value: 'duration' }
                         ]}
                     />
                     {selectedJobIds.size > 0 && (
@@ -180,7 +141,7 @@ export function JobsPage() {
                             <th className="px-4 py-4">Status</th>
                             <th className="px-4 py-4">Duration</th>
                             <th className="px-4 py-4">Output</th>
-                            <th className="px-4 py-4 text-right">Model & Cost</th>
+                            <th className="px-4 py-4 text-right">Model</th>
                             <th className="px-4 py-4 text-right">Created</th>
                             <th className="pl-4 pr-6 py-4 text-right">Actions</th>
                         </tr>
@@ -205,10 +166,10 @@ export function JobsPage() {
                                     onToggleSelect={() => toggleSelect(job.job_id)}
                                     onDelete={() => {
                                         if (confirm('Are you sure you want to delete this job and all its artifacts?')) {
-                                            deleteJob(job.job_id).then(loadJobs);
+                                            deleteJob(job.job_id).then(() => refetch());
                                         }
                                     }}
-                                    onRetry={() => retryJob(job.job_id).then(loadJobs)}
+                                    onRetry={() => retryJob(job.job_id).then(() => refetch())}
                                     onPlay={() => setPlayingJob(job)}
                                 />
                             ))
@@ -243,155 +204,5 @@ export function JobsPage() {
                 </div>
             )}
         </div>
-    );
-}
-
-interface JobRowProps {
-    job: JobSummary;
-    isExpanded: boolean;
-    isSelected: boolean;
-    detail?: JobStatus;
-    onToggleExpand: () => void;
-    onToggleSelect: () => void;
-    onDelete: () => void;
-    onRetry: () => void;
-    onPlay: () => void;
-}
-
-function JobRow({ job, isExpanded, isSelected, detail, onToggleExpand, onToggleSelect, onDelete, onRetry, onPlay }: JobRowProps) {
-    const cost = (job as any).cost || 0;
-    const metadata = (job as any).video_metadata || {};
-
-    return (
-        <>
-            <tr className={cn(
-                "group transition-all duration-200 cursor-pointer",
-                isExpanded ? "bg-indigo-500/5" : "hover:bg-[var(--surface-border)]/20",
-                isSelected && "bg-indigo-500/5"
-            )} onClick={onToggleExpand}>
-                <td className="pl-6 pr-4 py-5" onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}>
-                    <button className={cn("p-1 transition-colors", isSelected ? "text-indigo-500" : "text-[var(--text-muted)] group-hover:text-[var(--foreground)]")}>
-                        {isSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                    </button>
-                </td>
-                <td className="px-4 py-5">
-                    <div className="w-20 aspect-video rounded-md bg-[var(--background)] border border-[var(--surface-border)] overflow-hidden relative shadow-inner">
-                        {job.thumbnail_url ? (
-                            <img src={job.thumbnail_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                                <Play className="w-4 h-4 text-[var(--text-muted)]" />
-                            </div>
-                        )}
-                    </div>
-                </td>
-                <td className="px-4 py-5 max-w-xs">
-                    <span className="block font-semibold text-[var(--foreground)] truncate">{job.topic}</span>
-                    <span className="block text-[10px] text-[var(--text-muted)] font-mono mt-0.5 uppercase tracking-tighter">{job.job_id.split('-')[0]}</span>
-                </td>
-                <td className="px-4 py-5">
-                    <StatusBadge status={job.status as any} />
-                </td>
-                <td className="px-4 py-5 font-medium whitespace-nowrap">
-                    <div className="flex flex-col">
-                        <span className="text-[var(--foreground)] text-xs flex items-center gap-1.5">
-                            <PlayCircle className="w-3 h-3 text-indigo-500/50" />
-                            {formatDuration(Number(metadata.duration))}
-                        </span>
-                        <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
-                            <Clock className="w-2.5 h-2.5" />
-                            {formatGenerationTime(job.duration_seconds)}
-                        </span>
-                    </div>
-                </td>
-                <td className="px-4 py-5">
-                    <div className="flex flex-col">
-                        <span className="text-[var(--foreground)] font-medium text-xs">{metadata.resolution || '—'}</span>
-                        <span className="text-[10px] text-[var(--text-muted)]">{metadata.file_size || ''}</span>
-                    </div>
-                </td>
-                <td className="px-4 py-5 text-right">
-                    <span className="block text-indigo-600 dark:text-indigo-400 font-bold">{cost > 0 ? `$${cost.toFixed(2)}` : '—'}</span>
-                    <span className="block text-[10px] text-[var(--text-muted)] truncate">{job.model_id || '—'}</span>
-                </td>
-                <td className="px-4 py-5 text-right whitespace-nowrap">
-                    <span className="block text-[var(--foreground)] opacity-80">{new Date(job.created_at).toLocaleDateString()}</span>
-                    <span className="block text-[10px] text-[var(--text-muted)]">{formatTime(job.created_at)}</span>
-                </td>
-                <td className="pl-4 pr-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1 px-1">
-                        {job.status === 'completed' && <ActionButton icon={<Play className="w-3.5 h-3.5" />} title="Play" onClick={onPlay} />}
-                        {job.status === 'failed' && <ActionButton icon={<RotateCcw className="w-3.5 h-3.5" />} title="Retry" onClick={onRetry} />}
-                        {job.status === 'completed' && <ActionButton icon={<Download className="w-3.5 h-3.5" />} title="Download" onClick={() => {}} />}
-                        <ActionButton icon={<Trash2 className="w-3.5 h-3.5" />} title="Delete" variant="danger" onClick={onDelete} />
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
-                            className="ml-2 pl-2 border-l border-[var(--surface-border)] hover:text-[var(--foreground)] transition-colors"
-                        >
-                            {isExpanded ? <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" /> : <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />}
-                        </button>
-                    </div>
-                </td>
-            </tr>
-            {isExpanded && (
-                <tr>
-                    <td colSpan={9} className="p-0 border-b border-[var(--surface-border)]">
-                        {detail ? <JobDetailPanel job={detail} /> : (
-                            <div className="p-12 text-center bg-[var(--surface)]/50">
-                                <Loader2 className="w-6 h-6 text-indigo-500 animate-spin mx-auto mb-2" />
-                                <span className="text-[var(--text-muted)] text-sm">Loading job artifacts...</span>
-                            </div>
-                        )}
-                    </td>
-                </tr>
-            )}
-        </>
-    );
-}
-
-function ActionButton({ icon, title, onClick, variant = 'default' }: { icon: React.ReactNode; title: string, onClick: (e: React.MouseEvent) => void, variant?: 'default' | 'danger' }) {
-    return (
-        <button 
-            title={title} 
-            onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onClick(e);
-            }}
-            className={cn(
-                "p-2 rounded-lg transition-all active:scale-95 shadow-sm",
-                variant === 'danger' ? "hover:bg-red-500/10 hover:text-red-500 text-[var(--text-muted)]" : "hover:bg-indigo-500/10 hover:text-indigo-600 text-[var(--text-muted)]"
-            )}
-        >
-            {icon}
-        </button>
-    );
-}
-
-function FilterSelect({ icon, value, onChange, options }: { icon: React.ReactNode, value: string, onChange: (v: string) => void, options: { label: string, value: string }[] }) {
-    return (
-        <div className="relative group">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors pointer-events-none">
-                {icon}
-            </div>
-            <select 
-                value={value} 
-                onChange={(e) => onChange(e.target.value)}
-                className="pl-8 pr-10 py-2 bg-[var(--surface)] border border-[var(--surface-border)] rounded-xl text-xs font-bold text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none appearance-none cursor-pointer hover:border-[var(--surface-border)] transition-all shadow-sm"
-            >
-                {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none group-hover:text-indigo-500 transition-colors">
-                <ChevronDown className="w-3.5 h-3.5" />
-            </div>
-        </div>
-    );
-}
-
-function Loader2({ className }: { className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-        </svg>
     );
 }
