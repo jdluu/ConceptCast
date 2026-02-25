@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from typing import Any, cast
 
 from loguru import logger
@@ -8,12 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.schemas import JobRequest
+from infra.database import AsyncSessionLocal
 from infra.exceptions import (
     AnimationGenerationError,
     PlanGenerationError,
     StoryboardGenerationError,
 )
-from infra.storage import AsyncSessionLocal, JobRecord
+from infra.models.job import JobRecord
 from services.workflow.utils import calculate_job_cost, merge_usage
 
 from ..jobs.manager import (
@@ -25,6 +27,7 @@ from ..jobs.manager import (
 from .steps.animating import step_animating
 from .steps.architecting import step_architecting
 from .steps.planning import step_planning
+from .steps.rendering import step_rendering
 from .steps.validating import step_validating
 
 
@@ -130,7 +133,11 @@ async def execute_workflow(
         try:
             # Step 1: Planning
             await update_job(
-                {"status": "planning", "current_step": "planning_start"}
+                {
+                    "status": "planning",
+                    "current_step": "planning_start",
+                    "started_at": datetime.now(UTC),
+                }
             )
             if provider == "mock":
                 await asyncio.sleep(2)
@@ -142,32 +149,38 @@ async def execute_workflow(
                 raise PlanGenerationError("Planning failed to produce curriculum.")
             add_usage(usage)
 
-            # Step 2: Validating
+            # Step 2 & 3: Validating and Architecting (Concurrent)
             await update_job(
-                {"status": "validating", "current_step": "validating_start"}
+                {"status": "architecting", "current_step": "parallel_execution"}
             )
-            if provider == "mock":
-                await asyncio.sleep(2)
 
-            validation, v_usage = await step_validating(
-                plan, request, job_state, update_job, on_thought
-            )
-            add_usage(v_usage)
-
-            # Step 3: Architecting
-            await update_job(
-                {"status": "architecting", "current_step": "architecting_start"}
-            )
-            if provider == "mock":
-                await asyncio.sleep(2)
-
-            storyboard, a_usage = await step_architecting(
-                plan, request, job_state, update_job, on_thought
-            )
-            if not storyboard:
-                raise StoryboardGenerationError(
-                    "Architecting failed to produce a storyboard."
+            async def run_validating() -> Any:
+                if provider == "mock":
+                    await asyncio.sleep(2)
+                return await step_validating(
+                    plan, request, job_state, update_job, on_thought
                 )
+
+            async def run_architecting() -> Any:
+                if provider == "mock":
+                    await asyncio.sleep(2)
+                res = await step_architecting(
+                    plan, request, job_state, update_job, on_thought
+                )
+                if not res[0]:
+                    raise StoryboardGenerationError(
+                        "Architecting failed to produce a storyboard."
+                    )
+                return res
+
+            async with asyncio.TaskGroup() as tg:
+                val_task = tg.create_task(run_validating())
+                arch_task = tg.create_task(run_architecting())
+
+            validation, v_usage = val_task.result()
+            storyboard, a_usage = arch_task.result()
+
+            add_usage(v_usage)
             add_usage(a_usage)
 
             # Step 4: Animating
@@ -182,12 +195,23 @@ async def execute_workflow(
                 raise AnimationGenerationError("Animating failed to produce code.")
             add_usage(m_usage)
 
+            await update_job({"manim_code": code})
+
+            # Step 5: Rendering
+            await step_rendering(
+                code, job_id, storyboard, request, job_state, update_job, on_thought
+            )
+
             # Finalize via job management
             final_cost = calculate_job_cost(total_usage)
             await update_job_record(
                 db_session_factory=AsyncSessionLocal,
                 job_id=job_id,
-                updates={"status": "completed", "cost": final_cost},
+                updates={
+                    "status": "completed",
+                    "cost": final_cost,
+                    "finished_at": datetime.now(UTC),
+                },
             )
 
         except Exception as e:
@@ -196,6 +220,11 @@ async def execute_workflow(
             await update_job_record(
                 db_session_factory=AsyncSessionLocal,
                 job_id=job_id,
-                updates={"status": "failed", "error": str(e), "cost": final_cost},
+                updates={
+                    "status": "failed",
+                    "error": str(e),
+                    "cost": final_cost,
+                    "finished_at": datetime.now(UTC),
+                },
             )
             raise

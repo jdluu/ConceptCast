@@ -11,8 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from api.middleware.logging import LoggingMiddleware
 from api.middleware.rate_limiting import RateLimitMiddleware
 from api.routes import ai_models, health, jobs
+from infra.database import AsyncSessionLocal, init_db
 from infra.settings import get_settings
-from infra.storage import AsyncSessionLocal, init_db
 
 
 @asynccontextmanager

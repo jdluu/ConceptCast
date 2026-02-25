@@ -17,8 +17,9 @@ from api.schemas import (
     JobStatus,
     JobSummary,
 )
+from infra.database import AsyncSessionLocal, get_db
+from infra.models.job import JobRecord
 from infra.settings import get_settings
-from infra.storage import AsyncSessionLocal, JobRecord, get_db
 from services.jobs.events import job_event_manager
 from services.workflow.orchestrator import prepare_job_for_retry, process_job_logic
 
