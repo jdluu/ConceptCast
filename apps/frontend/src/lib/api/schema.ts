@@ -4,7 +4,27 @@
  */
 
 export interface paths {
-    "/models/available": {
+    "/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health Check
+         * @description Detailed health-check endpoint for production monitoring.
+         */
+        get: operations["health_check__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/models": {
         parameters: {
             query?: never;
             header?: never;
@@ -17,27 +37,7 @@ export interface paths {
          *     Only includes providers for which the user has an API key configured;
          *     mock is always included. No tiered priority.
          */
-        get: operations["get_available_models_models_available_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Read Root
-         * @description Root health-check endpoint (used when frontend is not bundled).
-         */
-        get: operations["read_root__get"];
+        get: operations["get_available_models_models_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -58,19 +58,6 @@ export interface paths {
         /**
          * Create Job
          * @description Initializes a new asynchronous video generation job.
-         *     Creates a job record in the database and triggers
-         *     the background processing workflow.
-         *
-         *     Args:
-         *         request: The job configuration (topic, audience, provider).
-         *         background_tasks: FastAPI BackgroundTasks handler.
-         *         db: The asynchronous database session.
-         *
-         *     Returns:
-         *         JobStatus: The initial status of the created job.
-         *
-         *     Raises:
-         *         HTTPException: If job initialization fails.
          */
         post: operations["create_job_jobs_create_post"];
         delete?: never;
@@ -89,17 +76,6 @@ export interface paths {
         /**
          * Get Job Status
          * @description Retrieves the current status and artifacts for a specific job.
-         *
-         *     Args:
-         *         job_id: The UUID of the job to retrieve.
-         *         db: The asynchronous database session.
-         *
-         *     Returns:
-         *         JobStatus: Detailed state including plan, storyboard,
-         *         and video URL if available.
-         *
-         *     Raises:
-         *         HTTPException: If job is not found.
          */
         get: operations["get_job_status_jobs__job_id__status_get"];
         put?: never;
@@ -122,11 +98,11 @@ export interface paths {
          * @description Provides a real-time stream of job updates via SSE.
          *
          *     Args:
-         *         job_id: The UUID of the job to stream events for.
-         *         db_session_factory: Factory for non-blocking DB sessions.
+         *         job_id: The unique identifier of the job to stream.
+         *         db_session_factory: Dependency for creating database sessions.
          *
          *     Returns:
-         *         StreamingResponse: An event-stream connection.
+         *         StreamingResponse: An SSE event stream.
          */
         get: operations["job_events_jobs__job_id__events_get"];
         put?: never;
@@ -147,16 +123,6 @@ export interface paths {
         /**
          * Get Plan
          * @description Retrieves the generated curriculum plan for a specific job.
-         *
-         *     Args:
-         *         job_id: The UUID of the job.
-         *         db: The asynchronous database session.
-         *
-         *     Returns:
-         *         CurriculumPlan: The parsed curriculum JSON.
-         *
-         *     Raises:
-         *         HTTPException: If job or plan is not found.
          */
         get: operations["get_plan_jobs__job_id__plan_get"];
         put?: never;
@@ -177,11 +143,27 @@ export interface paths {
         /**
          * List Jobs
          * @description Lists all jobs sorted by creation date (newest first).
+         *
+         *     Args:
+         *         db: The active database session.
+         *
+         *     Returns:
+         *         JobListResponse: A paginated or list of job summaries.
          */
         get: operations["list_jobs_jobs_get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete All Jobs
+         * @description Deletes ALL jobs from the database and clears the entire jobs filesystem root.
+         *
+         *     Args:
+         *         db: The active database session.
+         *
+         *     Returns:
+         *         None
+         */
+        delete: operations["delete_all_jobs_jobs_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -219,7 +201,14 @@ export interface paths {
         post?: never;
         /**
          * Delete Job
-         * @description Deletes a job and its associated data.
+         * @description Deletes a job and its associated filesystem data.
+         *
+         *     Args:
+         *         job_id: The unique identifier of the job to delete.
+         *         db: The active database session.
+         *
+         *     Returns:
+         *         None
          */
         delete: operations["delete_job_jobs__job_id__delete"];
         options?: never;
@@ -231,19 +220,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** AvailableModelsResponse */
+        /**
+         * AvailableModelsResponse
+         * @description Listing of all reachable AI providers and their models.
+         */
         AvailableModelsResponse: {
             /** Available */
             available: components["schemas"]["ProviderModels"][];
         };
         /**
          * CurriculumPlan
-         * @description Top-level plan containing the full sequence of teaching steps for a topic.
-         *
-         *     Attributes:
-         *         concept_title (str): Title of the main concept.
-         *         target_audience (str): Target audience level (e.g., 'Undergraduate CS').
-         *         teaching_steps (list[TeachingStep]): Ordered list of teaching steps.
+         * @description A structured educational roadmap for a complex topic.
          */
         CurriculumPlan: {
             /**
@@ -274,73 +261,57 @@ export interface components {
         };
         /**
          * JobRequest
-         * @description Request model for creating a new job.
-         *
-         *     Attributes:
-         *         topic (str): The main concept to explain.
-         *         target_audience (str): The intended audience knowledge level.
-         *         provider (str | None): Explicit AI model provider to use.
-         *         model_id (str | None): Explicit model ID to use.
+         * @description Parameters for a new generation job.
          */
         JobRequest: {
             /**
              * Topic
-             * @description The main concept to explain
+             * @description Concept to explain
              */
             topic: string;
             /**
              * Target Audience
-             * @description Optional knowledge level
              * @default Undergraduate CS
              */
             target_audience: string;
-            /**
-             * Provider
-             * @description Explicit model provider
-             */
+            /** Provider */
             provider?: string | null;
-            /**
-             * Model Id
-             * @description Explicit model ID
-             */
+            /** Model Id */
             model_id?: string | null;
             /**
+             * Resolution
+             * @default 720p
+             * @enum {string}
+             */
+            resolution: "720p" | "1080p";
+            /**
+             * Frame Rate
+             * @default 30
+             * @enum {integer}
+             */
+            frame_rate: 30 | 60;
+            /**
              * Fast Mode
-             * @description If true, mock generation runs significantly faster
              * @default false
              */
-            fast_mode?: boolean;
+            fast_mode: boolean;
         };
         /**
          * JobStatus
-         * @description Status tracking model for a ConceptCast generation job.
-         *
-         *     Attributes:
-         *         job_id (str): Unique UUID for the job.
-         *         status (str): Current processing status (planning, validating, etc.).
-         *         current_step (str | None): Detail on the specific sub-step execution.
-         *         plan (CurriculumPlan | None): The curriculum plan data.
-         *         validation (ValidationResult | None): Generation validation data.
-         *         storyboard (Storyboard | None): The storyboard data.
-         *         manim_code (str | None): The generated Manim Python code.
-         *         video_url (str | None): URL to the final rendered video.
-         *         error (str | None): Error message if the job failed.
-         *         mode (str): Execution mode ('live' for API calls, 'mock' for simulation).
-         *         streamed_thoughts (list[ThoughtLog]): Live stream of agent thoughts.
+         * @description Comprehensive state record for a job.
          */
         JobStatus: {
             /** Job Id */
             job_id: string;
-            /**
-             * Streamed Thoughts
-             * @description Live stream of agent thoughts (agent, phase, content, ts).
-             */
+            /** Topic */
+            topic?: string | null;
+            /** Streamed Thoughts */
             streamed_thoughts?: components["schemas"]["ThoughtLog"][];
             /**
              * Status
              * @enum {string}
              */
-            status: "planning" | "validating" | "architecting" | "rendering" | "reviewing" | "completed" | "failed" | "pending_retry";
+            status: "planning" | "validating" | "architecting" | "animating" | "rendering" | "reviewing" | "completed" | "failed" | "pending_retry";
             /** Current Step */
             current_step?: string | null;
             plan?: components["schemas"]["CurriculumPlan"] | null;
@@ -354,7 +325,6 @@ export interface components {
             error?: string | null;
             /**
              * Mode
-             * @description Execution mode: 'live' uses real AI APIs, 'mock' uses local simulated responses
              * @default live
              * @enum {string}
              */
@@ -371,10 +341,41 @@ export interface components {
             finished_at?: string | null;
             /** Duration Seconds */
             duration_seconds?: number | null;
+            /**
+             * Cost
+             * @default 0
+             */
+            cost: number;
+            /**
+             * Retry Count
+             * @default 0
+             */
+            retry_count: number;
+            /** Thumbnail Url */
+            thumbnail_url?: string | null;
+            /** Video Metadata */
+            video_metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Resolution
+             * @default 720p
+             */
+            resolution: string;
+            /**
+             * Frame Rate
+             * @default 30
+             */
+            frame_rate: number;
+            /**
+             * Render Progress
+             * @default 0
+             */
+            render_progress: number;
         };
         /**
          * JobSummary
-         * @description Lightweight job representation for the jobs list.
+         * @description Concise representation of a job for listings.
          */
         JobSummary: {
             /** Job Id */
@@ -410,12 +411,32 @@ export interface components {
             cost: number;
             /** Thumbnail Url */
             thumbnail_url?: string | null;
+            /** Video Url */
+            video_url?: string | null;
             /** Video Metadata */
             video_metadata?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Resolution
+             * @default 720p
+             */
+            resolution: string;
+            /**
+             * Frame Rate
+             * @default 30
+             */
+            frame_rate: number;
+            /**
+             * Render Progress
+             * @default 0
+             */
+            render_progress: number;
         };
-        /** ProviderModels */
+        /**
+         * ProviderModels
+         * @description Capabilities and model list for a specific AI provider.
+         */
         ProviderModels: {
             /** Provider */
             provider: string;
@@ -426,46 +447,23 @@ export interface components {
         };
         /**
          * Scene
-         * @description A single scene in the storyboard, mapping to a Manim Scene class.
-         *
-         *     Attributes:
-         *         scene_id (int): Sequential ID of the scene.
-         *         title (str): Short title of the scene.
-         *         description (str): Detailed visual description of the scene action.
-         *         narration (str): Voiceover script for this scene.
-         *         objects (list[VisualObject]): List of visual entities in the scene.
+         * @description Definition for a single high-quality animation sequence.
          */
         Scene: {
             /** Scene Id */
             scene_id: number;
-            /**
-             * Title
-             * @description Short title of the scene
-             */
+            /** Title */
             title: string;
-            /**
-             * Description
-             * @description Detailed description of what happens visually
-             */
+            /** Description */
             description: string;
-            /**
-             * Narration
-             * @description Voiceover script for this scene
-             */
+            /** Narration */
             narration: string;
-            /**
-             * Objects
-             * @description Visual entities
-             */
+            /** Objects */
             objects?: components["schemas"]["VisualObject"][];
         };
         /**
          * Storyboard
-         * @description A complete visual orchestration of a curriculum.
-         *
-         *     Attributes:
-         *         concept_title (str): Title of the concept being visualized.
-         *         scenes (list[Scene]): Ordered list of scenes.
+         * @description The full visual orchestration plan ready for animation.
          */
         Storyboard: {
             /** Concept Title */
@@ -475,13 +473,7 @@ export interface components {
         };
         /**
          * TeachingStep
-         * @description Represents a single step in the pedagogical sequence.
-         *
-         *     Attributes:
-         *         step_id (int): Sequential ID of the step.
-         *         concept (str): The specific sub-concept being taught.
-         *         visual_metaphor (str): Visual analogy used for explanation.
-         *         narration (str): Voiceover script for this step.
+         * @description A granular educational unit within a curriculum sequence.
          */
         TeachingStep: {
             /**
@@ -496,7 +488,7 @@ export interface components {
             concept: string;
             /**
              * Visual Metaphor
-             * @description Visual analogy (e.g., 'climbing a hill' for gradient descent)
+             * @description Visual analogy
              */
             visual_metaphor: string;
             /**
@@ -507,7 +499,7 @@ export interface components {
         };
         /**
          * ThoughtLog
-         * @description Represents a single thought streamed from an agent.
+         * @description A captured reasoning step from the agent council.
          */
         ThoughtLog: {
             /** Agent */
@@ -534,15 +526,7 @@ export interface components {
         };
         /**
          * ValidationResult
-         * @description Pedagogical validation results for a curriculum plan.
-         *
-         *     Attributes:
-         *         is_valid (bool): Whether the plan passes pedagogical standards.
-         *         feedback (str): Constructive feedback or validation errors.
-         *         suggestions (list[str]): Specific ideas for improvement.
-         *         metadata (dict): Additional metadata about the validation process.
-         *         scores (dict): Quantitative scores for pedagogical aspects.
-         *         issues (list[dict]): Detailed list of identified issues.
+         * @description Pedagogical audit results for a curriculum plan.
          */
         ValidationResult: {
             /**
@@ -555,69 +539,44 @@ export interface components {
              * @description Constructive feedback or validation errors
              */
             feedback: string;
-            /**
-             * Suggestions
-             * @description Specific improvement ideas
-             */
+            /** Suggestions */
             suggestions?: string[];
-            /**
-             * Metadata
-             * @description Additional metadata about the validation process
-             */
+            /** Metadata */
             metadata?: {
                 [key: string]: unknown;
             };
-            /**
-             * Scores
-             * @description Quantitative scores for different pedagogical aspects
-             */
+            /** Scores */
             scores?: {
                 [key: string]: unknown;
             };
-            /**
-             * Issues
-             * @description Detailed list of identified issues, each as a dictionary
-             */
+            /** Issues */
             issues?: {
                 [key: string]: string;
             }[];
         };
         /**
          * VisualObject
-         * @description Represents a visual entity in a Manim scene.
-         *
-         *     Attributes:
-         *         name (str): Internal name for the object (e.g., 'main_graph').
-         *         type (str): Manim class type (e.g., 'Axes', 'Dot').
-         *         position (str): Relative position or coordinates.
-         *         color (str | None): Color specification (Hex or Manim constant).
-         *         label (str | None): Optional text or Latex label.
+         * @description A declaratively defined entity in a Manim animation.
          */
         VisualObject: {
             /**
              * Name
-             * @description Internal name (e.g., 'main_graph')
+             * @description Internal name
              */
             name: string;
             /**
              * Type
-             * @description Manim type (e.g., 'Axes', 'FunctionGraph', 'Dot')
+             * @description Manim type (e.g., 'Circle')
              */
             type: string;
             /**
              * Position
-             * @description Relative position (e.g., 'ORIGIN', 'UP * 2')
+             * @description Relative position
              */
             position: string;
-            /**
-             * Color
-             * @description Hex or Manim color constant
-             */
+            /** Color */
             color?: string | null;
-            /**
-             * Label
-             * @description Latex or text label
-             */
+            /** Label */
             label?: string | null;
         };
     };
@@ -629,27 +588,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    get_available_models_models_available_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AvailableModelsResponse"];
-                };
-            };
-        };
-    };
-    read_root__get: {
+    health_check__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -665,8 +604,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: string;
+                        [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    get_available_models_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailableModelsResponse"];
                 };
             };
         };
@@ -814,6 +773,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["JobListResponse"];
                 };
+            };
+        };
+    };
+    delete_all_jobs_jobs_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -25,7 +25,12 @@ export default defineConfig({
       },
       '/jobs': {
         target: 'http://localhost:8000',
-        changeOrigin: true
+        changeOrigin: true,
+        bypass: (req) => {
+          if (req.headers.accept?.includes('text/html')) {
+            return '/index.html';
+          }
+        }
       },
       '/models': {
         target: 'http://localhost:8000',
