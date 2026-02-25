@@ -16,14 +16,17 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.90.21",
+    "@tanstack/react-router": "^1.162.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.34.0",
     "lucide-react": "^0.563.0",
+    "openapi-fetch": "^0.17.0",
     "radix-ui": "^1.4.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-error-boundary": "^6.1.1",
     "react-hook-form": "^7.71.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
@@ -45,5 +48,8 @@
     "vite": "^7.3.1",
     "vite-plugin-oxlint": "^1.6.0",
     "vite-tsconfig-paths": "^6.1.1"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
