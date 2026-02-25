@@ -1,9 +1,7 @@
 import { ReactNode, useState } from 'react';
-import { useNavStore } from '@/lib/store/useNavStore';
+import { Link } from '@tanstack/react-router';
 
 const iconClass = 'w-5 h-5 shrink-0';
-
-export type NavId = 'new-project' | 'jobs' | 'library' | 'settings';
 
 function IconNewProject() {
     return (
@@ -48,18 +46,24 @@ interface DashboardLayoutProps {
  *
  * This component provides a consistent layout with a responsive sidebar
  * containing the main navigation links. It manages the sidebar's open/closed
- * state on mobile devices and integrates with the navigation store to
- * track the current active view.
+ * state on mobile devices and uses TanStack Router Links for navigation.
  *
  * @param {DashboardLayoutProps} props - Component properties.
  * @returns {JSX.Element} The rendered dashboard layout.
  */
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-    const { currentNav, setCurrentNav } = useNavStore();
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
         <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] font-sans selection:bg-indigo-500/30 transition-colors duration-300">
+            {/* Skip-to-content link for keyboard accessibility */}
+            <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-1/2 focus:-translate-x-1/2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-xl focus:text-sm focus:font-bold focus:shadow-lg"
+            >
+                Skip to content
+            </a>
+
             {/* Mobile hamburger */}
             <button
                 type="button"
@@ -101,34 +105,34 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
                 <div className="space-y-1" role="list">
                     <NavItem 
-                        active={currentNav === 'new-project'} 
-                        onClick={() => setCurrentNav('new-project')} 
+                        to="/" 
                         icon={<IconNewProject />} 
                         label="New Concept" 
+                        onClick={() => setSidebarOpen(false)}
                     />
                     <NavItem 
-                        active={currentNav === 'jobs'} 
-                        onClick={() => setCurrentNav('jobs')} 
+                        to="/jobs" 
                         icon={<IconJobs />} 
                         label="Jobs" 
+                        onClick={() => setSidebarOpen(false)}
                     />
                     <NavItem 
-                        active={currentNav === 'library'} 
-                        onClick={() => setCurrentNav('library')} 
+                        to="/library" 
                         icon={<IconLibrary />} 
                         label="Library" 
+                        onClick={() => setSidebarOpen(false)}
                     />
                     <NavItem 
-                        active={currentNav === 'settings'} 
-                        onClick={() => setCurrentNav('settings')} 
+                        to="/settings" 
                         icon={<IconSettings />} 
                         label="Settings" 
+                        onClick={() => setSidebarOpen(false)}
                     />
                 </div>
             </nav>
 
             {/* Main content */}
-            <main className="lg:ml-64 min-h-screen p-8 transition-colors duration-300">
+            <main id="main-content" className="lg:ml-64 min-h-screen p-8 transition-colors duration-300">
                 {children}
             </main>
         </div>
@@ -136,28 +140,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 }
 
 /**
- * Individual navigation button displayed in the sidebar.
- *
- * @param {Object} props - Component properties.
- * @param {boolean} props.active - Whether the item is the currently active route.
- * @param {() => void} props.onClick - Selection callback.
- * @param {React.ReactNode} props.icon - SVG or node to display.
- * @param {string} props.label - Human-readable name.
+ * Individual navigation link displayed in the sidebar.
  */
-function NavItem({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
+function NavItem({ to, onClick, icon, label }: { to: any, onClick?: () => void, icon: React.ReactNode, label: string }) {
     return (
-        <button
-            type="button"
-            aria-current={active ? 'page' : undefined}
+        <Link
+            to={to}
             onClick={onClick}
-            className={`w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-xl font-medium transition-all ${
-                active
-                    ? 'bg-indigo-600/10 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400'
-                    : 'text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-border)]'
-            }`}
+            activeProps={{ className: 'bg-indigo-600/10 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400' }}
+            inactiveProps={{ className: 'text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-border)]' }}
+            className="w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-xl font-medium transition-all"
         >
             {icon}
             {label}
-        </button>
+        </Link>
     );
 }
