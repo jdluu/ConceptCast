@@ -161,7 +161,7 @@ def get_provider(provider_name: str) -> BaseProvider | None:
         # Check if the class accepts settings in __init__
         return provider_cls(settings)  # type: ignore
     except TypeError:
-        return provider_cls()  # type: ignore
+        return provider_cls()
 
 
 def get_model(

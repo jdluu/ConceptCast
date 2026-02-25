@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 class SandboxResult(BaseModel):
     """Execution output from a local sandbox run."""
+
     stdout: str
     stderr: str
 
@@ -24,12 +25,14 @@ class LocalSandbox:
     def __init__(self) -> None:
         """Initializes the sandbox execution strategy."""
         import shutil
+
         self.use_podman = shutil.which("podman") is not None
 
     def is_healthy(self) -> bool:
         """Verifies if either Podman or local Manim is available."""
         try:
             import shutil
+
             if shutil.which("podman") is not None:
                 return True
             return shutil.which("manim") is not None
@@ -54,10 +57,17 @@ class LocalSandbox:
         try:
             if self.use_podman:
                 cmd = [
-                    "podman", "run", "--rm", "--userns=keep-id",
-                    "-v", f"{job_dir.absolute()}:/manim",
+                    "podman",
+                    "run",
+                    "--rm",
+                    "--userns=keep-id",
+                    "-v",
+                    f"{job_dir.absolute()}:/manim",
                     "docker.io/manimcommunity/manim:latest",
-                    "python3", "-m", "py_compile", code_file
+                    "python3",
+                    "-m",
+                    "py_compile",
+                    code_file,
                 ]
             else:
                 cmd = ["python3", "-m", "py_compile", code_file]
@@ -69,10 +79,10 @@ class LocalSandbox:
                 stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await process.communicate()
-            
+
             return SandboxResult(
                 stdout=stdout.decode("utf-8", errors="replace"),
-                stderr=stderr.decode("utf-8", errors="replace")
+                stderr=stderr.decode("utf-8", errors="replace"),
             )
         except Exception as e:
             logger.error(f"Syntax check failed: {e}")
@@ -83,7 +93,7 @@ class LocalSandbox:
         job_dir: Path,
         code_file: str,
         scene_name: str = "SceneGen",
-        host_job_dir: Path | None = None, # Left for interface compatibility
+        host_job_dir: Path | None = None,  # Left for interface compatibility
         quality_flag: str = "-ql",
         log_callback: Callable[[str], Any] | None = None,
     ) -> SandboxResult | None:
@@ -104,11 +114,19 @@ class LocalSandbox:
             if self.use_podman:
                 # Run via Podman container
                 cmd = [
-                    "podman", "run", "--rm", "--userns=keep-id",
-                    "-v", f"{job_dir.absolute()}:/manim",
+                    "podman",
+                    "run",
+                    "--rm",
+                    "--userns=keep-id",
+                    "-v",
+                    f"{job_dir.absolute()}:/manim",
                     "docker.io/manimcommunity/manim:latest",
-                    "manim", quality_flag, "--media_dir", ".",
-                    code_file, scene_name
+                    "manim",
+                    quality_flag,
+                    "--media_dir",
+                    ".",
+                    code_file,
+                    scene_name,
                 ]
                 logger.info(f"Starting Podman rendering: {' '.join(cmd)}")
             else:
@@ -128,10 +146,14 @@ class LocalSandbox:
 
             # If a callback is provided, we need to read the streams line-by-line
             if log_callback:
-                stdout_lines = []
-                stderr_lines = []
+                stdout_lines: list[str] = []
+                stderr_lines: list[str] = []
 
-                async def read_stream(stream, callback, lines_list):
+                async def read_stream(
+                    stream: Any, callback: Callable[[str], Any], lines_list: list[str]
+                ) -> None:
+                    if not stream:
+                        return
                     while True:
                         line = await stream.readline()
                         if not line:
@@ -142,10 +164,10 @@ class LocalSandbox:
 
                 await asyncio.gather(
                     read_stream(process.stdout, log_callback, stdout_lines),
-                    read_stream(process.stderr, log_callback, stderr_lines)
+                    read_stream(process.stderr, log_callback, stderr_lines),
                 )
                 await process.wait()
-                
+
                 stdout_str = "".join(stdout_lines)
                 stderr_str = "".join(stderr_lines)
             else:

@@ -1,4 +1,3 @@
-
 from typing import Any, cast
 
 from pydantic_ai.messages import ModelMessage
@@ -121,16 +120,16 @@ class DeepSeekModel(OpenAIChatModel):
                     kwargs.pop("tool_choice", None)
                     return await original_completions.create(**kwargs)
 
-            self.client.chat.completions = cast(Any, CompletionsProxy())
+            self.client.chat.completions = cast(Any, CompletionsProxy())  # type: ignore[misc]
             try:
                 # We still call super() but now with the patched client
-                return await super()._completions_create(
+                return await super()._completions_create(  # type: ignore[call-overload]
                     messages, stream, model_settings, model_request_parameters
                 )
             finally:
-                self.client.chat.completions = original_completions
+                self.client.chat.completions = original_completions  # type: ignore[misc]
         else:
-            return await super()._completions_create(
+            return await super()._completions_create(  # type: ignore[call-overload]
                 messages, stream, model_settings, model_request_parameters
             )
 
@@ -179,7 +178,7 @@ class DeepSeekModelProvider(BaseProvider):
             # We return empty settings and strip tool_choice in DeepSeekModel.
             return ModelSettings()
         # deepseek-chat supports tool calling and works best with tool_choice='auto'.
-        return ModelSettings(tool_choice="auto")
+        return ModelSettings(tool_choice="auto")  # type: ignore[typeddict-unknown-key]
 
 
 class SyntheticModelProvider(BaseProvider):
