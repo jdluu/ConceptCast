@@ -6,8 +6,8 @@ from loguru import logger
 from api.schemas import JobRequest, Storyboard
 from domain.agents.animator import generate_manim_code
 from infra.engines.video import mock_render_storyboard, render_storyboard
+from infra.models.job import JobRecord
 from infra.security.sanitizer import sanitize_manim_code
-from infra.storage import JobRecord
 from services.workflow.base import get_step_model
 from services.workflow.utils import calculate_job_cost
 

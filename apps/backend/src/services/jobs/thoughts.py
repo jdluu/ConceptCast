@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.schemas import ThoughtLog
+from infra.models.job import JobRecord
 from infra.settings import get_settings
-from infra.storage import JobRecord
 from services.jobs.events import job_event_manager
 
 

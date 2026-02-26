@@ -8,7 +8,7 @@ from pydantic_ai.usage import RunUsage
 from api.schemas import CurriculumPlan, JobRequest, Storyboard
 from domain.agents.architect import generate_storyboard
 from infra.exceptions import StoryboardGenerationError
-from infra.storage import JobRecord
+from infra.models.job import JobRecord
 from services.workflow.base import get_step_model
 
 

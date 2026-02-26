@@ -9,8 +9,8 @@ from domain.agents.animator import generate_manim_code
 from domain.agents.reviewer import review_animation
 from infra.engines.video import mock_render_preview, render_preview
 from infra.exceptions import AnimationGenerationError
+from infra.models.job import JobRecord
 from infra.security.sanitizer import sanitize_manim_code
-from infra.storage import JobRecord
 
 
 async def step_animating(
@@ -35,7 +35,7 @@ async def step_animating(
     hint = None
 
     for i in range(max_iterations):
-        logger.info(f"Generation attempt {i+1}/{max_iterations}")
+        logger.info(f"Generation attempt {i + 1}/{max_iterations}")
 
         try:
             current_code, usage = await generate_manim_code(

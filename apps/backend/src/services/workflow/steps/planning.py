@@ -8,7 +8,7 @@ from pydantic_ai.usage import RunUsage
 from api.schemas import CurriculumPlan, JobRequest
 from domain.agents.analyst import generate_curriculum
 from infra.exceptions import PlanGenerationError
-from infra.storage import JobRecord
+from infra.models.job import JobRecord
 from services.workflow.base import get_step_model
 
 

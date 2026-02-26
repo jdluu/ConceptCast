@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from infra.models.job import JobRecord
 from infra.settings import get_settings
-from infra.storage import JobRecord
 
 
 async def cleanup_job_data() -> None:

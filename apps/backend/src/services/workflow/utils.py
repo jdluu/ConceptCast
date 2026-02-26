@@ -33,7 +33,7 @@ def calculate_job_cost(
         float: Total estimated job cost in USD, rounded to two decimal places.
     """
     settings = get_settings()
-    
+
     token_cost = 0.0
     if usage:
         prompt_tokens = usage.request_tokens or 0
