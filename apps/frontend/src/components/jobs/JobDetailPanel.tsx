@@ -1,7 +1,8 @@
 import React from 'react';
-import { JobStatus, ThoughtLog } from '@/lib/api/client';
+import { JobStatus, ThoughtLog, CurriculumPlan, Storyboard } from '@/lib/api/client';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { VideoPlayer } from '@/components/ui/VideoPlayer';
+import { CurriculumTimeline } from '@/components/orchestration/CurriculumTimeline';
 import { format } from 'date-fns';
 import { formatDuration } from '@/lib/utils/durationUtils';
 
@@ -39,10 +40,12 @@ export function JobDetailPanel({ job }: JobDetailPanelProps) {
                     </div>
                 </div>
 
-                {/* Right Column: Prompt & Code */}
+                {/* Right Column: Prompt, Code, Artifacts */}
                 <div className="space-y-6">
                     <TabsSection tabs={[
                         { id: 'prompt', label: 'Prompt', content: <PromptView topic={topic} audience={audience} /> },
+                        { id: 'plan', label: 'Planned Curriculum', content: job.plan ? <CurriculumTimeline plan={job.plan as unknown as CurriculumPlan} /> : <NoArtifact title="Curriculum Plan" /> },
+                        { id: 'storyboard', label: 'Visual Storyboard', content: job.storyboard ? <StoryboardView storyboard={job.storyboard as unknown as Storyboard} /> : <NoArtifact title="Storyboard" /> },
                         { id: 'code', label: 'Manim Code', content: <CodeView code={job.manim_code} /> },
                         { id: 'thoughts', label: 'Thought Log', content: <ThoughtsView thoughts={job.streamed_thoughts} /> }
                     ]} />
@@ -55,6 +58,38 @@ export function JobDetailPanel({ job }: JobDetailPanelProps) {
                     <p className="text-red-300 text-sm font-mono whitespace-pre-wrap">{job.error}</p>
                 </div>
             )}
+        </div>
+    );
+}
+
+function NoArtifact({ title }: { title: string }) {
+    return (
+        <div className="bg-[var(--background)]/30 p-12 rounded-lg border border-dashed border-[var(--surface-border)] text-center">
+            <p className="text-[var(--text-muted)] text-sm italic">{title} not available yet</p>
+        </div>
+    );
+}
+
+function StoryboardView({ storyboard }: { storyboard: Storyboard }) {
+    return (
+        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[var(--surface-border)]">
+            {storyboard.scenes.map((scene) => (
+                <div key={scene.scene_id} className="p-4 rounded-xl bg-[var(--background)] border border-[var(--surface-border)] hover:border-indigo-500/30 transition-all shadow-sm">
+                    <div className="text-[10px] font-bold text-[var(--text-muted)] mb-1 tracking-widest uppercase">SCENE {scene.scene_id}</div>
+                    <h4 className="text-[var(--foreground)] text-sm font-bold mb-2 uppercase tracking-tight">{scene.title}</h4>
+                    <p className="text-[var(--text-muted)] text-xs leading-relaxed">{scene.description}</p>
+                    {scene.objects && (
+                        <div className="mt-2 pt-2 border-t border-[var(--surface-border)]/50">
+                            <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-tighter">Visual Elements</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                                {scene.objects.map((v, i) => (
+                                    <span key={i} className="text-[9px] bg-indigo-500/5 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/10">{v.name}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ))}
         </div>
     );
 }

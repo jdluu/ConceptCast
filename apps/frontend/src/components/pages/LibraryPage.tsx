@@ -71,18 +71,18 @@ export function LibraryPage() {
                 <p className="text-[var(--text-muted)]">Your collection of high-quality generated educational content.</p>
             </header>
             
-            <div className="flex flex-col md:flex-row gap-4 mb-10">
-                <div className="relative flex-1 group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-indigo-500 transition-colors" />
+            <div className="flex flex-col md:flex-row items-center gap-4 mb-10">
+                <div className="relative flex-1 group w-full">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-indigo-500 transition-colors" />
                     <input
                         type="search"
                         placeholder="Search your library..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl text-[var(--foreground)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all shadow-sm"
+                        className="w-full pl-12 pr-4 py-3 bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl text-[var(--foreground)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all shadow-sm text-sm"
                     />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3 w-full md:w-auto">
                     <FilterSelect 
                         icon={<Calendar className="w-4 h-4" />} 
                         value={sortBy} 

@@ -91,8 +91,16 @@ export function JobRow({ job, isExpanded, isSelected, detail, onToggleExpand, on
                 </td>
                 <td className="px-4 py-5">
                     <div className="flex flex-col">
-                        <span className="text-[var(--foreground)] font-medium text-xs">{metadata.resolution || '\u2014'}</span>
-                        <span className="text-[10px] text-[var(--text-muted)]">{metadata.file_size || ''}</span>
+                        <span className="text-[var(--foreground)] font-medium text-xs">
+                            {job.resolution ? (
+                                metadata.resolution && metadata.resolution !== job.resolution 
+                                    ? `${job.resolution} (${metadata.resolution})`
+                                    : job.resolution
+                            ) : (metadata.resolution || '\u2014')}
+                        </span>
+                        <span className="text-[10px] text-[var(--text-muted)]">
+                            {metadata.file_size || (job.frame_rate ? `${job.frame_rate} FPS` : '')}
+                        </span>
                     </div>
                 </td>
                 <td className="px-4 py-5 text-right">
