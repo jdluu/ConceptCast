@@ -6,6 +6,7 @@ setup:
 	pnpm install
 	@echo "Installing backend dependencies..."
 	cd apps/backend && uv sync
+	@make db-migrate
 
 # Update all dependencies
 update:
@@ -16,7 +17,7 @@ update:
 
 # Run full stack in dev mode
 dev:
-	pnpm turbo run dev
+	pnpm turbo run dev worker
 
 # Run backend only
 dev-backend:
@@ -26,10 +27,20 @@ dev-backend:
 dev-frontend:
 	pnpm turbo run dev --filter=concept-cast-frontend
 
+# Run background worker only
+dev-worker:
+	pnpm turbo run worker --filter=backend
+
+worker: dev-worker
+
 # Run database migrations (Backend)
 db-migrate:
 	@echo "Running backend migrations..."
 	cd apps/backend && uv run alembic upgrade head
+
+# Generate API types (Frontend)
+gen-api:
+	pnpm turbo run generate:api --filter=concept-cast-frontend
 
 # Clean build artifacts
 clean:

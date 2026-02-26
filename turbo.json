@@ -11,6 +11,10 @@
       "cache": false,
       "persistent": true
     },
+    "worker": {
+      "cache": false,
+      "persistent": true
+    },
     "generate:api": {
         "cache": false
     },
