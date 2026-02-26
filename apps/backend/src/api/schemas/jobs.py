@@ -10,6 +10,7 @@ from .common import ThoughtLog
 
 class JobSummary(BaseModel):
     """Concise representation of a job for listings."""
+
     job_id: str
     topic: str
     status: str
@@ -31,17 +32,27 @@ class JobSummary(BaseModel):
     frame_rate: int = 30
     render_progress: int = 0
 
+
 class JobListResponse(BaseModel):
     jobs: list[JobSummary]
 
+
 class JobStatus(BaseModel):
     """Comprehensive state record for a job."""
+
     job_id: str
     topic: str | None = None
     streamed_thoughts: list[ThoughtLog] = Field(default_factory=list)
     status: Literal[
-        "planning", "validating", "architecting", "animating",
-        "rendering", "reviewing", "completed", "failed", "pending_retry"
+        "planning",
+        "validating",
+        "architecting",
+        "animating",
+        "rendering",
+        "reviewing",
+        "completed",
+        "failed",
+        "pending_retry",
     ]
     current_step: str | None = None
     plan: CurriculumPlan | None = None
@@ -65,8 +76,10 @@ class JobStatus(BaseModel):
     frame_rate: int = 30
     render_progress: int = 0
 
+
 class JobRequest(BaseModel):
     """Parameters for a new generation job."""
+
     topic: str = Field(..., description="Concept to explain")
     target_audience: str = "Undergraduate CS"
     provider: str | None = None
