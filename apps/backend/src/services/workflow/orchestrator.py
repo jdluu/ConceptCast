@@ -197,22 +197,19 @@ async def execute_workflow(
 
             await update_job({"manim_code": code})
 
-            # Step 5: Rendering
-            await step_rendering(
-                code, job_id, storyboard, request, job_state, update_job, on_thought
-            )
-
-            # Finalize via job management
-            final_cost = calculate_job_cost(total_usage)
-            await update_job_record(
-                db_session_factory=AsyncSessionLocal,
+            # Step 5: Rendering (Dispatched to background worker)
+            from infra.tasks import render_video_task
+            
+            await render_video_task.kiq(
                 job_id=job_id,
-                updates={
-                    "status": "completed",
-                    "cost": final_cost,
-                    "finished_at": datetime.now(UTC),
-                },
+                code=code,
+                storyboard_dict=storyboard.model_dump(),
+                request_dict=request.model_dump(),
+                resolution=cast(str, job_state.resolution),
+                frame_rate=cast(int, job_state.frame_rate),
             )
+            
+            logger.info(f"Job {job_id}: Rendering dispatched to Taskiq worker.")
 
         except Exception as e:
             logger.exception(f"Workflow failed for job {job_id}: {e}")

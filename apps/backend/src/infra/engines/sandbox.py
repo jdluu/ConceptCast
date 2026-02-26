@@ -44,16 +44,9 @@ class LocalSandbox:
         self,
         job_dir: Path,
         code_file: str,
+        timeout: int = 30,
     ) -> SandboxResult:
-        """Performs a lightweight syntax and integrity check on the code.
-
-        Args:
-            job_dir (Path): Local directory containing the source code.
-            code_file (str): The Python filename to check.
-
-        Returns:
-            SandboxResult: Captured output from the check.
-        """
+        """Performs a lightweight syntax and integrity check on the code."""
         try:
             if self.use_podman:
                 cmd = [
@@ -78,7 +71,12 @@ class LocalSandbox:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout, stderr = await process.communicate()
+            try:
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+            except asyncio.TimeoutError:
+                process.kill()
+                logger.error(f"Syntax check timed out after {timeout}s")
+                return SandboxResult(stdout="", stderr=f"Check timed out after {timeout}s")
 
             return SandboxResult(
                 stdout=stdout.decode("utf-8", errors="replace"),
@@ -93,26 +91,14 @@ class LocalSandbox:
         job_dir: Path,
         code_file: str,
         scene_name: str = "SceneGen",
-        host_job_dir: Path | None = None,  # Left for interface compatibility
+        host_job_dir: Path | None = None,
         quality_flag: str = "-ql",
         log_callback: Callable[[str], Any] | None = None,
+        timeout: int = 300,
     ) -> SandboxResult | None:
-        """Executes Manim rendering via Podman or local subprocess.
-
-        Args:
-            job_dir (Path): Local directory containing the source code.
-            code_file (str): The Python filename relative to job_dir.
-            scene_name (str): The name of the Manim Scene class to render.
-            host_job_dir (Path, optional): Placeholder for interface compatibility.
-            quality_flag (str): Manim quality flag (e.g., '-ql', '-qh').
-            log_callback (Callable, optional): Callback for streaming logs.
-
-        Returns:
-            Optional[SandboxResult]: The captured stdout and stderr.
-        """
+        """Executes Manim rendering via Podman or local subprocess."""
         try:
             if self.use_podman:
-                # Run via Podman container
                 cmd = [
                     "podman",
                     "run",
@@ -128,15 +114,10 @@ class LocalSandbox:
                     code_file,
                     scene_name,
                 ]
-                logger.info(f"Starting Podman rendering: {' '.join(cmd)}")
             else:
-                # Fallback to local execution
-                logger.warning(
-                    "Podman not found. Falling back to local Manim execution."
-                )
                 cmd = ["manim", quality_flag, "--media_dir", ".", code_file, scene_name]
-                logger.info(f"Starting local rendering: {' '.join(cmd)} in {job_dir}")
 
+            logger.info(f"Sandbox executing: {' '.join(cmd)}")
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 cwd=job_dir if not self.use_podman else None,
@@ -144,36 +125,43 @@ class LocalSandbox:
                 stderr=asyncio.subprocess.PIPE,
             )
 
-            # If a callback is provided, we need to read the streams line-by-line
-            if log_callback:
-                stdout_lines: list[str] = []
-                stderr_lines: list[str] = []
+            try:
+                if log_callback:
+                    stdout_lines: list[str] = []
+                    stderr_lines: list[str] = []
 
-                async def read_stream(
-                    stream: Any, callback: Callable[[str], Any], lines_list: list[str]
-                ) -> None:
-                    if not stream:
-                        return
-                    while True:
-                        line = await stream.readline()
-                        if not line:
-                            break
-                        decoded = line.decode("utf-8", errors="replace")
-                        lines_list.append(decoded)
-                        callback(decoded)
+                    async def read_stream(
+                        stream: Any, callback: Callable[[str], Any], lines_list: list[str]
+                    ) -> None:
+                        if not stream:
+                            return
+                        while True:
+                            line = await stream.readline()
+                            if not line:
+                                break
+                            decoded = line.decode("utf-8", errors="replace")
+                            lines_list.append(decoded)
+                            callback(decoded)
 
-                await asyncio.gather(
-                    read_stream(process.stdout, log_callback, stdout_lines),
-                    read_stream(process.stderr, log_callback, stderr_lines),
-                )
-                await process.wait()
+                    await asyncio.wait_for(
+                        asyncio.gather(
+                            read_stream(process.stdout, log_callback, stdout_lines),
+                            read_stream(process.stderr, log_callback, stderr_lines),
+                        ),
+                        timeout=timeout
+                    )
+                    await process.wait()
 
-                stdout_str = "".join(stdout_lines)
-                stderr_str = "".join(stderr_lines)
-            else:
-                stdout, stderr = await process.communicate()
-                stdout_str = stdout.decode("utf-8", errors="replace")
-                stderr_str = stderr.decode("utf-8", errors="replace")
+                    stdout_str = "".join(stdout_lines)
+                    stderr_str = "".join(stderr_lines)
+                else:
+                    stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+                    stdout_str = stdout.decode("utf-8", errors="replace")
+                    stderr_str = stderr.decode("utf-8", errors="replace")
+            except asyncio.TimeoutError:
+                process.kill()
+                logger.error(f"Rendering timed out after {timeout}s")
+                raise RuntimeError(f"Rendering timed out after {timeout}s")
 
             if process.returncode != 0:
                 err_msg = stderr_str or stdout_str
@@ -183,6 +171,8 @@ class LocalSandbox:
             return SandboxResult(stdout=stdout_str, stderr=stderr_str)
 
         except Exception as e:
+            if isinstance(e, RuntimeError):
+                raise
             logger.error(f"Execution failed: {e}")
             raise RuntimeError(f"Execution failed: {str(e)}") from e
 

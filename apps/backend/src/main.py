@@ -13,22 +13,20 @@ from api.middleware.rate_limiting import RateLimitMiddleware
 from api.routes import ai_models, health, jobs
 from infra.database import AsyncSessionLocal, init_db
 from infra.settings import get_settings
+from infra.tasks import broker
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Manages the FastAPI application lifecycle.
-
-    Initializes the asynchronous database connection and stores the session factory
-    in the application state for global access (e.g., in background tasks).
-
-    Args:
-        app: The FastAPI application instance.
-    """
+    """Manages the FastAPI application lifecycle."""
     await init_db()
+    if not broker.is_worker_process:
+        await broker.startup()
     # Store session factory in app state for background tasks
     app.state.db_session_factory = AsyncSessionLocal
     yield
+    if not broker.is_worker_process:
+        await broker.shutdown()
 
 
 app = FastAPI(title="ConceptCast Backend", lifespan=lifespan)
