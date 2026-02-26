@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { JobStatus, JobRequest, createJob as apiCreateJob } from '@/lib/api/client';
 
 /**
@@ -47,42 +48,49 @@ interface JobState {
  * and the orchestration view. It tracks the current job's state,
  * rendering progress, and submission status.
  */
-export const useJobStore = create<JobState>((set) => ({
-    currentJob: null,
-    submittedTopic: '',
-    jobStartedAt: 0,
-    renderProgress: 0,
-    isSubmitting: false,
+export const useJobStore = create<JobState>()(
+    persist(
+        (set) => ({
+            currentJob: null,
+            submittedTopic: '',
+            jobStartedAt: 0,
+            renderProgress: 0,
+            isSubmitting: false,
 
-    setCurrentJob: (job) => set({ currentJob: job }),
-    setSubmittedTopic: (topic) => set({ submittedTopic: topic }),
-    setJobStartedAt: (timestamp) => set({ jobStartedAt: timestamp }),
-    setRenderProgress: (progress) => set((state) => ({ 
-        renderProgress: typeof progress === 'function' ? progress(state.renderProgress) : progress 
-    })),
-    setIsSubmitting: (loading) => set({ isSubmitting: loading }),
+            setCurrentJob: (job) => set({ currentJob: job }),
+            setSubmittedTopic: (topic) => set({ submittedTopic: topic }),
+            setJobStartedAt: (timestamp) => set({ jobStartedAt: timestamp }),
+            setRenderProgress: (progress) => set((state) => ({ 
+                renderProgress: typeof progress === 'function' ? progress(state.renderProgress) : progress 
+            })),
+            setIsSubmitting: (loading) => set({ isSubmitting: loading }),
 
-    createJob: async (data) => {
-        set({ isSubmitting: true });
-        try {
-            const job = await apiCreateJob(data);
-            set({ 
-                currentJob: job, 
-                submittedTopic: data.topic, 
-                jobStartedAt: Date.now() 
-            });
-        } catch (error) {
-            console.error('Failed to initiate job:', error);
-            throw error;
-        } finally {
-            set({ isSubmitting: false });
+            createJob: async (data) => {
+                set({ isSubmitting: true });
+                try {
+                    const job = await apiCreateJob(data);
+                    set({ 
+                        currentJob: job, 
+                        submittedTopic: data.topic, 
+                        jobStartedAt: Date.now() 
+                    });
+                } catch (error) {
+                    console.error('Failed to initiate job:', error);
+                    throw error;
+                } finally {
+                    set({ isSubmitting: false });
+                }
+            },
+
+            resetJob: () => set({
+                currentJob: null,
+                submittedTopic: '',
+                jobStartedAt: 0,
+                renderProgress: 0,
+            }),
+        }),
+        {
+            name: 'concept-cast-job-store',
         }
-    },
-
-    resetJob: () => set({
-        currentJob: null,
-        submittedTopic: '',
-        jobStartedAt: 0,
-        renderProgress: 0,
-    }),
-}));
+    )
+);

@@ -86,7 +86,11 @@ function AppContent() {
     }, [job?.status, job?.error]);
 
     const renderMainContent = () => {
-        if (job && isJobInProgress(job)) {
+        // Only intercept with the generation view if we are on the dashboard/initial page ('/')
+        // This allows users to navigate to /jobs or /settings even when a job is active.
+        const isAtHome = location.pathname === '/';
+
+        if (job && isJobInProgress(job) && isAtHome) {
             return (
                 <GeneratingLessonView
                     job={job}
@@ -96,7 +100,7 @@ function AppContent() {
             );
         }
 
-        if (job?.status === 'completed' && job.plan && job.storyboard) {
+        if (job?.status === 'completed' && job.plan && job.storyboard && isAtHome) {
             const plan = job.plan as unknown as CurriculumPlan;
             const storyboard = job.storyboard as unknown as Storyboard;
             return (
