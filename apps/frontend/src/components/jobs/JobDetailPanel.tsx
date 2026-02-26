@@ -34,7 +34,6 @@ export function JobDetailPanel({ job }: JobDetailPanelProps) {
 
                     <div className="grid grid-cols-2 gap-4">
                         <DataCard label="Model" value={job.model_id || 'Unknown'} subValue={job.provider || ''} />
-                        <DataCard label="Cost" value={`$${(job as any).cost?.toFixed(2) || '0.00'}`} />
                         <DataCard label="Created" value={job.started_at ? format(new Date(job.started_at), 'PPPp') : 'Pending'} />
                         <DataCard label="Duration" value={formatDuration(job.duration_seconds)} />
                     </div>
