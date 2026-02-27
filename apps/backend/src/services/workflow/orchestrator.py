@@ -27,7 +27,6 @@ from ..jobs.manager import (
 from .steps.animating import step_animating
 from .steps.architecting import step_architecting
 from .steps.planning import step_planning
-from .steps.rendering import step_rendering
 from .steps.validating import step_validating
 
 
@@ -127,7 +126,6 @@ async def execute_workflow(
             model_id=model_id,
             resolution=cast(Any, job_state.resolution),
             frame_rate=cast(Any, job_state.frame_rate),
-            fast_mode=False,
         )
 
         try:

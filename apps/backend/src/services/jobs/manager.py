@@ -131,7 +131,7 @@ async def append_job_thought(
             if job:
                 thoughts = list(getattr(job, "streamed_thoughts", None) or [])
                 now = datetime.now(UTC)
-                
+
                 # Try to aggregate with the last thought if it's the same agent/phase
                 # and happened recently (within 10 seconds)
                 should_aggregate = False
@@ -139,18 +139,18 @@ async def append_job_thought(
                     last_thought = thoughts[-1]
                     last_ts = datetime.fromisoformat(last_thought.get("ts", ""))
                     time_diff = (now - last_ts).total_seconds()
-                    
+
                     if (
-                        last_thought.get("agent") == agent 
+                        last_thought.get("agent") == agent
                         and last_thought.get("phase") == phase
                         and time_diff < 10.0
                     ):
                         should_aggregate = True
-                
+
                 if should_aggregate:
                     # Append content to the existing thought
-                    # If content starts with a space or last one ends with one, just join
-                    # Otherwise add a space if needed (though usually chunks are word-by-word)
+                    # If content starts with a space or last one ends with one, join
+                    # Otherwise add a space if needed
                     existing_content = thoughts[-1].get("content", "")
                     thoughts[-1]["content"] = existing_content + content
                     thoughts[-1]["ts"] = now.isoformat()
@@ -163,7 +163,7 @@ async def append_job_thought(
                             "ts": now.isoformat(),
                         }
                     )
-                
+
                 job.streamed_thoughts = thoughts
                 job.updated_at = now
                 await db.commit()

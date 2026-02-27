@@ -23,7 +23,6 @@ from infra.settings import get_settings
 from services.jobs.events import job_event_manager
 from services.jobs.manager import (
     determine_execution_mode,
-    prepare_job_for_retry_logic,
 )
 from services.workflow.orchestrator import prepare_job_for_retry, process_job_logic
 
@@ -256,7 +255,6 @@ async def retry_job(
         model_id=job.model_id,
         resolution=cast(Literal["720p", "1080p"], job.resolution),
         frame_rate=cast(Literal[30, 60], job.frame_rate),
-        fast_mode=False,
     )
 
     # 3. Trigger background processing

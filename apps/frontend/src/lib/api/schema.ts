@@ -145,6 +145,7 @@ export interface paths {
          * @description Lists all jobs sorted by creation date (newest first).
          *
          *     Args:
+         *         mode: Optional filter to return only 'live' or 'mock' jobs.
          *         db: The active database session.
          *
          *     Returns:
@@ -155,13 +156,9 @@ export interface paths {
         post?: never;
         /**
          * Delete All Jobs
-         * @description Deletes ALL jobs from the database and clears the entire jobs filesystem root.
+         * @description Deletes jobs from the database and clears their filesystem root.
          *
-         *     Args:
-         *         db: The active database session.
-         *
-         *     Returns:
-         *         None
+         *     If mode is provided, only deletes jobs of that mode.
          */
         delete: operations["delete_all_jobs_jobs_delete"];
         options?: never;
@@ -290,11 +287,6 @@ export interface components {
              * @enum {integer}
              */
             frame_rate: 30 | 60;
-            /**
-             * Fast Mode
-             * @default false
-             */
-            fast_mode: boolean;
         };
         /**
          * JobStatus
@@ -758,7 +750,9 @@ export interface operations {
     };
     list_jobs_jobs_get: {
         parameters: {
-            query?: never;
+            query?: {
+                mode?: ("live" | "mock") | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -774,11 +768,22 @@ export interface operations {
                     "application/json": components["schemas"]["JobListResponse"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     delete_all_jobs_jobs_delete: {
         parameters: {
-            query?: never;
+            query?: {
+                mode?: ("live" | "mock") | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -791,6 +796,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

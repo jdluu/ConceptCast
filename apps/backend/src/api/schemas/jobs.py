@@ -86,4 +86,3 @@ class JobRequest(BaseModel):
     model_id: str | None = None
     resolution: Literal["720p", "1080p"] = "720p"
     frame_rate: Literal[30, 60] = 30
-    fast_mode: bool = False
