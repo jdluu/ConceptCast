@@ -1,30 +1,30 @@
 import json
-from api.schemas import CurriculumPlan, Storyboard, ValidationResult
+from api.schemas import CurriculumPlan, Storyboard, ValidationResult, TeachingStep, Scene, VisualObject
 
 # Realistic fragments for the Analyst agent
 MOCK_PLANS = {
     "default": CurriculumPlan(
-        title="Understanding Quantum Entanglement",
+        concept_title="Understanding Quantum Entanglement",
         target_audience="General Audience",
-        steps=[
-            {
-                "step_id": "step_1",
-                "sub_concept": "The Spin Property",
-                "visual_metaphor": "Rotating spheres with glowing axes",
-                "narration_script": "Imagine two particles, like tiny spinning tops. In the quantum world, their spin can be linked in a way that defies classical logic."
-            },
-            {
-                "step_id": "step_2",
-                "sub_concept": "Superposition",
-                "visual_metaphor": "A blurry, shifting state between two colors",
-                "narration_script": "Until measured, a particle exists in multiple states at once. This uncertainty is the heart of quantum mechanics."
-            },
-            {
-                "step_id": "step_3",
-                "sub_concept": "Non-locality",
-                "visual_metaphor": "A bridge of light connecting two distant points",
-                "narration_script": "Entanglement means that measuring one particle instantly determines the state of the other, no matter the distance between them."
-            }
+        teaching_steps=[
+            TeachingStep(
+                step_id=1,
+                concept="The Spin Property",
+                visual_metaphor="Rotating spheres with glowing axes",
+                narration="Imagine two particles, like tiny spinning tops. In the quantum world, their spin can be linked in a way that defies classical logic."
+            ),
+            TeachingStep(
+                step_id=2,
+                concept="Superposition",
+                visual_metaphor="A blurry, shifting state between two colors",
+                narration="Until measured, a particle exists in multiple states at once. This uncertainty is the heart of quantum mechanics."
+            ),
+            TeachingStep(
+                step_id=3,
+                concept="Non-locality",
+                visual_metaphor="A bridge of light connecting two distant points",
+                narration="Entanglement means that measuring one particle instantly determines the state of the other, no matter the distance between them."
+            )
         ]
     )
 }
@@ -41,20 +41,18 @@ MOCK_VALIDATIONS = {
 # Realistic fragments for the Architect agent
 MOCK_STORYBOARDS = {
     "default": Storyboard(
+        concept_title="Understanding Quantum Entanglement",
         scenes=[
-            {
-                "id": "scene_0",
-                "description": "Opening shot: Two particles appearing in a void.",
-                "objects": [
-                    {"id": "p1", "type": "Circle", "props": {"color": "BLUE", "fill_opacity": 0.5}, "position": "LEFT"},
-                    {"id": "p2", "type": "Circle", "props": {"color": "RED", "fill_opacity": 0.5}, "position": "RIGHT"}
-                ],
-                "animations": [
-                    {"object_id": "p1", "type": "Create", "duration": 1.0},
-                    {"object_id": "p2", "type": "Create", "duration": 1.0}
-                ],
-                "narration": "In the vastness of the quantum void, particles are never truly alone."
-            }
+            Scene(
+                scene_id=0,
+                title="Introduction to Quantum Void",
+                description="Opening shot: Two particles appearing in a void.",
+                narration="In the vastness of the quantum void, particles are never truly alone.",
+                objects=[
+                    VisualObject(name="p1", type="Circle", color="BLUE", position="LEFT"),
+                    VisualObject(name="p2", type="Circle", color="RED", position="RIGHT")
+                ]
+            )
         ]
     )
 }
