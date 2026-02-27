@@ -1,3 +1,6 @@
+import json
+import re
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, TextPart
@@ -318,59 +321,65 @@ class RealisticMockModel(TestModel):
         if system_msg and hasattr(system_msg, 'parts'):
             system_text = " ".join(str(p) for p in system_msg.parts)
         
+        is_analyst = "Analyst Agent" in system_text
+        
         # 2. Extract the topic from the user prompt for injection
         user_msg = next((m for m in reversed(messages) if hasattr(m, 'role') and getattr(m, 'role') == 'user'), None)
         topic = None
         if user_msg and hasattr(user_msg, 'parts'):
             user_text = " ".join(str(p) for p in user_msg.parts)
-            # Try to extract topic between single quotes (common in our prompts)
-            import re
             match = re.search(r"'(.*?)'", user_text)
             if match:
                 topic = match.group(1)
 
-        # 3. Handle Turn 1 for Analyst (Needs tool call to 'consult_critic')
-        is_analyst = "Analyst Agent" in system_text
-        # We know it's turn 1 if there are no tool calls or responses yet in the history
-        # (Actually, we can just check if ModelRequestParameters has function_tools but no previous response has tool results)
-        is_first_turn = not any(hasattr(m, 'parts') and any(hasattr(p, 'tool_name') for p in m.parts) for m in messages if hasattr(m, 'role') and getattr(m, 'role') == 'model')
+        # 3. Handle Special Orchestration: Analyst Turn 1 (Triggers Critic)
+        # We know it's turn 1 if there are no tool results or previous model responses in the history
+        is_first_turn = not any(
+            hasattr(m, 'role') and getattr(m, 'role') == 'model' 
+            for m in messages
+        )
 
         if is_analyst and is_first_turn:
             from api.schemas import CurriculumPlan
+            response_json = get_realistic_response("", CurriculumPlan, topic)
             return ModelResponse(parts=[
                 ToolCallPart(
                     tool_name="consult_critic", 
-                    args={"plan": json.loads(get_realistic_response("", CurriculumPlan, topic))}
+                    args=json.loads(response_json)
                 )
             ])
 
-        # 4. Handle other agents or final result
-        # Check output_object name to determine result type
+        # 4. Handle results for all agents
         output_object = model_request_parameters.output_object
-        output_name = output_object.name if output_object else None
         
         from api.schemas import CurriculumPlan, Storyboard, ValidationResult
         
         target_type = None
-        if output_name == "CurriculumPlan":
-            target_type = CurriculumPlan
-        elif output_name == "Storyboard":
-            target_type = Storyboard
-        elif output_name == "ValidationResult":
-            target_type = ValidationResult
+        if output_object:
+            if output_object.name == "CurriculumPlan":
+                target_type = CurriculumPlan
+            elif output_object.name == "Storyboard":
+                target_type = Storyboard
+            elif output_object.name == "ValidationResult":
+                target_type = ValidationResult
             
         response_text = get_realistic_response(system_text, target_type, topic)
         
-        # Return as final_result tool call if that's what's expected, otherwise raw text
-        if model_request_parameters.output_tools:
-            tool_name = model_request_parameters.output_tools[0].name
+        # 5. Return Mode: Tool Call (Structured) or Text Part (Direct)
+        # If output_object is present, pydantic-ai usually expects a tool call to the result tool
+        if output_object and model_request_parameters.output_tools:
+            # Match the result tool by name if possible, else fallback to first tool
+            tool_name = output_object.name
+            actual_tool = next((t for t in model_request_parameters.output_tools if t.name == tool_name), model_request_parameters.output_tools[0])
+            
             return ModelResponse(parts=[
                 ToolCallPart(
-                    tool_name=tool_name,
+                    tool_name=actual_tool.name,
                     args=json.loads(response_text)
                 )
             ])
             
+        # For non-structured agents like Animator (output_type=str)
         return ModelResponse(parts=[TextPart(content=response_text)])
 
 class MockModelProvider(BaseProvider):
