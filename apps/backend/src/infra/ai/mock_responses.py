@@ -80,7 +80,7 @@ class QuantumEntanglement(Scene):
 """
 
 def get_realistic_response(prompt: str, output_type: type) -> str:
-    \"\"\"Returns a realistic-looking mock response based on the output type requested.\"\"\"
+    """Returns a realistic-looking mock response based on the output type requested."""
     if output_type == CurriculumPlan:
         return MOCK_PLANS["default"].model_dump_json()
     if output_type == ValidationResult:
