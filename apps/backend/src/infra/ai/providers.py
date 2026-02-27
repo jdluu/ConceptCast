@@ -219,7 +219,36 @@ class DeepSeekModelProvider(BaseProvider):
 class SyntheticModel(OpenAIChatModel):
     """Custom model for Synthetic.new to handle any Hugging Face or OpenAI quirks."""
 
-    pass
+    async def _completions_create(
+        self,
+        messages: list[ModelMessage],
+        stream: bool,
+        model_settings: OpenAIChatModelSettings,
+        model_request_parameters: ModelRequestParameters,
+    ) -> Any:
+        """Proxies completions to strip tool_choice for proxy-hosted models.
+        
+        Some Hugging Face models behind the synthetic.new proxy may return 400 
+        errors if tool_choice is explicitly provided.
+        """
+        original_completions = self.client.chat.completions
+
+        class CompletionsProxy:
+            def __getattr__(self, name: str) -> Any:
+                return getattr(original_completions, name)
+
+            async def create(self, **kwargs: Any) -> Any:
+                # Remove tool_choice as many HF proxies are strict
+                kwargs.pop("tool_choice", None)
+                return await original_completions.create(**kwargs)
+
+        self.client.chat.completions = cast(Any, CompletionsProxy())  # type: ignore[misc]
+        try:
+            return await super()._completions_create(  # type: ignore[call-overload]
+                messages, stream, model_settings, model_request_parameters
+            )
+        finally:
+            self.client.chat.completions = original_completions  # type: ignore[misc]
 
 
 class SyntheticModelProvider(BaseProvider):
