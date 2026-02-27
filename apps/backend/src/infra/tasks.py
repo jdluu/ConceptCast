@@ -1,14 +1,14 @@
-import os
 from typing import Any
-from taskiq import AsyncBroker
+
 from taskiq_redis import ListQueueBroker
-from infra.settings import get_settings
+
 from infra.database import AsyncSessionLocal
+from infra.settings import get_settings
 
 settings = get_settings()
 
 broker = ListQueueBroker(
-    url=f"redis://{os.getenv('REDIS_HOST', 'localhost')}:6374"
+    url=settings.redis_url
 )
 
 @broker.task
@@ -22,8 +22,8 @@ async def render_video_task(
 ) -> None:
     """Background task to perform Manim rendering."""
     from api.schemas import JobRequest, Storyboard
-    from services.workflow.steps.rendering import step_rendering
     from services.jobs.manager import update_job_record
+    from services.workflow.steps.rendering import step_rendering
     
     # Reconstruct objects
     storyboard = Storyboard(**storyboard_dict)
@@ -40,6 +40,7 @@ async def render_video_task(
 
     # We need a job record dummy or fetch it
     from sqlalchemy import select
+
     from infra.models.job import JobRecord
     
     async with AsyncSessionLocal() as db:

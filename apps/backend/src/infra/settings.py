@@ -48,6 +48,7 @@ class Settings(BaseSettings):
         render_quality: Manim quality profile for rendering (ql/qm/qh).
         streamed_thoughts_max_entries: Max persisted streamed thought deltas per job.
         database_url: SQLAlchemy database URL.
+        redis_url: Taskiq Redis broker URL.
         cors_origins: Comma-separated list of allowed CORS origins.
     """
 
@@ -66,6 +67,7 @@ class Settings(BaseSettings):
     animation_review_max_iterations: int = 3
     animation_review_enabled: bool = True
     database_url: str = "sqlite:///" + str(PROJECT_ROOT / "conceptcast.db")
+    redis_url: str = "redis://localhost:6379"
     cors_origins: str = "http://localhost:5173"
     data_dir: Path = PROJECT_ROOT / "data"
 
