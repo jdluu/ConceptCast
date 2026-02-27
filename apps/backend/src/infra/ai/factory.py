@@ -40,8 +40,12 @@ PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
     ProviderEntry(
         id="google",
         settings_key="google_api_key",
-        models=("gemini-2.0-flash", "gemini-1.5-pro"),
-        default_model="gemini-2.0-flash",
+        models=(
+            "gemini-3-flash",
+            "gemini-3.1-pro",
+            "gemini-2.0-flash-thinking-exp-01-21",
+        ),
+        default_model="gemini-3-flash",
         display_name="Google (Gemini)",
     ),
     ProviderEntry(

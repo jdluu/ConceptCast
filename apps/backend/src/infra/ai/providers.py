@@ -16,8 +16,14 @@ from infra.settings import Settings
 from .base import BaseProvider
 
 
+class GeminiModel(GoogleModel):
+    """Custom GoogleModel for Gemini to handle specific behaviors or overrides."""
+
+    pass
+
+
 class GoogleModelProvider(BaseProvider):
-    """Provider adapter for Google Gemini models."""
+    """Provider adapter for Google Gemini models using the Generative Language API."""
 
     def __init__(self, settings: Settings):
         """Initializes the provider with system settings.
@@ -28,31 +34,45 @@ class GoogleModelProvider(BaseProvider):
         self.settings = settings
 
     def create_model(self, model_id: str) -> Model:
-        """Creates a GoogleModel instance.
+        """Creates a GeminiModel instance.
 
         Args:
             model_id: The Gemini model identifier.
 
         Returns:
-            A configured GoogleModel instance.
+            A configured GeminiModel instance.
         """
-        return GoogleModel(
+        return GeminiModel(
             model_id,
             provider=PydanticGoogleProvider(api_key=self.settings.google_api_key),
             settings=self.get_settings(model_id),
         )
 
     def get_settings(self, model_id: str) -> ModelSettings | None:
-        """Returns Gemini-specific thinking configurations.
+        """Returns Gemini-specific configurations.
 
         Args:
             model_id: The model identifier.
 
         Returns:
-            GoogleModelSettings with thinking budget.
+            GoogleModelSettings with thinking and safety configurations.
         """
-        # https://ai.google.dev/gemini-api/docs/thinking
-        return GoogleModelSettings(google_thinking_config={"thinking_budget": 1024})
+        # Default safety: be lenient for educational technical deconstructions
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+        ]
+
+        # Thinking models (Gemini 2.0 Thinking)
+        if "thinking" in model_id.lower():
+            return GoogleModelSettings(
+                google_thinking_config={"thinking_budget": 1024},
+                google_safety_settings=safety_settings,  # type: ignore
+            )
+
+        return GoogleModelSettings(google_safety_settings=safety_settings)  # type: ignore
 
 
 class GroqModelProvider(BaseProvider):
