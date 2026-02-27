@@ -1,4 +1,25 @@
-.PHONY: setup update dev dev-backend dev-frontend db-migrate clean
+.PHONY: setup update dev dev-backend dev-frontend db-migrate clean redis-up redis-down
+
+# Start Redis container using Podman
+redis-up:
+	@if ! podman ps --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
+		if podman ps -a --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
+			echo "Starting existing Redis container..."; \
+			podman start conceptcast-redis; \
+		else \
+			echo "Creating and starting new Redis container..."; \
+			podman run -d --name conceptcast-redis -p 6379:6379 docker.io/library/redis:alpine; \
+		fi; \
+	else \
+		echo "Redis container is already running."; \
+	fi
+
+# Stop Redis container
+redis-down:
+	@if podman ps --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
+		echo "Stopping Redis container..."; \
+		podman stop conceptcast-redis; \
+	fi
 
 # Setup project dependencies
 setup:
@@ -16,7 +37,7 @@ update:
 	cd apps/backend && uv sync --upgrade
 
 # Run full stack in dev mode
-dev:
+dev: redis-up
 	pnpm turbo run dev worker
 
 # Run backend only
