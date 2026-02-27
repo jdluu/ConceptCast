@@ -81,6 +81,12 @@ class GoogleModelProvider(BaseProvider):
         return GoogleModelSettings(google_safety_settings=safety_settings)  # type: ignore
 
 
+class ConceptGroqModel(GroqModel):
+    """Custom GroqModel for specialized ConceptCast behaviors."""
+
+    pass
+
+
 class GroqModelProvider(BaseProvider):
     """Provider adapter for Groq-hosted models."""
 
@@ -93,15 +99,15 @@ class GroqModelProvider(BaseProvider):
         self.settings = settings
 
     def create_model(self, model_id: str) -> Model:
-        """Creates a GroqModel instance.
+        """Creates a ConceptGroqModel instance.
 
         Args:
             model_id: The Groq model identifier.
 
         Returns:
-            A configured GroqModel instance.
+            A configured ConceptGroqModel instance.
         """
-        return GroqModel(
+        return ConceptGroqModel(
             model_id,
             provider=PydanticGroqProvider(api_key=self.settings.groq_api_key),
             settings=self.get_settings(model_id),
@@ -114,10 +120,13 @@ class GroqModelProvider(BaseProvider):
             model_id: The model identifier.
 
         Returns:
-            GroqModelSettings with reasoning format.
+            GroqModelSettings with reasoning format if applicable.
         """
-        # https://console.groq.com/docs/reasoning
-        return GroqModelSettings(groq_reasoning_format="parsed")
+        # DeepSeek-R1 and specialized reasoning models on Groq
+        if "deepseek-r1" in model_id.lower() or "reasoning" in model_id.lower():
+            # https://console.groq.com/docs/reasoning
+            return GroqModelSettings(groq_reasoning_format="parsed")
+        return None
 
 
 class DeepSeekModel(OpenAIChatModel):

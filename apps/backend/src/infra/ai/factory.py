@@ -50,7 +50,11 @@ PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
     ProviderEntry(
         id="groq",
         settings_key="groq_api_key",
-        models=("llama-3.3-70b-versatile", "mixtral-8x7b-32768"),
+        models=(
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "deepseek-r1-distill-llama-70b",
+        ),
         default_model="llama-3.3-70b-versatile",
         display_name="Groq",
     ),
