@@ -172,17 +172,25 @@ async def get_plan(job_id: str, db: AsyncSession = Depends(get_db)) -> Curriculu
 
 
 @router.get("", response_model=JobListResponse)
-async def list_jobs(db: AsyncSession = Depends(get_db)) -> JobListResponse:
+async def list_jobs(
+    mode: Literal["live", "mock"] | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> JobListResponse:
     """Lists all jobs sorted by creation date (newest first).
 
     Args:
+        mode: Optional filter to return only 'live' or 'mock' jobs.
         db: The active database session.
 
     Returns:
         JobListResponse: A paginated or list of job summaries.
     """
     # Select all jobs, ordered by created_at desc
-    result = await db.execute(select(JobRecord).order_by(JobRecord.created_at.desc()))
+    stmt = select(JobRecord).order_by(JobRecord.created_at.desc())
+    if mode:
+        stmt = stmt.where(JobRecord.mode == mode)
+
+    result = await db.execute(stmt)
     jobs = result.scalars().all()
 
     summary_list = []
@@ -291,21 +299,47 @@ async def delete_job(job_id: str, db: AsyncSession = Depends(get_db)) -> None:
 
 
 @router.delete("", status_code=204)
-async def delete_all_jobs(db: AsyncSession = Depends(get_db)) -> None:
-    """Deletes ALL jobs from the database and clears the entire jobs filesystem root.
-
-    Args:
-        db: The active database session.
-
-    Returns:
-        None
+async def delete_all_jobs(
+    mode: Literal["live", "mock"] | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Deletes jobs from the database and clears their filesystem root.
+    
+    If mode is provided, only deletes jobs of that mode.
     """
     settings = get_settings()
     jobs_root = settings.jobs_dir
 
-    # Efficient bulk delete
-    await db.execute(delete(JobRecord))
-    await db.commit()
+    # 1. Fetch job IDs for filesystem cleanup if filtering
+    if mode:
+        stmt = select(JobRecord.job_id).where(JobRecord.mode == mode)
+        res = await db.execute(stmt)
+        ids_to_delete = res.scalars().all()
+        
+        # Delete from DB
+        await db.execute(delete(JobRecord).where(JobRecord.mode == mode))
+        await db.commit()
+        
+        # Cleanup files
+        for jid in ids_to_delete:
+            jdir = jobs_root / jid
+            if jdir.exists() and jdir.is_dir():
+                try:
+                    shutil.rmtree(jdir)
+                except Exception as e:
+                    logger.warning(f"Error deleting job artifacts for {jid}: {e}")
+    else:
+        # Full wipe
+        await db.execute(delete(JobRecord))
+        await db.commit()
+
+        if jobs_root.exists() and jobs_root.is_dir():
+            for item in jobs_root.iterdir():
+                if item.is_dir():
+                    try:
+                        shutil.rmtree(item)
+                    except Exception as e:
+                        logger.warning(f"Error deleting job dir {item}: {e}")
 
     # Clear filesystem
     if jobs_root.exists() and jobs_root.is_dir():
