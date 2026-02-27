@@ -43,7 +43,6 @@ PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
         models=(
             "gemini-3-flash",
             "gemini-3.1-pro",
-            "gemini-2.0-flash-thinking-exp-01-21",
         ),
         default_model="gemini-3-flash",
         display_name="Google (Gemini)",

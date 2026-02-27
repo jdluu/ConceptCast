@@ -65,8 +65,14 @@ class GoogleModelProvider(BaseProvider):
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
         ]
 
-        # Thinking models (Gemini 2.0 Thinking)
-        if "thinking" in model_id.lower():
+        # Thinking capable models (Gemini 2.0 Thinking or 3.x Pro/Flash)
+        is_thinking_capable = (
+            "thinking" in model_id.lower() 
+            or "gemini-3.1" in model_id.lower()
+            or "gemini-3-flash" in model_id.lower()
+        )
+
+        if is_thinking_capable:
             return GoogleModelSettings(
                 google_thinking_config={"thinking_budget": 1024},
                 google_safety_settings=safety_settings,  # type: ignore
