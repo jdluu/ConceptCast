@@ -32,8 +32,8 @@ export async function listJobs(): Promise<{ jobs: JobSummary[] }> {
     if (error) throw new Error('Failed to fetch jobs');
     
     const jobs = import.meta.env.DEV
-        ? [...((data as any)?.jobs || []), ...MOCK_JOBS_SUMMARY]
-        : ((data as any)?.jobs || []);
+        ? [...((data?.jobs || []) as JobSummary[]), ...MOCK_JOBS_SUMMARY]
+        : ((data?.jobs || []) as JobSummary[]);
     return { jobs };
 }
 
@@ -47,7 +47,7 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
         params: { path: { job_id: jobId } }
     });
     if (error) throw new Error('Failed to fetch job status');
-    return data as any as JobStatus;
+    return data as unknown as JobStatus;
 }
 
 export async function createJob(request: JobRequest): Promise<JobStatus> {

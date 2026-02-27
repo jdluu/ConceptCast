@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type JobStatus, getJobStatus, API_BASE_URL } from '@/lib/api/client';
+import { useJobStore } from '@/lib/store/useJobStore';
 
 interface UseJobEventsReturn {
     jobStatus: JobStatus | null;
@@ -13,7 +14,7 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
     const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'error' | 'closed'>('closed');
     const [error, setError] = useState<Error | null>(null);
 
-    const { data: jobStatus } = useQuery<JobStatus>({
+    const { data: jobStatus, error: queryError } = useQuery<JobStatus>({
         queryKey: ['job', jobId],
         queryFn: () => getJobStatus(jobId!),
         enabled: !!jobId,
@@ -24,7 +25,17 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
             if (status === 'completed' || status === 'failed') return false;
             return 3000; // Fallback poll every 3s while job in progress
         },
+        retry: false, // Don't retry if job not found
     });
+
+    useEffect(() => {
+        if (queryError && (queryError.message.includes('not found') || queryError.message.includes('404'))) {
+            if (jobStatus) {
+                const { resetJob } = useJobStore.getState();
+                resetJob();
+            }
+        }
+    }, [queryError, jobStatus]);
     
     // Refs to keep track of retry logic without triggering re-renders
     const retryCount = useRef(0);
@@ -53,7 +64,17 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
 
             es.onmessage = (event) => {
                 try {
-                    const status = JSON.parse(event.data);
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.error === 'Job not found') {
+                        const { resetJob } = useJobStore.getState();
+                        resetJob();
+                        es.close();
+                        setConnectionState('closed');
+                        return;
+                    }
+
+                    const status = data as JobStatus;
                     queryClient.setQueryData(['job', jobId], status);
 
                     if (status.status === 'completed' || status.status === 'failed') {

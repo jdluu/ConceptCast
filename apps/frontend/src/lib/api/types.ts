@@ -1,11 +1,22 @@
 import type { components } from '@/lib/api/schema';
 
+export interface VideoMetadata {
+    resolution: string;
+    duration: number;
+    bitrate: string;
+    file_size: string;
+    format: string;
+    fps?: number;
+    width?: number;
+    height?: number;
+}
+
 export type JobStatus = Omit<components["schemas"]["JobStatus"], 'status'> & {
     topic?: string | null;
     status: components["schemas"]["JobStatus"]["status"] | "queued";
     cost?: number;
     thumbnail_url?: string | null;
-    video_metadata?: any | null;
+    video_metadata?: VideoMetadata | null;
     resolution?: string;
     frame_rate?: number;
     render_progress?: number;
@@ -14,7 +25,7 @@ export type JobSummary = components["schemas"]["JobSummary"] & {
     cost?: number;
     thumbnail_url?: string | null;
     video_url?: string | null;
-    video_metadata?: any | null;
+    video_metadata?: VideoMetadata | null;
     resolution?: string;
     frame_rate?: number;
     render_progress?: number;

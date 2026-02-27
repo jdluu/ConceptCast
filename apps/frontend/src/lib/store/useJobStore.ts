@@ -60,9 +60,12 @@ export const useJobStore = create<JobState>()(
             setCurrentJob: (job) => set({ currentJob: job }),
             setSubmittedTopic: (topic) => set({ submittedTopic: topic }),
             setJobStartedAt: (timestamp) => set({ jobStartedAt: timestamp }),
-            setRenderProgress: (progress) => set((state) => ({ 
-                renderProgress: typeof progress === 'function' ? progress(state.renderProgress) : progress 
-            })),
+            setRenderProgress: (progress) => set((state) => {
+                const nextProgress = typeof progress === 'function' ? progress(state.renderProgress) : progress;
+                // Only update if value actually changed
+                if (state.renderProgress === nextProgress) return state;
+                return { renderProgress: nextProgress };
+            }),
             setIsSubmitting: (loading) => set({ isSubmitting: loading }),
 
             createJob: async (data) => {
@@ -94,3 +97,17 @@ export const useJobStore = create<JobState>()(
         }
     )
 );
+
+/**
+ * Atomic selectors for fine-grained subscriptions.
+ * Prevents re-renders when other parts of the store change.
+ */
+export const selectCurrentJob = (state: JobState) => state.currentJob;
+export const selectIsSubmitting = (state: JobState) => state.isSubmitting;
+export const selectRenderProgress = (state: JobState) => state.renderProgress;
+export const selectJobActions = (state: JobState) => ({
+    createJob: state.createJob,
+    resetJob: state.resetJob,
+    setCurrentJob: state.setCurrentJob,
+    setRenderProgress: state.setRenderProgress,
+});
