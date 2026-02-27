@@ -82,7 +82,7 @@ PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
         settings_key=None,
         models=("mock-llm", "mock-analyst", "mock-critic"),
         default_model="mock-llm",
-        display_name="Mock (Fast)",
+        display_name="Mock Demo",
     ),
 )
 

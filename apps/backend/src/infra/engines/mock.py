@@ -4,7 +4,6 @@ from typing import Any
 
 from api.schemas import (
     CurriculumPlan,
-    JobRequest,
     Scene,
     Storyboard,
     TeachingStep,
@@ -14,7 +13,8 @@ from api.schemas import (
 
 
 async def run_mock_flow(
-    request: JobRequest,
+    topic: str,
+    target_audience: str,
     update_job: Callable[[dict[str, Any]], Any],
     on_thought: Callable[[str, str, str], Any],
 ) -> None:
@@ -28,14 +28,14 @@ async def run_mock_flow(
         # Record start time
         await update_job({"started_at": datetime.now(UTC)})
 
-        # Determine sleep multiplier
-        sleep_mult = 0.1 if request.fast_mode else 1.0
+        # Sane default timing for UI visualization
+        sleep_mult = 1.0
 
         # Step 1: Planning
         await update_job({"status": "planning", "current_step": "planning"})
 
         await on_thought(
-            "analyst", "Curriculum Design", f"Analyzing topic '{request.topic}'..."
+            "analyst", "Curriculum Design", f"Analyzing topic '{topic}'..."
         )
         await asyncio.sleep(1.5 * sleep_mult)
 
@@ -48,7 +48,7 @@ async def run_mock_flow(
         await asyncio.sleep(1.0 * sleep_mult)
 
         plan = generate_mock_plan(
-            request.topic, request.target_audience or "General Audience"
+            topic, target_audience or "General Audience"
         )
         await update_job(
             {

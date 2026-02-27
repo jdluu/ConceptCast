@@ -1,5 +1,12 @@
-import json
-from api.schemas import CurriculumPlan, Storyboard, ValidationResult, TeachingStep, Scene, VisualObject
+from api.schemas import (
+    AnimationReview,
+    CurriculumPlan,
+    Scene,
+    Storyboard,
+    TeachingStep,
+    ValidationResult,
+    VisualObject,
+)
 
 # Realistic fragments for the Analyst agent
 MOCK_PLANS = {
@@ -11,21 +18,32 @@ MOCK_PLANS = {
                 step_id=1,
                 concept="The Spin Property",
                 visual_metaphor="Rotating spheres with glowing axes",
-                narration="Imagine two particles, like tiny spinning tops. In the quantum world, their spin can be linked in a way that defies classical logic."
+                narration=(
+                    "Imagine two particles, like tiny spinning tops. In the quantum "
+                    "world, their spin can be linked in a way that defies classical "
+                    "logic."
+                ),
             ),
             TeachingStep(
                 step_id=2,
                 concept="Superposition",
                 visual_metaphor="A blurry, shifting state between two colors",
-                narration="Until measured, a particle exists in multiple states at once. This uncertainty is the heart of quantum mechanics."
+                narration=(
+                    "Until measured, a particle exists in multiple states at once. "
+                    "This uncertainty is the heart of quantum mechanics."
+                ),
             ),
             TeachingStep(
                 step_id=3,
                 concept="Non-locality",
                 visual_metaphor="A bridge of light connecting two distant points",
-                narration="Entanglement means that measuring one particle instantly determines the state of the other, no matter the distance between them."
-            )
-        ]
+                narration=(
+                    "Entanglement means that measuring one particle instantly "
+                    "determines the state of the other, no matter the distance "
+                    "between them."
+                ),
+            ),
+        ],
     )
 }
 
@@ -33,8 +51,13 @@ MOCK_PLANS = {
 MOCK_VALIDATIONS = {
     "default": ValidationResult(
         is_valid=True,
-        feedback="The logical flow is sound and the visual metaphors are highly effective for a general audience.",
-        suggestions=["Consider adding a brief recap of classical probability for contrast."]
+        feedback=(
+            "The logical flow is sound and the visual metaphors are highly "
+            "effective for a general audience."
+        ),
+        suggestions=[
+            "Consider adding a brief recap of classical probability for contrast."
+        ],
     )
 }
 
@@ -47,13 +70,28 @@ MOCK_STORYBOARDS = {
                 scene_id=0,
                 title="Introduction to Quantum Void",
                 description="Opening shot: Two particles appearing in a void.",
-                narration="In the vastness of the quantum void, particles are never truly alone.",
+                narration=(
+                    "In the vastness of the quantum void, particles are "
+                    "never truly alone."
+                ),
                 objects=[
-                    VisualObject(name="p1", type="Circle", color="BLUE", position="LEFT"),
-                    VisualObject(name="p2", type="Circle", color="RED", position="RIGHT")
-                ]
+                    VisualObject(
+                        name="p1",
+                        type="Circle",
+                        color="BLUE",
+                        position="LEFT",
+                        label=None,
+                    ),
+                    VisualObject(
+                        name="p2",
+                        type="Circle",
+                        color="RED",
+                        position="RIGHT",
+                        label=None,
+                    ),
+                ],
             )
-        ]
+        ],
     )
 }
 
@@ -61,8 +99,9 @@ MOCK_STORYBOARDS = {
 MOCK_MANIM_CODE = """
 from manim import *
 
-class QuantumEntanglement(Scene):
+class SceneGen(Scene):
     def construct(self):
+        # Concept: {{concept_title}}
         # Create particles
         p1 = Circle(color=BLUE, fill_opacity=0.5).shift(LEFT * 2)
         p2 = Circle(color=RED, fill_opacity=0.5).shift(RIGHT * 2)
@@ -72,34 +111,52 @@ class QuantumEntanglement(Scene):
         self.wait(1)
         
         # Narration transition
-        title = Text("Quantum Entanglement", font_size=36).to_edge(UP)
+        title = Text("{{concept_title}}", font_size=36).to_edge(UP)
         self.play(Write(title))
         self.wait(2)
 """
 
-def inject_topic(text: str, topic: str) -> str:
-    """Simple helper to replace 'Quantum Entanglement' with the user topic."""
-    if not topic:
-        return text
-    return text.replace("Quantum Entanglement", topic).replace("quantum entanglement", topic.lower())
+# Realistic fragments for the Reviewer agent
+MOCK_REVIEWS = {
+    "default": AnimationReview(
+        approved=True,
+        issues=[],
+        revision_instructions=(
+            "The animation perfectly matches the storyboard requirements."
+        ),
+    )
+}
 
-def get_realistic_response(prompt: str, output_type: type, topic: str | None = None) -> str:
+
+def inject_topic(text: str, topic: str) -> str:
+    """Simple helper to replace placeholder with the user topic."""
+    if not topic:
+        return text.replace("{{concept_title}}", "ConceptCast")
+    return text.replace("{{concept_title}}", topic)
+
+
+def get_realistic_response(
+    prompt: str, output_type: type, topic: str | None = None
+) -> str:
     """Returns a realistic-looking mock response based on the output type requested."""
     if output_type == CurriculumPlan:
         plan = MOCK_PLANS["default"]
         if topic:
             plan.concept_title = topic
         return plan.model_dump_json()
-    
+
     if output_type == ValidationResult:
         return MOCK_VALIDATIONS["default"].model_dump_json()
-    
+
     if output_type == Storyboard:
         sb = MOCK_STORYBOARDS["default"]
         if topic:
             sb.concept_title = topic
         return sb.model_dump_json()
-    
+
+    if output_type == AnimationReview:
+        return MOCK_REVIEWS["default"].model_dump_json()
+
     if topic:
         return inject_topic(MOCK_MANIM_CODE, topic)
     return MOCK_MANIM_CODE

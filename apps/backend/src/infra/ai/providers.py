@@ -1,14 +1,32 @@
 import json
 import re
-from datetime import datetime, timezone
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, cast
 
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, TextPart
-from pydantic_ai.models import Model, ModelRequestParameters
+from pydantic_ai import RunContext
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    ModelResponsePart,
+    ModelResponseStreamEvent,
+    PartStartEvent,
+    SystemPromptPart,
+    TextPart,
+    ToolCallPart,
+    UserPromptPart,
+)
+from pydantic_ai.models import (
+    Model,
+    ModelRequestParameters,
+    StreamedResponse,
+)
 from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.models.groq import GroqModel, GroqModelSettings
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
-from pydantic_ai.models.test import TestModel
 from pydantic_ai.providers.google import GoogleProvider as PydanticGoogleProvider
 from pydantic_ai.providers.groq import GroqProvider as PydanticGroqProvider
 from pydantic_ai.providers.openai import OpenAIProvider as PydanticOpenAIProvider
@@ -70,7 +88,7 @@ class GoogleModelProvider(BaseProvider):
 
         # Thinking capable models (Gemini 2.0 Thinking or 3.x Pro/Flash)
         is_thinking_capable = (
-            "thinking" in model_id.lower() 
+            "thinking" in model_id.lower()
             or "gemini-3.1" in model_id.lower()
             or "gemini-3-flash" in model_id.lower()
         )
@@ -230,8 +248,8 @@ class SyntheticModel(OpenAIChatModel):
         model_request_parameters: ModelRequestParameters,
     ) -> Any:
         """Proxies completions to strip tool_choice for proxy-hosted models.
-        
-        Some Hugging Face models behind the synthetic.new proxy may return 400 
+
+        Some Hugging Face models behind the synthetic.new proxy may return 400
         errors if tool_choice is explicitly provided.
         """
         original_completions = self.client.chat.completions
@@ -295,17 +313,52 @@ class SyntheticModelProvider(BaseProvider):
         return None
 
 
-from pydantic_ai.messages import (
-    ModelMessage, 
-    ModelResponse, 
-    ToolCallPart, 
-    TextPart, 
-    ModelRequest, 
-    SystemPromptPart, 
-    UserPromptPart,
-    ToolReturnPart
-)
-from pydantic_ai.models import Model, ModelRequestParameters
+@dataclass
+class MockStreamedResponse(StreamedResponse):
+    """Mock implementation of StreamedResponse for RealisticMockModel."""
+
+    _model_name: str
+    _timestamp: datetime
+    _parts: list[ModelResponsePart]
+
+    async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
+        """Yields events via parts manager for each mock part."""
+        for i, part in enumerate(self._parts):
+            if isinstance(part, TextPart):
+                # Yield text deltas via parts manager
+                events = self._parts_manager.handle_text_delta(
+                    vendor_part_id=i, content=part.content
+                )
+                for event in events:
+                    yield event
+            elif isinstance(part, ToolCallPart):
+                # Yield tool call via parts manager
+                yield self._parts_manager.handle_tool_call_part(
+                    vendor_part_id=i,
+                    tool_name=part.tool_name,
+                    args=part.args,
+                    tool_call_id=part.tool_call_id,
+                )
+            else:
+                # Fallback for other parts if any
+                yield PartStartEvent(index=i, part=part)
+
+    @property
+    def model_name(self) -> str:
+        return self._model_name
+
+    @property
+    def provider_name(self) -> str | None:
+        return "mock"
+
+    @property
+    def provider_url(self) -> str | None:
+        return None
+
+    @property
+    def timestamp(self) -> datetime:
+        return self._timestamp
+
 
 class RealisticMockModel(Model):
     """A more advanced mock model that returns realistic pedagogical data."""
@@ -318,6 +371,26 @@ class RealisticMockModel(Model):
     def system(self) -> str:
         return "mock"
 
+    @asynccontextmanager
+    async def request_stream(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+        run_context: RunContext[Any] | None = None,
+    ) -> AsyncIterator[StreamedResponse]:
+        """Implements request_stream by proxying to request."""
+        response = await self.request(
+            messages, model_settings, model_request_parameters
+        )
+
+        yield MockStreamedResponse(
+            model_request_parameters=model_request_parameters,
+            _model_name=self.model_name,
+            _timestamp=response.timestamp,
+            _parts=list(response.parts),
+        )
+
     async def request(
         self,
         messages: list[ModelMessage],
@@ -325,20 +398,23 @@ class RealisticMockModel(Model):
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
         """Correctly implements the Model.request interface for realistic mockery."""
-        from .mock_responses import get_realistic_response
         from loguru import logger
+
+        from .mock_responses import get_realistic_response
 
         # 1. Inspect messages to identify agent and turn
         system_text = ""
         user_topic = None
         has_previous_model_response = False
-        
+
         for msg in messages:
             if isinstance(msg, ModelRequest):
                 for part in msg.parts:
                     if isinstance(part, SystemPromptPart):
                         system_text += part.content
-                    elif isinstance(part, UserPromptPart):
+                    elif isinstance(part, UserPromptPart) and isinstance(
+                        part.content, str
+                    ):
                         # Extract topic from user prompt (usually in single quotes)
                         match = re.search(r"'(.*?)'", part.content)
                         if match:
@@ -350,26 +426,41 @@ class RealisticMockModel(Model):
         is_animator = "Animator Agent" in system_text
         is_first_turn = not has_previous_model_response
 
-        logger.info(f"Mock Request: agent={'Analyst' if is_analyst else 'Animator' if is_animator else 'Other'}, turn={'1' if is_first_turn else 'N'}, topic={user_topic}")
+        agent_label = (
+            "Analyst" if is_analyst else "Animator" if is_animator else "Other"
+        )
+        logger.info(
+            f"Mock Request: agent={agent_label}, "
+            f"turn={'1' if is_first_turn else 'N'}, topic={user_topic}"
+        )
 
         # 2. Handle Analyst Turn 1: Mock 'consult_critic' tool call
         if is_analyst and is_first_turn:
             from api.schemas import CurriculumPlan
+
             response_json = get_realistic_response("", CurriculumPlan, user_topic)
             logger.info("Mock: Returning Analyst Turn 1 tool call (consult_critic)")
-            return ModelResponse(parts=[
-                ToolCallPart(
-                    tool_name="consult_critic", 
-                    args=json.loads(response_json)
-                )
-            ])
+            return ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        tool_name="consult_critic",
+                        args=json.loads(response_json),
+                        tool_call_id="mock_call_1",
+                    )
+                ]
+            )
 
         # 3. Determine target type for other agents or final turns
         output_object = model_request_parameters.output_object
-        
-        from api.schemas import CurriculumPlan, Storyboard, ValidationResult
-        
-        target_type = None
+
+        from api.schemas import (
+            AnimationReview,
+            CurriculumPlan,
+            Storyboard,
+            ValidationResult,
+        )
+
+        target_type: type | None = None
         if output_object:
             if output_object.name == "CurriculumPlan":
                 target_type = CurriculumPlan
@@ -377,30 +468,51 @@ class RealisticMockModel(Model):
                 target_type = Storyboard
             elif output_object.name == "ValidationResult":
                 target_type = ValidationResult
+            elif output_object.name == "AnimationReview":
+                target_type = AnimationReview
 
         # 4. Generate the mock text/JSON
-        response_text = get_realistic_response(system_text, target_type, user_topic)
-        
+        response_text = get_realistic_response(
+            system_text, target_type or str, user_topic
+        )
+
         # 5. Return either as Result Tool Call (if structured) or Plain Text
         if output_object and model_request_parameters.output_tools:
             # PydanticAI structured output uses a tool call for the final result
             tool_name = output_object.name
-            actual_tool = next((t for t in model_request_parameters.output_tools if t.name == tool_name), model_request_parameters.output_tools[0])
-            
-            logger.info(f"Mock: Returning structured tool call ({actual_tool.name})")
-            return ModelResponse(parts=[
-                ToolCallPart(
-                    tool_name=actual_tool.name,
-                    args=json.loads(response_text)
+            actual_tool = next(
+                (
+                    t
+                    for t in model_request_parameters.output_tools
+                    if t.name == tool_name
+                ),
+                None,
+            )
+
+            if actual_tool:
+                logger.info(
+                    f"Mock: Returning structured tool call ({actual_tool.name})"
                 )
-            ])
-            
+                return ModelResponse(
+                    parts=[
+                        ToolCallPart(
+                            tool_name=actual_tool.name,
+                            args=json.loads(response_text),
+                            tool_call_id="mock_call_final",
+                        )
+                    ]
+                )
+
         # For non-structured agents like Animator (output_type=str) or plain text turns
-        logger.info(f"Mock: Returning plain text response (first 50 chars: {response_text[:50]}...)")
+        logger.info(
+            f"Mock: Returning plain text response (first 50 chars: "
+            f"{response_text[:50].strip()}...)"
+        )
         return ModelResponse(parts=[TextPart(content=response_text)])
 
     def name(self) -> str:
         return "realistic-mock"
+
 
 class MockModelProvider(BaseProvider):
     """Provider adapter for local testing using the RealisticMockModel."""
