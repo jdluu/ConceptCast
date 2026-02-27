@@ -296,7 +296,7 @@ from pydantic_ai.models.test import TestModel
 from .mock_responses import get_realistic_response
 
 class RealisticMockModel(TestModel):
-    \"\"\"A more advanced mock model that returns realistic pedagogical data.\"\"\"
+    """A more advanced mock model that returns realistic pedagogical data."""
 
     async def _generate_text(self, prompt: str, model_settings: Any) -> str:
         # We need to peek at the prompt or context to know what to return
@@ -320,15 +320,15 @@ class RealisticMockModel(TestModel):
         return await super().request(*args, **kwargs)
 
 class MockModelProvider(BaseProvider):
-    \"\"\"Provider adapter for local testing using the RealisticMockModel.\"\"\"
+    """Provider adapter for local testing using the RealisticMockModel."""
 
     def create_model(self, model_id: str) -> Model:
-        \"\"\"Creates a RealisticMockModel instance for local simulation.
+        """Creates a RealisticMockModel instance for local simulation.
 
         Args:
             model_id: The mock model identifier.
 
         Returns:
             A RealisticMockModel instance.
-        \"\"\"
+        """
         return RealisticMockModel()
