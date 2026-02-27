@@ -1,6 +1,6 @@
 from typing import Any, cast
 
-from pydantic_ai.messages import ModelMessage
+from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, TextPart
 from pydantic_ai.models import Model, ModelRequestParameters
 from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.models.groq import GroqModel, GroqModelSettings
@@ -303,21 +303,75 @@ class RealisticMockModel(TestModel):
         # But for now, we'll use the output_type if we can find it
         return "Realistic mock thought..."
 
-    async def request(self, *args: Any, **kwargs: Any) -> Any:
-        # Intercept the request to return realistic data based on the tool or result_type
-        # pydantic-ai's Agent.run uses result_type
-        result_type = kwargs.get('result_type')
+    async def request(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+    ) -> ModelResponse:
+        """Correctly implements the Model.request interface for realistic mockery."""
+        from .mock_responses import get_realistic_response
+
+        # 1. Identify the agent from the system prompt
+        system_msg = next((m for m in messages if hasattr(m, 'role') and getattr(m, 'role') == 'system'), None)
+        system_text = ""
+        if system_msg and hasattr(system_msg, 'parts'):
+            system_text = " ".join(str(p) for p in system_msg.parts)
         
-        # If it's a tool call or structured output, return the JSON
+        # 2. Extract the topic from the user prompt for injection
+        user_msg = next((m for m in reversed(messages) if hasattr(m, 'role') and getattr(m, 'role') == 'user'), None)
+        topic = None
+        if user_msg and hasattr(user_msg, 'parts'):
+            user_text = " ".join(str(p) for p in user_msg.parts)
+            # Try to extract topic between single quotes (common in our prompts)
+            import re
+            match = re.search(r"'(.*?)'", user_text)
+            if match:
+                topic = match.group(1)
+
+        # 3. Handle Turn 1 for Analyst (Needs tool call to 'consult_critic')
+        is_analyst = "Analyst Agent" in system_text
+        # We know it's turn 1 if there are no tool calls or responses yet in the history
+        # (Actually, we can just check if ModelRequestParameters has function_tools but no previous response has tool results)
+        is_first_turn = not any(hasattr(m, 'parts') and any(hasattr(p, 'tool_name') for p in m.parts) for m in messages if hasattr(m, 'role') and getattr(m, 'role') == 'model')
+
+        if is_analyst and is_first_turn:
+            from api.schemas import CurriculumPlan
+            return ModelResponse(parts=[
+                ToolCallPart(
+                    tool_name="consult_critic", 
+                    args={"plan": json.loads(get_realistic_response("", CurriculumPlan, topic))}
+                )
+            ])
+
+        # 4. Handle other agents or final result
+        # Check output_object name to determine result type
+        output_object = model_request_parameters.output_object
+        output_name = output_object.name if output_object else None
+        
         from api.schemas import CurriculumPlan, Storyboard, ValidationResult
         
-        response_text = get_realistic_response("", result_type)
+        target_type = None
+        if output_name == "CurriculumPlan":
+            target_type = CurriculumPlan
+        elif output_name == "Storyboard":
+            target_type = Storyboard
+        elif output_name == "ValidationResult":
+            target_type = ValidationResult
+            
+        response_text = get_realistic_response(system_text, target_type, topic)
         
-        # Create a mock response object that pydantic-ai expects
-        # Since we inherit from TestModel, we can leverage its internals
-        # but override the completion behavior.
-        self.custom_result_text = response_text
-        return await super().request(*args, **kwargs)
+        # Return as final_result tool call if that's what's expected, otherwise raw text
+        if model_request_parameters.output_tools:
+            tool_name = model_request_parameters.output_tools[0].name
+            return ModelResponse(parts=[
+                ToolCallPart(
+                    tool_name=tool_name,
+                    args=json.loads(response_text)
+                )
+            ])
+            
+        return ModelResponse(parts=[TextPart(content=response_text)])
 
 class MockModelProvider(BaseProvider):
     """Provider adapter for local testing using the RealisticMockModel."""

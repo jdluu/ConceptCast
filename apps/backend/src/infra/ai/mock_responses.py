@@ -77,12 +77,29 @@ class QuantumEntanglement(Scene):
         self.wait(2)
 """
 
-def get_realistic_response(prompt: str, output_type: type) -> str:
+def inject_topic(text: str, topic: str) -> str:
+    """Simple helper to replace 'Quantum Entanglement' with the user topic."""
+    if not topic:
+        return text
+    return text.replace("Quantum Entanglement", topic).replace("quantum entanglement", topic.lower())
+
+def get_realistic_response(prompt: str, output_type: type, topic: str | None = None) -> str:
     """Returns a realistic-looking mock response based on the output type requested."""
     if output_type == CurriculumPlan:
-        return MOCK_PLANS["default"].model_dump_json()
+        plan = MOCK_PLANS["default"]
+        if topic:
+            plan.concept_title = topic
+        return plan.model_dump_json()
+    
     if output_type == ValidationResult:
         return MOCK_VALIDATIONS["default"].model_dump_json()
+    
     if output_type == Storyboard:
-        return MOCK_STORYBOARDS["default"].model_dump_json()
+        sb = MOCK_STORYBOARDS["default"]
+        if topic:
+            sb.concept_title = topic
+        return sb.model_dump_json()
+    
+    if topic:
+        return inject_topic(MOCK_MANIM_CODE, topic)
     return MOCK_MANIM_CODE
