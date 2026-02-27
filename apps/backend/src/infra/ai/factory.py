@@ -69,10 +69,11 @@ PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
         id="synthetic",
         settings_key="synthetic_api_key",
         models=(
-            "hf:deepseek-ai/DeepSeek-V3",
+            "hf:meta-llama/Llama-3.3-70B-Instruct",
             "hf:Qwen/Qwen2.5-72B-Instruct",
+            "hf:deepseek-ai/DeepSeek-V3",
         ),
-        default_model="hf:deepseek-ai/DeepSeek-V3",
+        default_model="hf:meta-llama/Llama-3.3-70B-Instruct",
         display_name="Synthetic",
     ),
     ProviderEntry(

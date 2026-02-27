@@ -216,6 +216,12 @@ class DeepSeekModelProvider(BaseProvider):
         return ModelSettings(tool_choice="auto")  # type: ignore[typeddict-unknown-key]
 
 
+class SyntheticModel(OpenAIChatModel):
+    """Custom model for Synthetic.new to handle any Hugging Face or OpenAI quirks."""
+
+    pass
+
+
 class SyntheticModelProvider(BaseProvider):
     """Provider adapter for Synthetic AI models using the OpenAI-compatible API."""
 
@@ -228,22 +234,33 @@ class SyntheticModelProvider(BaseProvider):
         self.settings = settings
 
     def create_model(self, model_id: str) -> Model:
-        """Creates an OpenAIChatModel instance configured for Synthetic AI.
+        """Creates a SyntheticModel instance configured for Synthetic.new.
 
         Args:
             model_id: The Synthetic model identifier.
 
         Returns:
-            A configured OpenAIChatModel instance.
+            A configured SyntheticModel instance.
         """
-        return OpenAIChatModel(
+        return SyntheticModel(
             model_id,
             provider=PydanticOpenAIProvider(
-                base_url="https://api.synthetic.ai/v1",
+                base_url="https://api.synthetic.new/openai/v1",
                 api_key=self.settings.synthetic_api_key,
             ),
             settings=self.get_settings(model_id),
         )
+
+    def get_settings(self, model_id: str) -> ModelSettings | None:
+        """Returns Synthetic-specific configurations.
+
+        Args:
+            model_id: The model identifier.
+
+        Returns:
+            ModelSettings for the model.
+        """
+        return None
 
 
 class MockModelProvider(BaseProvider):
