@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { toast } from 'sonner';
 import { getAvailableModels } from '@/lib/api/client';
 import { useDeveloperMode } from '@/lib/contexts/developerMode';
@@ -16,6 +16,7 @@ import { jobSchema, JobFormData, ProviderGroup } from './JobFormTypes';
 export function JobCreationForm() {
     const { developerMode } = useDeveloperMode();
     const { settings } = useAppSettings();
+    const prefersReducedMotion = useReducedMotion() || settings.reducedMotion;
     const { createJob, isSubmitting: isLoading } = useJobStore();
     const [showNoKeysToast, setShowNoKeysToast] = useState(true);
 
@@ -101,7 +102,6 @@ export function JobCreationForm() {
                 model_id: data.model_id || null,
                 resolution: data.resolution,
                 frame_rate: data.frame_rate as 30 | 60,
-                fast_mode: settings.fastMocking,
             });
             toast.success('Council consulting started!');
         } catch (err: any) {
@@ -122,7 +122,6 @@ export function JobCreationForm() {
                 model_id: 'mock-llm',
                 resolution: values.resolution,
                 frame_rate: values.frame_rate as 30 | 60,
-                fast_mode: settings.fastMocking,
             });
             toast.info('Running mock demo sequence');
         } catch {
@@ -222,7 +221,7 @@ export function JobCreationForm() {
 
                         {noKeys && (
                             <div className="md:col-span-2 flex items-center gap-3 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl text-amber-500 text-sm font-medium italic">
-                                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                <div className={`w-2 h-2 rounded-full bg-amber-500 ${prefersReducedMotion ? '' : 'animate-pulse'}`} />
                                 No real AI providers configured. Using simulated engine.
                             </div>
                         )}

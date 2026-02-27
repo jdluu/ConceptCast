@@ -1,7 +1,7 @@
 import { useDeveloperMode } from '@/lib/contexts/developerMode';
 import { useTheme } from '@/lib/contexts/theme';
 import { useAppSettings } from '@/lib/contexts/appSettings';
-import { Moon, Sun, Laptop, Eye, EyeOff, Zap, Trash2 } from 'lucide-react';
+import { Moon, Sun, Laptop, Zap, Trash2, Bell, Volume2, Move } from 'lucide-react';
 import { useState } from 'react';
 
 export function SettingsPage() {
@@ -76,6 +76,100 @@ export function SettingsPage() {
                     </div>
                 </section>
 
+                {/* Accessibility & Notifications */}
+                <section>
+                    <header className="mb-4">
+                        <h2 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Accessibility & Notifications</h2>
+                        <p className="text-sm text-[var(--text-muted)] mt-1">Control how the application communicates and behaves.</p>
+                    </header>
+
+                    <div className="bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl overflow-hidden backdrop-blur-sm">
+                        {/* Browser Notifications */}
+                        <div className="p-6 flex items-center justify-between gap-8 border-b border-[var(--surface-border)]">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Bell className="w-4 h-4 text-indigo-500" />
+                                    <h3 className="text-sm font-semibold text-[var(--foreground)]">Completion Alerts</h3>
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)]">
+                                    Get browser notifications when a generation or rendering task completes.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={settings.enableNotifications}
+                                onClick={() => updateSettings({ enableNotifications: !settings.enableNotifications })}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
+                                    settings.enableNotifications ? 'bg-indigo-600' : 'bg-[var(--surface-border)]'
+                                }`}
+                            >
+                                <span
+                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                        settings.enableNotifications ? 'translate-x-5' : 'translate-x-0'
+                                    }`}
+                                />
+                            </button>
+                        </div>
+
+                        {/* Sound Effects */}
+                        <div className="p-6 flex items-center justify-between gap-8 border-b border-[var(--surface-border)]">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Volume2 className="w-4 h-4 text-indigo-500" />
+                                    <h3 className="text-sm font-semibold text-[var(--foreground)]">Sound Effects</h3>
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)]">
+                                    Play subtle audio cues for status updates and completion.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={settings.enableSound}
+                                onClick={() => updateSettings({ enableSound: !settings.enableSound })}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
+                                    settings.enableSound ? 'bg-indigo-600' : 'bg-[var(--surface-border)]'
+                                }`}
+                            >
+                                <span
+                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                        settings.enableSound ? 'translate-x-5' : 'translate-x-0'
+                                    }`}
+                                />
+                            </button>
+                        </div>
+
+                        {/* Reduced Motion */}
+                        <div className="p-6 flex items-center justify-between gap-8">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Move className="w-4 h-4 text-indigo-500" />
+                                    <h3 className="text-sm font-semibold text-[var(--foreground)]">Reduced Motion</h3>
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)]">
+                                    Disable intensive UI animations and pulsing indicators.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={settings.reducedMotion}
+                                onClick={() => updateSettings({ reducedMotion: !settings.reducedMotion })}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
+                                    settings.reducedMotion ? 'bg-indigo-600' : 'bg-[var(--surface-border)]'
+                                }`}
+                            >
+                                <span
+                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                        settings.reducedMotion ? 'translate-x-5' : 'translate-x-0'
+                                    }`}
+                                />
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
                 {/* AI Orchestration */}
                 <section>
                     <header className="mb-4">
@@ -84,62 +178,7 @@ export function SettingsPage() {
                     </header>
 
                     <div className="bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl overflow-hidden backdrop-blur-sm">
-                        <div className="p-6 flex items-center justify-between gap-8 border-b border-[var(--surface-border)]">
-                            <div className="flex-1">
-                                <h3 className="text-sm font-semibold text-[var(--foreground)]">Agent Transparency</h3>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">
-                                    Show the internal thought logs and deliberations of the AI council during generation.
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                role="switch"
-                                aria-checked={settings.agentTransparency}
-                                onClick={() => updateSettings({ agentTransparency: !settings.agentTransparency })}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-[var(--background)] border border-[var(--surface-border)] hover:border-indigo-500/50"
-                            >
-                                {settings.agentTransparency ? (
-                                    <>
-                                        <Eye className="w-4 h-4 text-indigo-500" />
-                                        <span className="text-[var(--foreground)]">Visible</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <EyeOff className="w-4 h-4 text-[var(--text-muted)]" />
-                                        <span className="text-[var(--text-muted)]">Hidden</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-
-                        {developerMode && (
-                            <div className="p-6 flex items-center justify-between gap-8">
-                                <div className="flex-1">
-                                    <h3 className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-2">
-                                        Fast Mocking
-                                        <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 text-[9px] font-bold uppercase tracking-wider border border-indigo-500/20">Dev</span>
-                                    </h3>
-                                    <p className="text-xs text-[var(--text-muted)] mt-1">
-                                        Reduce simulated delays in mock generation for faster testing.
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={settings.fastMocking}
-                                    onClick={() => updateSettings({ fastMocking: !settings.fastMocking })}
-                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
-                                        settings.fastMocking ? 'bg-indigo-600' : 'bg-[var(--surface-border)]'
-                                    }`}
-                                >
-                                    <span
-                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                                            settings.fastMocking ? 'translate-x-5' : 'translate-x-0'
-                                        }`}
-                                    />
-                                </button>
-                            </div>
-                        )}
+                        {/* Agent Transparency removed - managed via UI dropdowns */}
                     </div>
                 </section>
 

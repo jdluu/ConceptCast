@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 import { JobStatus } from '@/lib/api/client';
+import { useReducedMotion } from 'framer-motion';
+import { useAppSettings } from '@/lib/contexts/appSettings';
 import { CouncilDeliberation } from '@/components/orchestration/Deliberation';
 import { LessonArtifacts } from '@/components/orchestration/LessonArtifacts';
 import { LessonArtifactModal } from '@/components/orchestration/LessonModal';
@@ -36,14 +38,14 @@ interface GeneratingLessonViewProps {
  * @param {Object} props - Component properties. 
  * @param {'sm' | 'md' | 'lg'} [props.size='md'] - The visual scale of the spinner.
  */
-function LoadingSpinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+function LoadingSpinner({ size = 'md', prefersReducedMotion = false }: { size?: 'sm' | 'md' | 'lg', prefersReducedMotion?: boolean }) {
     const sizeClasses = {
         sm: 'w-4 h-4 border-2',
         md: 'w-6 h-6 border-2',
         lg: 'w-10 h-10 border-3',
     };
     return (
-        <div className={`${sizeClasses[size]} rounded-full border-[var(--surface-border)] border-t-indigo-500 animate-spin`} />
+        <div className={`${sizeClasses[size]} rounded-full border-[var(--surface-border)] border-t-indigo-500 ${prefersReducedMotion ? '' : 'animate-spin'}`} />
     );
 }
 
@@ -58,6 +60,8 @@ function LoadingSpinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
  * @returns {JSX.Element} The rendered generation view.
  */
 export function GeneratingLessonView({ job, streamState, streamError }: GeneratingLessonViewProps) {
+    const { settings } = useAppSettings();
+    const prefersReducedMotion = useReducedMotion() || settings.reducedMotion;
     const [isModalOpen, setIsModalOpen] = React.useState(false);
 
     /**
@@ -110,8 +114,8 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
     if (!job || streamState === 'connecting') {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-                <LoadingSpinner size="lg" />
-                <div className="text-center animate-pulse">
+                <LoadingSpinner size="lg" prefersReducedMotion={prefersReducedMotion} />
+                <div className={`text-center ${prefersReducedMotion ? '' : 'animate-pulse'}`}>
                     <p className="text-[var(--foreground)] font-bold tracking-widest uppercase text-xs mb-2">Summoning the Council</p>
                     <p className="text-[var(--text-muted)] text-[10px] italic">Synchronizing pedagogical nodes...</p>
                 </div>
@@ -139,8 +143,8 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
                             <React.Fragment key={step.id}>
                                 <div className="flex flex-col items-center group relative">
                                     <div className={`
-                                        w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500
-                                        ${isCurrent ? 'bg-indigo-500 border-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)]' : 
+                                        w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${prefersReducedMotion ? 'duration-0' : 'duration-500'}
+                                        ${isCurrent ? `bg-indigo-500 border-indigo-500 text-white ${prefersReducedMotion ? '' : 'shadow-[0_0_20px_rgba(99,102,241,0.5)]'}` : 
                                           isPast ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-500' : 
                                           'bg-[var(--background)] border-[var(--surface-border)] text-[var(--text-muted)]'}
                                     `}>
@@ -163,7 +167,7 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
                                     </div>
                                 </div>
                                 {idx < PIPELINE_STEPS.length - 1 && (
-                                    <div className={`w-4 sm:w-8 h-px mb-4 transition-colors duration-500 ${isPast ? 'bg-indigo-500/40' : 'bg-[var(--surface-border)]'}`} />
+                                    <div className={`w-4 sm:w-8 h-px mb-4 transition-colors ${prefersReducedMotion ? 'duration-0' : 'duration-500'} ${isPast ? 'bg-indigo-500/40' : 'bg-[var(--surface-border)]'}`} />
                                 )}
                             </React.Fragment>
                         );

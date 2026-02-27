@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { retryJob, deleteJob, getJobStatus, type JobSummary, type JobStatus } from '@/lib/api/client';
 import { useDeveloperMode } from '@/lib/contexts/developerMode';
+import { useJobStore } from '@/lib/store/useJobStore';
 import { VideoPlayer } from '@/components/ui/VideoPlayer';
 import { FilterSelect } from '@/components/ui/FilterSelect';
 import { JobRow } from '@/components/jobs/JobRow';
@@ -16,6 +17,8 @@ import {
 export function JobsPage() {
     const { data, isPending, refetch } = useJobs();
     const jobs = data?.jobs ?? [];
+
+    const { currentJob, resetJob } = useJobStore();
 
     const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
     const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
@@ -75,6 +78,9 @@ export function JobsPage() {
         if (!confirm(`Delete ${selectedJobIds.size} jobs?`)) return;
         try {
             await Promise.all(Array.from(selectedJobIds).map(id => deleteJob(id)));
+            if (currentJob && selectedJobIds.has(currentJob.job_id)) {
+                resetJob();
+            }
             setSelectedJobIds(new Set());
             await refetch();
         } catch (err) {
@@ -166,7 +172,12 @@ export function JobsPage() {
                                     onToggleSelect={() => toggleSelect(job.job_id)}
                                     onDelete={() => {
                                         if (confirm('Are you sure you want to delete this job and all its artifacts?')) {
-                                            deleteJob(job.job_id).then(() => refetch());
+                                            deleteJob(job.job_id).then(() => {
+                                                if (currentJob?.job_id === job.job_id) {
+                                                    resetJob();
+                                                }
+                                                refetch();
+                                            });
                                         }
                                     }}
                                     onRetry={() => retryJob(job.job_id).then(() => refetch())}

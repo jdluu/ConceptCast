@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useAppSettings } from '@/lib/contexts/appSettings';
 import { 
     Users, 
@@ -31,6 +31,7 @@ export function CouncilDeliberation({
     agentBadgeColors 
 }: DeliberationProps) {
     const { settings } = useAppSettings();
+    const prefersReducedMotion = useReducedMotion() || settings.reducedMotion;
     const [showSystemLogs, setShowSystemLogs] = useState(false);
     
     // Map status to active agents for the dashboard view
@@ -51,7 +52,7 @@ export function CouncilDeliberation({
                         <span className="text-[10px] font-bold text-[var(--foreground)] uppercase tracking-[0.2em]">Council Dashboard</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className={`w-1.5 h-1.5 rounded-full bg-emerald-500 ${prefersReducedMotion ? '' : 'animate-pulse'}`} />
                         <span className="text-[9px] font-bold text-emerald-500/80 uppercase tracking-widest italic">Council Active</span>
                     </div>
                 </div>
@@ -60,18 +61,18 @@ export function CouncilDeliberation({
                         activeAgents={activeAgents} 
                         thoughts={thoughts} 
                         agentBadgeColors={agentBadgeColors} 
+                        prefersReducedMotion={prefersReducedMotion}
                     />
                 </div>
             </div>
 
-            {settings.agentTransparency && (
-                <SystemLogsToggle 
-                    show={showSystemLogs} 
-                    onToggle={() => setShowSystemLogs(!showSystemLogs)} 
-                    thoughts={thoughts}
-                    agentBadgeColors={agentBadgeColors}
-                />
-            )}
+            <SystemLogsToggle 
+                show={showSystemLogs} 
+                onToggle={() => setShowSystemLogs(!showSystemLogs)} 
+                thoughts={thoughts}
+                agentBadgeColors={agentBadgeColors}
+                prefersReducedMotion={prefersReducedMotion}
+            />
         </div>
     );
 }
@@ -79,11 +80,13 @@ export function CouncilDeliberation({
 function CouncilStatusBoard({ 
     activeAgents, 
     thoughts, 
-    agentBadgeColors 
+    agentBadgeColors,
+    prefersReducedMotion
 }: { 
     activeAgents: string[], 
     thoughts: Thought[], 
-    agentBadgeColors: Record<string, string> 
+    agentBadgeColors: Record<string, string>,
+    prefersReducedMotion: boolean
 }) {
     const agents = [
         { id: 'analyst', label: 'Pedagogue', icon: <Search className="w-4 h-4" /> },
@@ -159,7 +162,7 @@ function CouncilStatusBoard({
                             </div>
                             {isActive && (
                                 <span className="flex items-center gap-1.5">
-                                    <Activity className="w-3 h-3 text-indigo-500 animate-pulse" />
+                                    <Activity className={`w-3 h-3 text-indigo-500 ${prefersReducedMotion ? '' : 'animate-pulse'}`} />
                                     <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-tighter">Processing</span>
                                 </span>
                             )}
@@ -179,12 +182,14 @@ function SystemLogsToggle({
     show, 
     onToggle, 
     thoughts, 
-    agentBadgeColors 
+    agentBadgeColors,
+    prefersReducedMotion
 }: { 
     show: boolean; 
     onToggle: () => void; 
     thoughts: Thought[];
     agentBadgeColors: Record<string, string>;
+    prefersReducedMotion: boolean;
 }) {
     const logRef = useRef<HTMLDivElement>(null);
 
@@ -207,7 +212,7 @@ function SystemLogsToggle({
                     </div>
                     <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Full Session Protocol</span>
                 </div>
-                <motion.div animate={{ rotate: show ? 180 : 0 }}>
+                <motion.div animate={prefersReducedMotion ? {} : { rotate: show ? 180 : 0 }}>
                     <ChevronDown className={`w-4 h-4 text-[var(--text-muted)] ${show ? 'text-indigo-500' : ''}`} />
                 </motion.div>
             </button>
