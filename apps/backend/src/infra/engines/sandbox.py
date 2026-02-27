@@ -72,11 +72,15 @@ class LocalSandbox:
                 stderr=asyncio.subprocess.PIPE,
             )
             try:
-                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
-            except asyncio.TimeoutError:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=timeout
+                )
+            except TimeoutError:
                 process.kill()
                 logger.error(f"Syntax check timed out after {timeout}s")
-                return SandboxResult(stdout="", stderr=f"Check timed out after {timeout}s")
+                return SandboxResult(
+                    stdout="", stderr=f"Check timed out after {timeout}s"
+                )
 
             return SandboxResult(
                 stdout=stdout.decode("utf-8", errors="replace"),
@@ -131,7 +135,9 @@ class LocalSandbox:
                     stderr_lines: list[str] = []
 
                     async def read_stream(
-                        stream: Any, callback: Callable[[str], Any], lines_list: list[str]
+                        stream: Any,
+                        callback: Callable[[str], Any],
+                        lines_list: list[str],
                     ) -> None:
                         if not stream:
                             return
@@ -148,20 +154,22 @@ class LocalSandbox:
                             read_stream(process.stdout, log_callback, stdout_lines),
                             read_stream(process.stderr, log_callback, stderr_lines),
                         ),
-                        timeout=timeout
+                        timeout=timeout,
                     )
                     await process.wait()
 
                     stdout_str = "".join(stdout_lines)
                     stderr_str = "".join(stderr_lines)
                 else:
-                    stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+                    stdout, stderr = await asyncio.wait_for(
+                        process.communicate(), timeout=timeout
+                    )
                     stdout_str = stdout.decode("utf-8", errors="replace")
                     stderr_str = stderr.decode("utf-8", errors="replace")
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 process.kill()
                 logger.error(f"Rendering timed out after {timeout}s")
-                raise RuntimeError(f"Rendering timed out after {timeout}s")
+                raise RuntimeError(f"Rendering timed out after {timeout}s") from None
 
             if process.returncode != 0:
                 err_msg = stderr_str or stdout_str
