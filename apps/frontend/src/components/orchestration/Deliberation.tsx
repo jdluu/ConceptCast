@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppSettings } from '@/lib/contexts/appSettings';
 import { 
@@ -35,9 +35,9 @@ export function CouncilDeliberation({
     
     // Map status to active agents for the dashboard view
     const activeAgents = useMemo(() => {
-        if (status === 'planning' || status === 'validating') return ['analyst', 'validator'];
-        if (status === 'architecting') return ['architect'];
-        if (status === 'animating' || status === 'rendering') return ['animator'];
+        if (status === 'planning' || status === 'validating' || status === 'planning_start') return ['analyst', 'validator'];
+        if (status === 'architecting' || status === 'parallel_execution') return ['architect', 'validator'];
+        if (status === 'animating' || status === 'animating_start' || status === 'rendering') return ['animator'];
         if (status === 'reviewing') return ['reviewer'];
         return [];
     }, [status]);
@@ -93,8 +93,39 @@ function CouncilStatusBoard({
         { id: 'reviewer', label: 'Reviewer', icon: <Zap className="w-4 h-4" /> }
     ];
 
+    const activeCardRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to the active agent card when activeAgents change or thoughts update
+    useEffect(() => {
+        if (activeCardRef.current) {
+            activeCardRef.current.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'nearest' 
+            });
+        }
+    }, [activeAgents, thoughts.length]);
+
+    const formatThought = (content: string) => {
+        if (!content) return '';
+        // Try to handle JSON-like tool calls by extracting the key/action
+        if (content.startsWith('{') && content.includes(':')) {
+            try {
+                const parsed = JSON.parse(content);
+                const keys = Object.keys(parsed);
+                if (keys.length > 0) {
+                    return `Invoking ${keys[0]} to analyze logic...`;
+                }
+            } catch {
+                if (content.includes('search_manim_docs')) return 'Searching Manim documentation...';
+                if (content.includes('lint_manim_code')) return 'Linting Manim code...';
+                if (content.includes('consult_critic')) return 'Consulting the Critic agent...';
+            }
+        }
+        return content;
+    };
+
     return (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
             {agents.map((agent) => {
                 const isActive = activeAgents.includes(agent.id);
                 // Get most recent thought for this agent
@@ -103,13 +134,14 @@ function CouncilStatusBoard({
                 return (
                     <motion.div 
                         key={agent.id}
+                        ref={isActive ? activeCardRef : null}
                         initial={false}
                         animate={{ 
                             opacity: isActive ? 1 : 0.4,
                             scale: isActive ? 1 : 0.98,
                             borderColor: isActive ? 'rgba(99, 102, 241, 0.3)' : 'var(--surface-border)'
                         }}
-                        className={`p-4 rounded-xl border bg-[var(--background)]/40 transition-all ${isActive ? 'shadow-md shadow-indigo-500/5' : ''}`}
+                        className={`p-4 rounded-xl border bg-[var(--background)]/40 transition-all ${isActive ? 'shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/20' : ''}`}
                     >
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
@@ -133,8 +165,8 @@ function CouncilStatusBoard({
                             )}
                         </div>
 
-                        <div className={`text-xs leading-relaxed ${isActive ? 'text-[var(--text-muted)]' : 'text-[var(--text-muted)] opacity-50 italic line-clamp-1'}`}>
-                            {latestThought ? latestThought.content : (isActive ? 'Initiating reasoning...' : 'Waiting for objective...')}
+                        <div className={`text-xs leading-relaxed ${isActive ? 'text-[var(--text-muted)]' : 'text-[var(--text-muted)] opacity-50 italic line-clamp-2'}`}>
+                            {latestThought ? formatThought(latestThought.content) : (isActive ? 'Initiating reasoning...' : 'Waiting for objective...')}
                         </div>
                     </motion.div>
                 );
@@ -155,6 +187,13 @@ function SystemLogsToggle({
     agentBadgeColors: Record<string, string>;
 }) {
     const logRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll logs to bottom
+    useEffect(() => {
+        if (show && logRef.current) {
+            logRef.current.scrollTop = logRef.current.scrollHeight;
+        }
+    }, [show, thoughts.length]);
 
     return (
         <div className="bg-[var(--surface)] border border-[var(--surface-border)] rounded-2xl overflow-hidden shadow-sm group">
@@ -196,7 +235,7 @@ function SystemLogsToggle({
                                             </span>
                                             <span className="text-[8px] text-[var(--text-muted)] opacity-50 uppercase">{t.phase}</span>
                                         </div>
-                                        <span className="text-[var(--foreground)] opacity-80 break-words whitespace-pre-wrap">{t.content}</span>
+                                        <span className="text-[var(--foreground)] opacity-80 break-words whitespace-pre-wrap truncate max-w-full">{t.content}</span>
                                     </div>
                                 ))
                             )}

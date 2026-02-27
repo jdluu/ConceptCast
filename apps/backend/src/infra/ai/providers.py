@@ -292,16 +292,43 @@ class SyntheticModelProvider(BaseProvider):
         return None
 
 
+from pydantic_ai.models.test import TestModel
+from .mock_responses import get_realistic_response
+
+class RealisticMockModel(TestModel):
+    \"\"\"A more advanced mock model that returns realistic pedagogical data.\"\"\"
+
+    async def _generate_text(self, prompt: str, model_settings: Any) -> str:
+        # We need to peek at the prompt or context to know what to return
+        # But for now, we'll use the output_type if we can find it
+        return "Realistic mock thought..."
+
+    async def request(self, *args: Any, **kwargs: Any) -> Any:
+        # Intercept the request to return realistic data based on the tool or result_type
+        # pydantic-ai's Agent.run uses result_type
+        result_type = kwargs.get('result_type')
+        
+        # If it's a tool call or structured output, return the JSON
+        from api.schemas import CurriculumPlan, Storyboard, ValidationResult
+        
+        response_text = get_realistic_response("", result_type)
+        
+        # Create a mock response object that pydantic-ai expects
+        # Since we inherit from TestModel, we can leverage its internals
+        # but override the completion behavior.
+        self.custom_result_text = response_text
+        return await super().request(*args, **kwargs)
+
 class MockModelProvider(BaseProvider):
-    """Provider adapter for local testing using the TestModel."""
+    \"\"\"Provider adapter for local testing using the RealisticMockModel.\"\"\"
 
     def create_model(self, model_id: str) -> Model:
-        """Creates a TestModel instance for local simulation.
+        \"\"\"Creates a RealisticMockModel instance for local simulation.
 
         Args:
             model_id: The mock model identifier.
 
         Returns:
-            A TestModel instance.
-        """
-        return TestModel()
+            A RealisticMockModel instance.
+        \"\"\"
+        return RealisticMockModel()
