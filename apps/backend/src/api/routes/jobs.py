@@ -21,6 +21,10 @@ from infra.database import AsyncSessionLocal, get_db
 from infra.models.job import JobRecord
 from infra.settings import get_settings
 from services.jobs.events import job_event_manager
+from services.jobs.manager import (
+    determine_execution_mode,
+    prepare_job_for_retry_logic,
+)
 from services.workflow.orchestrator import prepare_job_for_retry, process_job_logic
 
 router = APIRouter()
@@ -85,7 +89,8 @@ async def create_job(
     try:
         job_id = str(uuid.uuid4())
 
-        mode = "mock" if request.provider == "mock" else "live"
+        is_mock = determine_execution_mode(request)
+        mode = "mock" if is_mock else "live"
         new_job = JobRecord(
             job_id=job_id,
             topic=request.topic,
