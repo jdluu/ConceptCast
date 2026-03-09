@@ -1,12 +1,12 @@
 import asyncio
 from logging.config import fileConfig
 
-from infra.storage import Base
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from infra.database import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -41,6 +41,7 @@ def run_migrations_offline() -> None:
 
     """
     from infra.settings import get_settings
+
     url = get_settings().database_url.replace("sqlite://", "sqlite+aiosqlite://")
     context.configure(
         url=url,
@@ -67,8 +68,11 @@ async def run_async_migrations() -> None:
     """
 
     from infra.settings import get_settings
+
     config_section = config.get_section(config.config_ini_section, {})
-    config_section["sqlalchemy.url"] = get_settings().database_url.replace("sqlite://", "sqlite+aiosqlite://")
+    config_section["sqlalchemy.url"] = get_settings().database_url.replace(
+        "sqlite://", "sqlite+aiosqlite://"
+    )
 
     connectable = async_engine_from_config(
         config_section,
