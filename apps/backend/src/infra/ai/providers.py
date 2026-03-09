@@ -24,10 +24,8 @@ from pydantic_ai.models import (
     ModelRequestParameters,
     StreamedResponse,
 )
-from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.models.groq import GroqModel, GroqModelSettings
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
-from pydantic_ai.providers.google import GoogleProvider as PydanticGoogleProvider
 from pydantic_ai.providers.groq import GroqProvider as PydanticGroqProvider
 from pydantic_ai.providers.openai import OpenAIProvider as PydanticOpenAIProvider
 from pydantic_ai.settings import ModelSettings
@@ -35,71 +33,6 @@ from pydantic_ai.settings import ModelSettings
 from infra.settings import Settings
 
 from .base import BaseProvider
-
-
-class GeminiModel(GoogleModel):
-    """Custom GoogleModel for Gemini to handle specific behaviors or overrides."""
-
-    pass
-
-
-class GoogleModelProvider(BaseProvider):
-    """Provider adapter for Google Gemini models using the Generative Language API."""
-
-    def __init__(self, settings: Settings):
-        """Initializes the provider with system settings.
-
-        Args:
-            settings: The global application settings containing API keys.
-        """
-        self.settings = settings
-
-    def create_model(self, model_id: str) -> Model:
-        """Creates a GeminiModel instance.
-
-        Args:
-            model_id: The Gemini model identifier.
-
-        Returns:
-            A configured GeminiModel instance.
-        """
-        return GeminiModel(
-            model_id,
-            provider=PydanticGoogleProvider(api_key=self.settings.google_api_key),
-            settings=self.get_settings(model_id),
-        )
-
-    def get_settings(self, model_id: str) -> ModelSettings | None:
-        """Returns Gemini-specific configurations.
-
-        Args:
-            model_id: The model identifier.
-
-        Returns:
-            GoogleModelSettings with thinking and safety configurations.
-        """
-        # Default safety: be lenient for educational technical deconstructions
-        safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-        ]
-
-        # Thinking capable models (Gemini 2.0 Thinking or 3.x Pro/Flash)
-        is_thinking_capable = (
-            "thinking" in model_id.lower()
-            or "gemini-3.1" in model_id.lower()
-            or "gemini-3-flash" in model_id.lower()
-        )
-
-        if is_thinking_capable:
-            return GoogleModelSettings(
-                google_thinking_config={"thinking_budget": 1024},
-                google_safety_settings=safety_settings,  # type: ignore
-            )
-
-        return GoogleModelSettings(google_safety_settings=safety_settings)  # type: ignore
 
 
 class ConceptGroqModel(GroqModel):

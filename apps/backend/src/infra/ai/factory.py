@@ -8,7 +8,6 @@ from infra.settings import Settings, get_settings
 from .base import BaseProvider
 from .providers import (
     DeepSeekModelProvider,
-    GoogleModelProvider,
     GroqModelProvider,
     MockModelProvider,
     SyntheticModelProvider,
@@ -16,7 +15,6 @@ from .providers import (
 
 # Registry mapping provider IDs to their handler classes
 PROVIDER_CLASSES: dict[str, type[BaseProvider]] = {
-    "google": GoogleModelProvider,
     "groq": GroqModelProvider,
     "deepseek": DeepSeekModelProvider,
     "synthetic": SyntheticModelProvider,
@@ -37,16 +35,6 @@ class ProviderEntry:
 
 
 PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
-    ProviderEntry(
-        id="google",
-        settings_key="google_api_key",
-        models=(
-            "gemini-3-flash",
-            "gemini-3.1-pro",
-        ),
-        default_model="gemini-3-flash",
-        display_name="Google (Gemini)",
-    ),
     ProviderEntry(
         id="groq",
         settings_key="groq_api_key",
