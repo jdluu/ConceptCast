@@ -6,7 +6,11 @@
       "outputs": ["dist/**", "build/**"]
     },
     "lint": {},
-    "test": {},
+    "format": {},
+    "typecheck": {
+      "cache": true,
+      "dependsOn": ["^typecheck"]
+    },
     "dev": {
       "cache": false,
       "persistent": true

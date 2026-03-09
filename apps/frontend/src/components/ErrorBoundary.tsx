@@ -1,4 +1,4 @@
-import { Component, ErrorInfo, ReactNode } from "react";
+import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children?: ReactNode;
@@ -19,27 +19,29 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Uncaught error:", error, errorInfo);
+    console.error('Uncaught error:', error, errorInfo);
   }
 
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)] text-[var(--foreground)] p-4">
-          <div className="bg-[var(--surface)] border border-[var(--surface-border)] p-8 rounded-2xl shadow-2xl max-w-lg w-full">
-            <h2 className="text-2xl font-bold mb-4 text-red-500">Something went wrong.</h2>
-            <p className="mb-4 text-[var(--text-muted)] font-medium">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--background)] p-4 text-[var(--foreground)]">
+          <div className="w-full max-w-lg rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] p-8 shadow-2xl">
+            <h2 className="mb-4 text-2xl font-bold text-red-500">Something went wrong.</h2>
+            <p className="mb-4 font-medium text-[var(--text-muted)]">
               An unexpected error occurred. Please try refreshing the page.
             </p>
             {this.state.error && (
-              <details className="mb-6 p-4 bg-[var(--background)] border border-[var(--surface-border)] rounded-xl text-xs overflow-auto max-h-48 whitespace-pre-wrap font-mono text-red-500/80">
-                <summary className="cursor-pointer mb-2 font-bold uppercase tracking-widest opacity-60">Error Details</summary>
+              <details className="mb-6 max-h-48 overflow-auto rounded-xl border border-[var(--surface-border)] bg-[var(--background)] p-4 font-mono text-xs whitespace-pre-wrap text-red-500/80">
+                <summary className="mb-2 cursor-pointer font-bold tracking-widest uppercase opacity-60">
+                  Error Details
+                </summary>
                 {this.state.error.toString()}
               </details>
             )}
             <button
               onClick={() => window.location.reload()}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors"
+              className="w-full rounded bg-red-600 px-4 py-2 font-bold text-white transition-colors hover:bg-red-700"
             >
               Refresh Page
             </button>

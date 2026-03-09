@@ -10,9 +10,9 @@ import { listJobs, type JobSummary } from '@/lib/api/client';
  * @returns Query result containing `JobSummary[]`.
  */
 export function useJobs() {
-    return useQuery<{ jobs: JobSummary[] }>({
-        queryKey: ['jobs'],
-        queryFn: listJobs,
-        refetchInterval: 5_000,
-    });
+  return useQuery<{ jobs: JobSummary[] }>({
+    queryKey: ['jobs'],
+    queryFn: listJobs,
+    refetchInterval: 5_000,
+  });
 }

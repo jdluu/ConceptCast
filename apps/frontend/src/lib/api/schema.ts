@@ -4,868 +4,1008 @@
  */
 
 export interface paths {
-    "/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Health Check
-         * @description Detailed health-check endpoint for production monitoring.
-         */
-        get: operations["health_check__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  '/': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/models": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Available Models
-         * @description Retrieves the list of supported AI providers and their models.
-         *     Only includes providers for which the user has an API key configured;
-         *     mock is always included. No tiered priority.
-         */
-        get: operations["get_available_models_models_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Health Check
+     * @description Retrieves the health status of the application and its core services.
+     *
+     *     Checks the connectivity of the database, the availability of the Manim engine,
+     *     and the writability of the storage directory.
+     *
+     *     Args:
+     *         response: The FastAPI response object to modify the status code.
+     *         db: The database session dependency.
+     *
+     *     Returns:
+     *         A dictionary containing the overall status and individual service statuses.
+     */
+    get: operations['health_check__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/models': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/jobs/create": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create Job
-         * @description Initializes a new asynchronous video generation job.
-         */
-        post: operations["create_job_jobs_create_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Get Available Models
+     * @description Retrieves the list of supported AI providers and their models.
+     *
+     *     Only includes providers for which the user has an API key configured;
+     *     mock is always included.
+     *
+     *     Returns:
+     *         AvailableModelsResponse containing the list of available providers and models.
+     */
+    get: operations['get_available_models_models_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/jobs/create': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/jobs/{job_id}/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Job Status
-         * @description Retrieves the current status and artifacts for a specific job.
-         */
-        get: operations["get_job_status_jobs__job_id__status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Create Job
+     * @description Initializes a new asynchronous video generation job.
+     *
+     *     Initializes the job record in the database and triggers background processing.
+     *
+     *     Args:
+     *         request: The job creation configuration.
+     *         background_tasks: FastAPI background tasks handler.
+     *         req: FastAPI request to access application state.
+     *         db: The active database session.
+     *
+     *     Returns:
+     *         The initial JobStatus of the newly created job.
+     *
+     *     Raises:
+     *         HTTPException: If an error occurs during job initialization.
+     */
+    post: operations['create_job_jobs_create_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/jobs/{job_id}/status': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/jobs/{job_id}/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Job Events
-         * @description Provides a real-time stream of job updates via SSE.
-         *
-         *     Args:
-         *         job_id: The unique identifier of the job to stream.
-         *         db_session_factory: Dependency for creating database sessions.
-         *
-         *     Returns:
-         *         StreamingResponse: An SSE event stream.
-         */
-        get: operations["job_events_jobs__job_id__events_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Get Job Status
+     * @description Retrieves the current status and artifacts for a specific job.
+     *
+     *     Args:
+     *         job_id: The unique identifier of the job.
+     *         db: The active database session.
+     *
+     *     Returns:
+     *         The current JobStatus.
+     *
+     *     Raises:
+     *         HTTPException: If the job is not found.
+     */
+    get: operations['get_job_status_jobs__job_id__status_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/jobs/{job_id}/events': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/jobs/{job_id}/plan": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Plan
-         * @description Retrieves the generated curriculum plan for a specific job.
-         */
-        get: operations["get_plan_jobs__job_id__plan_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Job Events
+     * @description Provides a real-time stream of job updates via Server-Sent Events (SSE).
+     *
+     *     Args:
+     *         job_id: The unique identifier of the job to stream.
+     *         db_session_factory: Dependency for creating database sessions.
+     *
+     *     Returns:
+     *         StreamingResponse: An SSE event stream.
+     */
+    get: operations['job_events_jobs__job_id__events_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/jobs/{job_id}/plan': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/jobs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Jobs
-         * @description Lists all jobs sorted by creation date (newest first).
-         *
-         *     Args:
-         *         mode: Optional filter to return only 'live' or 'mock' jobs.
-         *         db: The active database session.
-         *
-         *     Returns:
-         *         JobListResponse: A paginated or list of job summaries.
-         */
-        get: operations["list_jobs_jobs_get"];
-        put?: never;
-        post?: never;
-        /**
-         * Delete All Jobs
-         * @description Deletes jobs from the database and clears their filesystem root.
-         *
-         *     If mode is provided, only deletes jobs of that mode.
-         */
-        delete: operations["delete_all_jobs_jobs_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Get Plan
+     * @description Retrieves the generated curriculum plan for a specific job.
+     *
+     *     Args:
+     *         job_id: The unique identifier of the job.
+     *         db: The active database session.
+     *
+     *     Returns:
+     *         The curriculum plan as a CurriculumPlan object.
+     *
+     *     Raises:
+     *         HTTPException: If the job or plan is not found.
+     */
+    get: operations['get_plan_jobs__job_id__plan_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/jobs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/jobs/{job_id}/retry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Retry Job
-         * @description Retries a failed or stuck job from the last successful checkpoint.
-         */
-        post: operations["retry_job_jobs__job_id__retry_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * List Jobs
+     * @description Lists all jobs sorted by creation date (newest first).
+     *
+     *     Args:
+     *         mode: Optional filter to return only 'live' or 'mock' jobs.
+     *         db: The active database session.
+     *
+     *     Returns:
+     *         JobListResponse containing a list of job summaries.
+     *
+     *     Raises:
+     *         HTTPException: If an error occurs during serialization.
+     */
+    get: operations['list_jobs_jobs_get'];
+    put?: never;
+    post?: never;
+    /**
+     * Delete All Jobs
+     * @description Deletes multiple jobs and clears their associated filesystem data.
+     *
+     *     Args:
+     *         mode: Optional filter to only delete 'live' or 'mock' jobs.
+     *         db: The active database session.
+     */
+    delete: operations['delete_all_jobs_jobs_delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/jobs/{job_id}/retry': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/jobs/{job_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Delete Job
-         * @description Deletes a job and its associated filesystem data.
-         *
-         *     Args:
-         *         job_id: The unique identifier of the job to delete.
-         *         db: The active database session.
-         *
-         *     Returns:
-         *         None
-         */
-        delete: operations["delete_job_jobs__job_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Retry Job
+     * @description Retries a failed or stuck job from the last successful checkpoint.
+     *
+     *     Resets the job status and triggers background logic again.
+     *
+     *     Args:
+     *         job_id: The unique identifier of the job to retry.
+     *         background_tasks: FastAPI background tasks handler.
+     *         req: FastAPI request to access application state.
+     *         db: The active database session.
+     *
+     *     Returns:
+     *         The updated JobStatus after resetting for retry.
+     */
+    post: operations['retry_job_jobs__job_id__retry_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/jobs/{job_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete Job
+     * @description Deletes a job and its associated filesystem data.
+     *
+     *     Args:
+     *         job_id: The unique identifier of the job to delete.
+     *         db: The active database session.
+     *
+     *     Raises:
+     *         HTTPException: If the job is not found.
+     */
+    delete: operations['delete_job_jobs__job_id__delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /**
-         * AvailableModelsResponse
-         * @description Listing of all reachable AI providers and their models.
-         */
-        AvailableModelsResponse: {
-            /** Available */
-            available: components["schemas"]["ProviderModels"][];
-        };
-        /**
-         * CurriculumPlan
-         * @description A structured educational roadmap for a complex topic.
-         */
-        CurriculumPlan: {
-            /**
-             * Concept Title
-             * @description Title of the main concept
-             */
-            concept_title: string;
-            /**
-             * Target Audience
-             * @description Level (e.g., 'Undergraduate CS')
-             */
-            target_audience: string;
-            /**
-             * Teaching Steps
-             * @description Ordered steps
-             */
-            teaching_steps: components["schemas"]["TeachingStep"][];
-        };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
-        /** JobListResponse */
-        JobListResponse: {
-            /** Jobs */
-            jobs: components["schemas"]["JobSummary"][];
-        };
-        /**
-         * JobRequest
-         * @description Parameters for a new generation job.
-         */
-        JobRequest: {
-            /**
-             * Topic
-             * @description Concept to explain
-             */
-            topic: string;
-            /**
-             * Target Audience
-             * @default Undergraduate CS
-             */
-            target_audience: string;
-            /** Provider */
-            provider?: string | null;
-            /** Model Id */
-            model_id?: string | null;
-            /**
-             * Resolution
-             * @default 720p
-             * @enum {string}
-             */
-            resolution: "720p" | "1080p";
-            /**
-             * Frame Rate
-             * @default 30
-             * @enum {integer}
-             */
-            frame_rate: 30 | 60;
-        };
-        /**
-         * JobStatus
-         * @description Comprehensive state record for a job.
-         */
-        JobStatus: {
-            /** Job Id */
-            job_id: string;
-            /** Topic */
-            topic?: string | null;
-            /** Streamed Thoughts */
-            streamed_thoughts?: components["schemas"]["ThoughtLog"][];
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "planning" | "validating" | "architecting" | "animating" | "rendering" | "reviewing" | "completed" | "failed" | "pending_retry";
-            /** Current Step */
-            current_step?: string | null;
-            plan?: components["schemas"]["CurriculumPlan"] | null;
-            validation?: components["schemas"]["ValidationResult"] | null;
-            storyboard?: components["schemas"]["Storyboard"] | null;
-            /** Manim Code */
-            manim_code?: string | null;
-            /** Video Url */
-            video_url?: string | null;
-            /** Error */
-            error?: string | null;
-            /**
-             * Mode
-             * @default live
-             * @enum {string}
-             */
-            mode: "live" | "mock";
-            /** Provider */
-            provider?: string | null;
-            /** Model Id */
-            model_id?: string | null;
-            /** Target Audience */
-            target_audience?: string | null;
-            /** Started At */
-            started_at?: string | null;
-            /** Finished At */
-            finished_at?: string | null;
-            /** Duration Seconds */
-            duration_seconds?: number | null;
-            /**
-             * Cost
-             * @default 0
-             */
-            cost: number;
-            /**
-             * Retry Count
-             * @default 0
-             */
-            retry_count: number;
-            /** Thumbnail Url */
-            thumbnail_url?: string | null;
-            /** Video Metadata */
-            video_metadata?: {
-                [key: string]: unknown;
-            } | null;
-            /**
-             * Resolution
-             * @default 720p
-             */
-            resolution: string;
-            /**
-             * Frame Rate
-             * @default 30
-             */
-            frame_rate: number;
-            /**
-             * Render Progress
-             * @default 0
-             */
-            render_progress: number;
-        };
-        /**
-         * JobSummary
-         * @description Concise representation of a job for listings.
-         */
-        JobSummary: {
-            /** Job Id */
-            job_id: string;
-            /** Topic */
-            topic: string;
-            /** Status */
-            status: string;
-            /** Mode */
-            mode: string;
-            /** Created At */
-            created_at: string;
-            /** Retry Count */
-            retry_count: number;
-            /** Error */
-            error: string | null;
-            /** Provider */
-            provider?: string | null;
-            /** Model Id */
-            model_id?: string | null;
-            /** Target Audience */
-            target_audience?: string | null;
-            /** Started At */
-            started_at?: string | null;
-            /** Finished At */
-            finished_at?: string | null;
-            /** Duration Seconds */
-            duration_seconds?: number | null;
-            /**
-             * Cost
-             * @default 0
-             */
-            cost: number;
-            /** Thumbnail Url */
-            thumbnail_url?: string | null;
-            /** Video Url */
-            video_url?: string | null;
-            /** Video Metadata */
-            video_metadata?: {
-                [key: string]: unknown;
-            } | null;
-            /**
-             * Resolution
-             * @default 720p
-             */
-            resolution: string;
-            /**
-             * Frame Rate
-             * @default 30
-             */
-            frame_rate: number;
-            /**
-             * Render Progress
-             * @default 0
-             */
-            render_progress: number;
-        };
-        /**
-         * ProviderModels
-         * @description Capabilities and model list for a specific AI provider.
-         */
-        ProviderModels: {
-            /** Provider */
-            provider: string;
-            /** Models */
-            models: string[];
-            /** Display Name */
-            display_name?: string | null;
-        };
-        /**
-         * Scene
-         * @description Definition for a single high-quality animation sequence.
-         */
-        Scene: {
-            /** Scene Id */
-            scene_id: number;
-            /** Title */
-            title: string;
-            /** Description */
-            description: string;
-            /** Narration */
-            narration: string;
-            /** Objects */
-            objects?: components["schemas"]["VisualObject"][];
-        };
-        /**
-         * Storyboard
-         * @description The full visual orchestration plan ready for animation.
-         */
-        Storyboard: {
-            /** Concept Title */
-            concept_title: string;
-            /** Scenes */
-            scenes: components["schemas"]["Scene"][];
-        };
-        /**
-         * TeachingStep
-         * @description A granular educational unit within a curriculum sequence.
-         */
-        TeachingStep: {
-            /**
-             * Step Id
-             * @description Sequential ID of the step
-             */
-            step_id: number;
-            /**
-             * Concept
-             * @description The specific sub-concept being taught
-             */
-            concept: string;
-            /**
-             * Visual Metaphor
-             * @description Visual analogy
-             */
-            visual_metaphor: string;
-            /**
-             * Narration
-             * @description Voiceover script for this step
-             */
-            narration: string;
-        };
-        /**
-         * ThoughtLog
-         * @description A captured reasoning step from the agent council.
-         */
-        ThoughtLog: {
-            /** Agent */
-            agent: string;
-            /** Phase */
-            phase: string;
-            /** Content */
-            content: string;
-            /** Ts */
-            ts: string;
-        };
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
-        };
-        /**
-         * ValidationResult
-         * @description Pedagogical audit results for a curriculum plan.
-         */
-        ValidationResult: {
-            /**
-             * Is Valid
-             * @description Whether the plan passes pedagogical standards
-             */
-            is_valid: boolean;
-            /**
-             * Feedback
-             * @description Constructive feedback or validation errors
-             */
-            feedback: string;
-            /** Suggestions */
-            suggestions?: string[];
-            /** Metadata */
-            metadata?: {
-                [key: string]: unknown;
-            };
-            /** Scores */
-            scores?: {
-                [key: string]: unknown;
-            };
-            /** Issues */
-            issues?: {
-                [key: string]: string;
-            }[];
-        };
-        /**
-         * VisualObject
-         * @description A declaratively defined entity in a Manim animation.
-         */
-        VisualObject: {
-            /**
-             * Name
-             * @description Internal name
-             */
-            name: string;
-            /**
-             * Type
-             * @description Manim type (e.g., 'Circle')
-             */
-            type: string;
-            /**
-             * Position
-             * @description Relative position
-             */
-            position: string;
-            /** Color */
-            color?: string | null;
-            /** Label */
-            label?: string | null;
-        };
+  schemas: {
+    /**
+     * AvailableModelsResponse
+     * @description Listing of all reachable AI providers and their models.
+     */
+    AvailableModelsResponse: {
+      /** Available */
+      available: components['schemas']['ProviderModels'][];
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    /**
+     * CurriculumPlan
+     * @description A structured educational roadmap for a complex topic.
+     *
+     *     Attributes:
+     *         concept_title: Title of the main concept.
+     *         target_audience: Level of the target audience.
+     *         teaching_steps: Ordered pedagogical steps.
+     */
+    CurriculumPlan: {
+      /**
+       * Concept Title
+       * @description Title of the main concept
+       */
+      concept_title: string;
+      /**
+       * Target Audience
+       * @description Level (e.g., 'Undergraduate CS')
+       */
+      target_audience: string;
+      /**
+       * Teaching Steps
+       * @description Ordered steps
+       */
+      teaching_steps: components['schemas']['TeachingStep'][];
+    };
+    /** HTTPValidationError */
+    HTTPValidationError: {
+      /** Detail */
+      detail?: components['schemas']['ValidationError'][];
+    };
+    /**
+     * JobListResponse
+     * @description Wrapper response for a paginated or filtered list of jobs.
+     */
+    JobListResponse: {
+      /** Jobs */
+      jobs: components['schemas']['JobSummary'][];
+    };
+    /**
+     * JobRequest
+     * @description Parameters for a new generation job.
+     */
+    JobRequest: {
+      /**
+       * Topic
+       * @description Concept to explain
+       */
+      topic: string;
+      /**
+       * Target Audience
+       * @default Undergraduate CS
+       */
+      target_audience: string;
+      /** Provider */
+      provider?: string | null;
+      /** Model Id */
+      model_id?: string | null;
+      /**
+       * Resolution
+       * @default 720p
+       * @enum {string}
+       */
+      resolution: '720p' | '1080p';
+      /**
+       * Frame Rate
+       * @default 30
+       * @enum {integer}
+       */
+      frame_rate: 30 | 60;
+    };
+    /**
+     * JobStatus
+     * @description Comprehensive state record for a job.
+     */
+    JobStatus: {
+      /** Job Id */
+      job_id: string;
+      /** Topic */
+      topic?: string | null;
+      /** Streamed Thoughts */
+      streamed_thoughts?: components['schemas']['ThoughtLog'][];
+      /**
+       * Status
+       * @enum {string}
+       */
+      status:
+        | 'planning'
+        | 'validating'
+        | 'architecting'
+        | 'animating'
+        | 'rendering'
+        | 'reviewing'
+        | 'completed'
+        | 'failed'
+        | 'pending_retry';
+      /** Current Step */
+      current_step?: string | null;
+      plan?: components['schemas']['CurriculumPlan'] | null;
+      validation?: components['schemas']['ValidationResult'] | null;
+      storyboard?: components['schemas']['Storyboard'] | null;
+      /** Manim Code */
+      manim_code?: string | null;
+      /** Video Url */
+      video_url?: string | null;
+      /** Error */
+      error?: string | null;
+      /**
+       * Mode
+       * @default live
+       * @enum {string}
+       */
+      mode: 'live' | 'mock';
+      /** Provider */
+      provider?: string | null;
+      /** Model Id */
+      model_id?: string | null;
+      /** Target Audience */
+      target_audience?: string | null;
+      /** Started At */
+      started_at?: string | null;
+      /** Finished At */
+      finished_at?: string | null;
+      /** Duration Seconds */
+      duration_seconds?: number | null;
+      /**
+       * Cost
+       * @default 0
+       */
+      cost: number;
+      /**
+       * Retry Count
+       * @default 0
+       */
+      retry_count: number;
+      /** Thumbnail Url */
+      thumbnail_url?: string | null;
+      /** Video Metadata */
+      video_metadata?: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * Resolution
+       * @default 720p
+       */
+      resolution: string;
+      /**
+       * Frame Rate
+       * @default 30
+       */
+      frame_rate: number;
+      /**
+       * Render Progress
+       * @default 0
+       */
+      render_progress: number;
+    };
+    /**
+     * JobSummary
+     * @description Concise representation of a job for listings.
+     */
+    JobSummary: {
+      /** Job Id */
+      job_id: string;
+      /** Topic */
+      topic: string;
+      /** Status */
+      status: string;
+      /** Mode */
+      mode: string;
+      /** Created At */
+      created_at: string;
+      /** Retry Count */
+      retry_count: number;
+      /** Error */
+      error: string | null;
+      /** Provider */
+      provider?: string | null;
+      /** Model Id */
+      model_id?: string | null;
+      /** Target Audience */
+      target_audience?: string | null;
+      /** Started At */
+      started_at?: string | null;
+      /** Finished At */
+      finished_at?: string | null;
+      /** Duration Seconds */
+      duration_seconds?: number | null;
+      /**
+       * Cost
+       * @default 0
+       */
+      cost: number;
+      /** Thumbnail Url */
+      thumbnail_url?: string | null;
+      /** Video Url */
+      video_url?: string | null;
+      /** Video Metadata */
+      video_metadata?: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * Resolution
+       * @default 720p
+       */
+      resolution: string;
+      /**
+       * Frame Rate
+       * @default 30
+       */
+      frame_rate: number;
+      /**
+       * Render Progress
+       * @default 0
+       */
+      render_progress: number;
+    };
+    /**
+     * ProviderModels
+     * @description Capabilities and model list for a specific AI provider.
+     */
+    ProviderModels: {
+      /** Provider */
+      provider: string;
+      /** Models */
+      models: string[];
+      /** Display Name */
+      display_name?: string | null;
+    };
+    /**
+     * Scene
+     * @description Definition for a single animation sequence.
+     *
+     *     Attributes:
+     *         scene_id: Sequential ID of the scene.
+     *         title: Descriptive title.
+     *         description: Abstract visual description.
+     *         narration: Voiceover text to be synchronized.
+     *         objects: List of visual objects to render.
+     */
+    Scene: {
+      /**
+       * Scene Id
+       * @description Sequential ID of the scene
+       */
+      scene_id: number;
+      /**
+       * Title
+       * @description Descriptive title
+       */
+      title: string;
+      /**
+       * Description
+       * @description Visual overview
+       */
+      description: string;
+      /**
+       * Narration
+       * @description Voiceover script
+       */
+      narration: string;
+      /**
+       * Objects
+       * @description Visual entities in the scene
+       */
+      objects?: components['schemas']['VisualObject'][];
+    };
+    /**
+     * Storyboard
+     * @description The full visual orchestration plan for an animation.
+     *
+     *     Attributes:
+     *         concept_title: Main topic title.
+     *         scenes: Ordered sequence of scenes.
+     */
+    Storyboard: {
+      /**
+       * Concept Title
+       * @description Title of the concept
+       */
+      concept_title: string;
+      /**
+       * Scenes
+       * @description Ordered animation sequences
+       */
+      scenes: components['schemas']['Scene'][];
+    };
+    /**
+     * TeachingStep
+     * @description A granular educational unit within a curriculum sequence.
+     *
+     *     Attributes:
+     *         step_id: Sequential ID of the step.
+     *         concept: The specific sub-concept being taught.
+     *         visual_metaphor: Visual analogy to represent the concept.
+     *         narration: Voiceover script for this step.
+     */
+    TeachingStep: {
+      /**
+       * Step Id
+       * @description Sequential ID of the step
+       */
+      step_id: number;
+      /**
+       * Concept
+       * @description The specific sub-concept being taught
+       */
+      concept: string;
+      /**
+       * Visual Metaphor
+       * @description Visual analogy
+       */
+      visual_metaphor: string;
+      /**
+       * Narration
+       * @description Voiceover script for this step
+       */
+      narration: string;
+    };
+    /**
+     * ThoughtLog
+     * @description A captured reasoning step from the agent council.
+     */
+    ThoughtLog: {
+      /** Agent */
+      agent: string;
+      /** Phase */
+      phase: string;
+      /** Content */
+      content: string;
+      /** Ts */
+      ts: string;
+    };
+    /** ValidationError */
+    ValidationError: {
+      /** Location */
+      loc: (string | number)[];
+      /** Message */
+      msg: string;
+      /** Error Type */
+      type: string;
+      /** Input */
+      input?: unknown;
+      /** Context */
+      ctx?: Record<string, never>;
+    };
+    /**
+     * ValidationResult
+     * @description Pedagogical audit results for a curriculum plan.
+     *
+     *     Attributes:
+     *         is_valid: Whether the plan passes pedagogical standards.
+     *         feedback: Constructive feedback or validation errors.
+     *         suggestions: List of actionable improvement suggestions.
+     *         metadata: Additional diagnostic information.
+     *         scores: Qualitative scores for different aspects.
+     *         issues: Specific issues identified during the audit.
+     */
+    ValidationResult: {
+      /**
+       * Is Valid
+       * @description Whether the plan passes pedagogical standards
+       */
+      is_valid: boolean;
+      /**
+       * Feedback
+       * @description Constructive feedback or validation errors
+       */
+      feedback: string;
+      /** Suggestions */
+      suggestions?: string[];
+      /** Metadata */
+      metadata?: {
+        [key: string]: unknown;
+      };
+      /** Scores */
+      scores?: {
+        [key: string]: unknown;
+      };
+      /** Issues */
+      issues?: {
+        [key: string]: string;
+      }[];
+    };
+    /**
+     * VisualObject
+     * @description A declaratively defined entity in a Manim animation.
+     *
+     *     Attributes:
+     *         name: Internal name of the object.
+     *         type: Manim type (e.g., 'Circle', 'Axes').
+     *         position: Relative position constant or coordinate.
+     *         color: Visual color constant or hex string.
+     *         label: Text label associated with the object.
+     */
+    VisualObject: {
+      /**
+       * Name
+       * @description Internal name
+       */
+      name: string;
+      /**
+       * Type
+       * @description Manim type (e.g., 'Circle')
+       */
+      type: string;
+      /**
+       * Position
+       * @description Relative position
+       */
+      position: string;
+      /**
+       * Color
+       * @description Visual color or hex string
+       */
+      color?: string | null;
+      /**
+       * Label
+       * @description Associated text label
+       */
+      label?: string | null;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_check__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
+  health_check__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    get_available_models_models_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AvailableModelsResponse"];
-                };
-            };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          };
         };
+      };
     };
-    create_job_jobs_create_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["JobRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobStatus"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  get_available_models_models_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    get_job_status_jobs__job_id__status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobStatus"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['AvailableModelsResponse'];
         };
+      };
     };
-    job_events_jobs__job_id__events_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  create_job_jobs_create_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    get_plan_jobs__job_id__plan_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CurriculumPlan"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['JobRequest'];
+      };
     };
-    list_jobs_jobs_get: {
-        parameters: {
-            query?: {
-                mode?: ("live" | "mock") | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['JobStatus'];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    delete_all_jobs_jobs_delete: {
-        parameters: {
-            query?: {
-                mode?: ("live" | "mock") | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  get_job_status_jobs__job_id__status_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
     };
-    retry_job_jobs__job_id__retry_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobStatus"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['JobStatus'];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    delete_job_jobs__job_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  job_events_jobs__job_id__events_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
     };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  get_plan_jobs__job_id__plan_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CurriculumPlan'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  list_jobs_jobs_get: {
+    parameters: {
+      query?: {
+        mode?: ('live' | 'mock') | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['JobListResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  delete_all_jobs_jobs_delete: {
+    parameters: {
+      query?: {
+        mode?: ('live' | 'mock') | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  retry_job_jobs__job_id__retry_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['JobStatus'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  delete_job_jobs__job_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
 }

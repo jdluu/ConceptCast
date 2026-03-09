@@ -10,11 +10,11 @@ import { listJobs, type JobSummary } from '@/lib/api/client';
  * @returns Query result containing completed `JobSummary[]`.
  */
 export function useLibrary() {
-    return useQuery<JobSummary[]>({
-        queryKey: ['library'],
-        queryFn: async () => {
-            const data = await listJobs();
-            return data.jobs.filter(j => j.status === 'completed');
-        },
-    });
+  return useQuery<JobSummary[]>({
+    queryKey: ['library'],
+    queryFn: async () => {
+      const data = await listJobs();
+      return data.jobs.filter((j) => j.status === 'completed');
+    },
+  });
 }
