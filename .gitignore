@@ -1,59 +1,70 @@
-# Dependencies
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# --- IDE Specific ---
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# --- General Dependencies & Build ---
 node_modules/
 .pnpm-store/
+.turbo/
+dist/
+build/
+out/
+*.tsbuildinfo
 
-# Python / Backend
+# --- Frontend / Node ---
+.next/
+.astro/
+.eslintcache
+.stylelintcache
+coverage/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Backend / Python ---
 __pycache__/
 *.py[cod]
 *$py.class
 .venv/
 venv/
+ENV/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-*.tsbuildinfo
-junit.xml
+.ipynb_checkpoints/
 .coverage
 htmlcov/
+junit.xml
 
-# Node / Frontend
-dist/
-build/
-out/
-coverage/
-.turbo/
-
-# System
-.DS_Store
-thumbs.db
-
-# Environment Variables
+# --- Environment & Secrets ---
 .env
 .env.*
 !.env.example
+.infisical.json
 
-# IDEs
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Logs
-npm-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Framework specific
-.next/
-.astro/
-
-# ConceptCast Data
+# --- Application Specific (ConceptCast) ---
+# Data & Jobs
 data/*
 !data/jobs/
 data/jobs/*
 !data/jobs/.gitkeep
 
+# Media & Reports
+media/
+cli_reports/
+apps/backend/cli_reports/
+apps/backend/media/
+
+# Databases
 *.db
 *.db-shm
 *.db-wal
