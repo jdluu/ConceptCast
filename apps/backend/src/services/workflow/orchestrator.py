@@ -14,7 +14,7 @@ from pydantic_ai.usage import RunUsage
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.schemas import JobRequest
+from api.schemas import CurriculumPlan, JobRequest, Storyboard, ValidationResult
 from infra.database import AsyncSessionLocal
 from infra.exceptions import (
     AnimationGenerationError,
@@ -91,6 +91,110 @@ async def process_job_logic(
         logger.error(f"Background job {job_id} failed: {e}")
 
 
+async def _handle_planning_step(
+    job_id: str,
+    job_state: JobRecord,
+    request: JobRequest,
+    provider: str,
+    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    on_thought: Callable[[str, str, str], Awaitable[None]],
+) -> tuple[CurriculumPlan, RunUsage | None]:
+    """Handles Step 1 (Planning) with skip logic."""
+    await update_job(
+        {
+            "status": "planning",
+            "current_step": "planning_start",
+            "started_at": datetime.now(UTC),
+        }
+    )
+    if provider == "mock":
+        await asyncio.sleep(2)
+
+    if job_state.plan:
+        logger.info(f"Job {job_id}: Found existing plan, skipping planning step.")
+        return CurriculumPlan(**job_state.plan), None
+
+    plan, usage = await step_planning(request, job_state, update_job, on_thought)
+    if not plan:
+        raise PlanGenerationError("Planning failed to produce curriculum.")
+    return plan, usage
+
+
+async def _handle_architecting_steps(
+    job_id: str,
+    job_state: JobRecord,
+    request: JobRequest,
+    plan: CurriculumPlan,
+    provider: str,
+    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    on_thought: Callable[[str, str, str], Awaitable[None]],
+) -> tuple[ValidationResult, Storyboard, RunUsage | None]:
+    """Handles Steps 2 & 3 (Validating and Architecting) with skip logic."""
+    if job_state.validation and job_state.storyboard:
+        logger.info(
+            f"Job {job_id}: Found existing validation and storyboard, skipping."
+        )
+        return (
+            ValidationResult(**job_state.validation),
+            Storyboard(**job_state.storyboard),
+            None,
+        )
+
+    await update_job({"status": "architecting", "current_step": "parallel_execution"})
+
+    async def run_validating() -> Any:
+        if provider == "mock":
+            await asyncio.sleep(2)
+        return await step_validating(plan, request, job_state, update_job, on_thought)
+
+    async def run_architecting() -> Any:
+        if provider == "mock":
+            await asyncio.sleep(2)
+        res = await step_architecting(plan, request, job_state, update_job, on_thought)
+        if not res[0]:
+            raise StoryboardGenerationError(
+                "Architecting failed to produce a storyboard."
+            )
+        return res
+
+    async with asyncio.TaskGroup() as tg:
+        val_task = tg.create_task(run_validating())
+        arch_task = tg.create_task(run_architecting())
+
+    validation, v_usage = val_task.result()
+    storyboard, a_usage = arch_task.result()
+
+    return validation, storyboard, merge_usage(v_usage, a_usage)
+
+
+async def _handle_animating_step(
+    job_id: str,
+    job_state: JobRecord,
+    request: JobRequest,
+    storyboard: Storyboard,
+    provider: str,
+    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    on_thought: Callable[[str, str, str], Awaitable[None]],
+) -> tuple[str, RunUsage | None]:
+    """Handles Step 4 (Animating) with skip logic."""
+    if job_state.manim_code:
+        logger.info(f"Job {job_id}: Found existing Manim code, skipping.")
+        return job_state.manim_code, None
+
+    await update_job({"status": "animating", "current_step": "animating_start"})
+    if provider == "mock":
+        await asyncio.sleep(2)
+
+    code, m_usage = await step_animating(
+        storyboard, request, job_state, update_job, on_thought
+    )
+    if not code:
+        raise AnimationGenerationError("Animating failed to produce code.")
+
+    await update_job({"manim_code": code})
+    return code, m_usage
+
+
 async def execute_workflow(
     job_id: str,
     topic: str,
@@ -146,71 +250,20 @@ async def execute_workflow(
         )
 
         try:
-            # Step 1: Planning
-            await update_job(
-                {
-                    "status": "planning",
-                    "current_step": "planning_start",
-                    "started_at": datetime.now(UTC),
-                }
+            plan, usage_1 = await _handle_planning_step(
+                job_id, job_state, request, provider, update_job, on_thought
             )
-            if provider == "mock":
-                await asyncio.sleep(2)
+            add_usage(usage_1)
 
-            plan, usage = await step_planning(
-                request, job_state, update_job, on_thought
+            _val, storyboard, usage_23 = await _handle_architecting_steps(
+                job_id, job_state, request, plan, provider, update_job, on_thought
             )
-            if not plan:
-                raise PlanGenerationError("Planning failed to produce curriculum.")
-            add_usage(usage)
+            add_usage(usage_23)
 
-            # Step 2 & 3: Validating and Architecting (Concurrent)
-            await update_job(
-                {"status": "architecting", "current_step": "parallel_execution"}
+            code, usage_4 = await _handle_animating_step(
+                job_id, job_state, request, storyboard, provider, update_job, on_thought
             )
-
-            async def run_validating() -> Any:
-                if provider == "mock":
-                    await asyncio.sleep(2)
-                return await step_validating(
-                    plan, request, job_state, update_job, on_thought
-                )
-
-            async def run_architecting() -> Any:
-                if provider == "mock":
-                    await asyncio.sleep(2)
-                res = await step_architecting(
-                    plan, request, job_state, update_job, on_thought
-                )
-                if not res[0]:
-                    raise StoryboardGenerationError(
-                        "Architecting failed to produce a storyboard."
-                    )
-                return res
-
-            async with asyncio.TaskGroup() as tg:
-                val_task = tg.create_task(run_validating())
-                arch_task = tg.create_task(run_architecting())
-
-            validation, v_usage = val_task.result()
-            storyboard, a_usage = arch_task.result()
-
-            add_usage(v_usage)
-            add_usage(a_usage)
-
-            # Step 4: Animating
-            await update_job({"status": "animating", "current_step": "animating_start"})
-            if provider == "mock":
-                await asyncio.sleep(2)
-
-            code, m_usage = await step_animating(
-                storyboard, request, job_state, update_job, on_thought
-            )
-            if not code:
-                raise AnimationGenerationError("Animating failed to produce code.")
-            add_usage(m_usage)
-
-            await update_job({"manim_code": code})
+            add_usage(usage_4)
 
             # Step 5: Rendering (Dispatched to background worker)
             from infra.tasks import render_video_task

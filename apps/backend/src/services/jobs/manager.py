@@ -89,11 +89,10 @@ async def prepare_job_for_retry_logic(
         updates: dict[str, Any] = {
             "status": "pending_retry",
             "error": None,
-            "manim_code": None,
-            "video_url": None,
             "current_step": "retrying",
             "retry_count": job.retry_count + 1,
             "streamed_thoughts": [],
+            "render_progress": 0,
         }
 
         for key, value in updates.items():
