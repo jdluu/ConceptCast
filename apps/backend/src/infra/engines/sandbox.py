@@ -8,7 +8,12 @@ from pydantic import BaseModel
 
 
 class SandboxResult(BaseModel):
-    """Execution output from a local sandbox run."""
+    """Encapsulates the execution output from a sandboxed Manim run.
+
+    Attributes:
+        stdout: Standard output from the execution process.
+        stderr: Standard error or diagnostic information from the process.
+    """
 
     stdout: str
     stderr: str
@@ -95,12 +100,31 @@ class LocalSandbox:
         job_dir: Path,
         code_file: str,
         scene_name: str = "SceneGen",
-        host_job_dir: Path | None = None,
+        host_job_dir: Path | None = None,  # noqa: ARG002
         quality_flag: str = "-ql",
         log_callback: Callable[[str], Any] | None = None,
         timeout: int = 300,
     ) -> SandboxResult | None:
-        """Executes Manim rendering via Podman or local subprocess."""
+        """Executes full Manim rendering for a specified scene.
+
+        Orchestrates the rendering process, capturing live logs and handling
+        process timeouts/errors. Supports both containerized and local modes.
+
+        Args:
+            job_dir: Root directory for the rendering job.
+            code_file: Python file containing the Scene definitions.
+            scene_name: The specific Scene class to render.
+            host_job_dir: Optional host-relative path for volume mounting.
+            quality_flag: Manim quality flag (e.g., -ql, -qm, -qh).
+            log_callback: Optional function to receive live log lines.
+            timeout: Maximum allowed rendering duration in seconds.
+
+        Returns:
+            A SandboxResult on success.
+
+        Raises:
+            RuntimeError: If rendering fails or times out.
+        """
         try:
             if self.use_podman:
                 cmd = [

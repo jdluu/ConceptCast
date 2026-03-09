@@ -1,15 +1,25 @@
+"""Background task definitions for asynchronous video rendering and orchestration.
+
+Utilizes taskiq for distributed task execution and long-running job processing.
+"""
+
 from typing import Any
 
+from sqlalchemy import select
 from taskiq_redis import ListQueueBroker
 
+from api.schemas import JobRequest, Storyboard
 from infra.database import AsyncSessionLocal
+from infra.models.job import JobRecord
 from infra.settings import get_settings
+from services.jobs.manager import update_job_record
+from services.jobs.thoughts import append_job_thought
+from services.workflow.steps.rendering import step_rendering
 
 settings = get_settings()
 
-broker = ListQueueBroker(
-    url=settings.redis_url
-)
+broker = ListQueueBroker(url=settings.redis_url)
+
 
 @broker.task
 async def render_video_task(
@@ -17,32 +27,30 @@ async def render_video_task(
     code: str,
     storyboard_dict: dict[str, Any],
     request_dict: dict[str, Any],
-    resolution: str,
-    frame_rate: int,
+    resolution: str,  # noqa: ARG001
+    frame_rate: int,  # noqa: ARG001
 ) -> None:
-    """Background task to perform Manim rendering."""
-    from api.schemas import JobRequest, Storyboard
-    from services.jobs.manager import update_job_record
-    from services.workflow.steps.rendering import step_rendering
-    
-    # Reconstruct objects
+    """Asynchronous background task to perform Manim rendering for a specific job.
+
+    Args:
+        job_id: Unique identifier for the job.
+        code: The generated Manim Python code to render.
+        storyboard_dict: Dictionary representation of the visual storyboard.
+        request_dict: Dictionary representation of the original job request.
+        resolution: Target video resolution.
+        frame_rate: Target frame rate for the video.
+    """
     storyboard = Storyboard(**storyboard_dict)
     request = JobRequest(**request_dict)
-    
+
     async def update_job(updates: dict[str, Any]) -> None:
+        """Helper to update the job record within the background task."""
         await update_job_record(AsyncSessionLocal, job_id, updates)
-        
+
     async def on_thought(agent: str, phase: str, content: str) -> None:
-        # In a background task, we might want to log thoughts differently 
-        # or just append them to the job record.
-        from services.jobs.manager import append_job_thought
+        """Callback to store agent thought deltas during background rendering."""
         await append_job_thought(AsyncSessionLocal, job_id, agent, phase, content)
 
-    # We need a job record dummy or fetch it
-    from sqlalchemy import select
-
-    from infra.models.job import JobRecord
-    
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
         job = result.scalar_one()
