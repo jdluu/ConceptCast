@@ -2,10 +2,10 @@
   "name": "concept-cast-monorepo",
   "private": true,
   "scripts": {
-    "dev": "turbo run dev worker",
-    "dev:backend": "turbo run dev --filter=backend",
-    "dev:frontend": "turbo run dev --filter=concept-cast-frontend",
-    "dev:worker": "turbo run worker --filter=backend",
+    "dev": "infisical run --path=/ai -- turbo run dev worker",
+    "dev:backend": "infisical run --path=/ai -- turbo run dev --filter=backend",
+    "dev:frontend": "infisical run --path=/ai -- turbo run dev --filter=concept-cast-frontend",
+    "dev:worker": "infisical run --path=/ai -- turbo run worker --filter=backend",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "update": "turbo run update",
@@ -18,6 +18,6 @@
     "node": ">=22"
   },
   "devDependencies": {
-    "turbo": "^2.8.11"
+    "turbo": "^2.8.15"
   }
 }

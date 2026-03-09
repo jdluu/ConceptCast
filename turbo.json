@@ -24,5 +24,6 @@
     "update": {
       "cache": false
     }
-  }
+  },
+  "globalPassThroughEnv": ["*"]
 }

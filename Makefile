@@ -38,30 +38,31 @@ update:
 
 # Run full stack in dev mode
 dev: redis-up
-	pnpm turbo run dev worker
+	@trap 'make redis-down' SIGINT SIGTERM; \
+	infisical run --path=/ai -- pnpm turbo run dev worker
 
 # Run backend only
 dev-backend:
-	pnpm turbo run dev --filter=backend
+	infisical run --path=/ai -- pnpm turbo run dev --filter=backend
 
 # Run frontend only
 dev-frontend:
-	pnpm turbo run dev --filter=concept-cast-frontend
+	infisical run --path=/ai -- pnpm turbo run dev --filter=concept-cast-frontend
 
 # Run background worker only
 dev-worker:
-	pnpm turbo run worker --filter=backend
+	infisical run --path=/ai -- pnpm turbo run worker --filter=backend
 
 worker: dev-worker
 
 # Run database migrations (Backend)
 db-migrate:
 	@echo "Running backend migrations..."
-	cd apps/backend && uv run alembic upgrade head
+	infisical run --path=/ai -- bash -c "cd apps/backend && uv run alembic upgrade head"
 
 # Generate API types (Frontend)
 gen-api:
-	pnpm turbo run generate:api --filter=concept-cast-frontend
+	infisical run --path=/ai -- pnpm turbo run generate:api --filter=concept-cast-frontend
 
 # Clean build artifacts
 clean:
