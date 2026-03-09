@@ -19,7 +19,24 @@ async def step_architecting(
     update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> tuple[Storyboard, RunUsage | None]:
-    """Executes the Architecting step of the lesson generation workflow."""
+    """Executes the visual architecting phase of the generation workflow.
+
+    Uses an AI architect to transform a pedagogical plan into a detailed
+    storyboard, defining the visual elements and timing for each scene.
+
+    Args:
+        plan: The curriculum plan generated in the previous step.
+        request: The initial job request details.
+        job: The current job record in the database.
+        update_job: Async callback for persisting job state changes.
+        on_thought: Async callback for streaming agent reasoning.
+
+    Returns:
+        tuple: (The generated Storyboard, RunUsage object from the AI).
+
+    Raises:
+        StoryboardGenerationError: If the architect fails to produce a storyboard.
+    """
     usage: RunUsage | None = None
     if not job.storyboard:
         logger.info(f"Generating storyboard (Mode: {job.mode})")

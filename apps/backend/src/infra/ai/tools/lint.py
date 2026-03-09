@@ -8,26 +8,23 @@ from pydantic_ai import RunContext
 from api.schemas import Storyboard
 from infra.engines.sandbox import local_sandbox
 
-# Pattern for lowercase color kwarg values - these always fail in Manim.
-# Valid colors are uppercase constants (RED, BLUE) or hex strings (#FF0000).
 _LOWERCASE_COLOR_RE = re.compile(
     r'(?:color|fill_color|stroke_color)\s*=\s*["\']([a-z]+)["\']'
 )
 
 
-async def lint_manim_code(ctx: RunContext[Storyboard], code: str) -> str:
-    """Lints generated Manim code in the sandboxed environment.
+async def lint_manim_code(_ctx: RunContext[Storyboard], code: str) -> str:
+    """Lints generated Manim code within a sandboxed environment.
 
-    Performs two checks:
-    1. Python syntax via ``py_compile`` inside the Podman container.
-    2. Heuristic scan for lowercase color strings (common AI hallucination).
+    Performs static and dynamic checks to ensure the code is valid Python
+    and follows Manim-specific rules (e.g., uppercase color constants).
 
     Args:
-        ctx: Run context (deps=Storyboard).
-        code: The Manim Python code to lint.
+        ctx: Run context containing the Storyboard.
+        code: The generated Python code to validate.
 
     Returns:
-        str: A human-readable lint report, or 'Passed' when clean.
+        A diagnostic report detailing any errors found, or 'Passed' if clean.
     """
     logger.info("Executing sandbox linting...")
 

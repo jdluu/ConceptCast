@@ -1,3 +1,9 @@
+"""Agent specialized in generating Manim Python code from visual storyboards.
+
+Enforces strict Manim API usage rules and utilizes pedagogical best practices
+for visual clarity and pacing.
+"""
+
 import json
 from collections.abc import Awaitable, Callable
 
@@ -56,7 +62,17 @@ async def generate_manim_code(
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
     retry_hint: str | None = None,
 ) -> tuple[str, RunUsage]:
-    """Generates Manim Python code derived from a visual storyboard."""
+    """Generates Manim Python code derived from a visual storyboard.
+
+    Args:
+        storyboard: The visual storyboard containing animation steps.
+        model: The PydanticAI model to use for generation.
+        on_thought: Optional callback for streaming agent thoughts.
+        retry_hint: Optional feedback for iterative improvement.
+
+    Returns:
+        tuple: (The generated Manim Python code, RunUsage data).
+    """
     animator_agent = Agent(
         model,
         system_prompt=system_prompt,
@@ -68,6 +84,7 @@ async def generate_manim_code(
     prompt = f"Write Manim code for: {json.dumps(storyboard.model_dump())}"
     if retry_hint:
         prompt = f"{prompt}\n\nIMPORTANT: {retry_hint}"
+
     result, usage = await run_agent_streamed(
         "animator",
         animator_agent,

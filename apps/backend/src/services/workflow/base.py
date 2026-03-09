@@ -25,6 +25,17 @@ def resolve_model_args(request: JobRequest, job: JobRecord) -> tuple[str, str | 
 
 
 def get_step_model(request: JobRequest, job: JobRecord) -> Any:
-    """Convenience helper to get a model instance for a workflow step."""
+    """Retrieves an authorized PydanticAI model instance for a workflow step.
+
+    Uses `resolve_model_args` to determine the correct provider and model
+    based on the job's execution mode and user preferences.
+
+    Args:
+        request: The initial job request.
+        job: The current job record from the database.
+
+    Returns:
+        A configured PydanticAI model instance.
+    """
     provider_name, model_id = resolve_model_args(request, job)
     return get_model(provider_name=provider_name, model_id=model_id)

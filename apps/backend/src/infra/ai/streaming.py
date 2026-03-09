@@ -17,25 +17,26 @@ from pydantic_ai.usage import RunUsage
 async def run_agent_streamed(
     agent_name: str,
     agent: Agent[Any, Any],
-    prompt: Any,  # Use Any to satisfy the complex Union from run_stream_events
+    prompt: Any,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None,
     accumulated_usage: RunUsage | None = None,
     **run_kwargs: Any,
 ) -> tuple[Any, RunUsage]:
-    """Runs an agent with run_stream_events, emits thoughts via on_thought,
-    and returns results.
+    """Runs an agent and streams intermediate thoughts and final output.
+
+    Standardizes the handling of 'thinking' and 'output' deltas across
+    different AI models and providers.
 
     Args:
-        agent_name: Logical name of the agent (for logging/UI).
-        agent: The Pydantic AI agent instance to run.
-        prompt: The input prompt or messages for the agent.
-        on_thought: Async callback to handle streamed thinking/output parts.
-        accumulated_usage: If provided, usage from this run will be added
-            to this object.
-        **run_kwargs: Additional parameters for the agent run.
+        agent_name: Logical identifier for the agent (e.g., 'analyst').
+        agent: The PydanticAI Agent instance.
+        prompt: Input string or list of messages.
+        on_thought: Async callback receiving (agent, phase, content).
+        accumulated_usage: External usage object to increment.
+        **run_kwargs: Passed directly to `agent.run_stream_events`.
 
     Returns:
-        A tuple of (final_result, usage).
+        A tuple containing the final parsed output and the total run usage.
     """
     usage = RunUsage()
     final = None

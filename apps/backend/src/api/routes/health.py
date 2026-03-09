@@ -1,3 +1,9 @@
+"""API endpoints for system health monitoring and diagnostic checks.
+
+Verifies the operational status of the database, Manim engine, and storage
+subsystems.
+"""
+
 import os
 from pathlib import Path
 from typing import Any
@@ -15,18 +21,25 @@ router = APIRouter()
 @router.get("/", response_model=dict[str, Any])
 async def health_check(
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    _db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Detailed health-check endpoint for production monitoring."""
+    """Retrieves the health status of the application and its core services.
+
+    Checks the connectivity of the database, the availability of the Manim engine,
+    and the writability of the storage directory.
+
+    Args:
+        response: The FastAPI response object to modify the status code.
+        db: The database session dependency.
+
+    Returns:
+        A dictionary containing the overall status and individual service statuses.
+    """
     settings = get_settings()
 
-    # 1. Database Check
     db_ok = await check_db_health()
-
-    # 2. Manim Engine Check (Local Installation)
     manim_ok = local_sandbox.is_healthy()
 
-    # 3. Storage Check
     storage_path = Path(settings.jobs_dir)
     storage_ok = os.access(storage_path, os.W_OK) if storage_path.exists() else True
 

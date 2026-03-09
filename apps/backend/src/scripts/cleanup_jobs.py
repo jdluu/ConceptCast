@@ -1,15 +1,13 @@
-import os
 import shutil
-
-# Import from core
 import sys
+from pathlib import Path
 
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(str(Path(__file__).parent.parent))
 from infra.models.job import JobRecord
 from infra.settings import get_settings
 

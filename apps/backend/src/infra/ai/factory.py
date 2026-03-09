@@ -6,14 +6,11 @@ from api.schemas import ProviderModels
 from infra.settings import Settings, get_settings
 
 from .base import BaseProvider
-from .providers import (
-    DeepSeekModelProvider,
-    GroqModelProvider,
-    MockModelProvider,
-    SyntheticModelProvider,
-)
+from .deepseek import DeepSeekModelProvider
+from .groq import GroqModelProvider
+from .mock import MockModelProvider
+from .synthetic import SyntheticModelProvider
 
-# Registry mapping provider IDs to their handler classes
 PROVIDER_CLASSES: dict[str, type[BaseProvider]] = {
     "groq": GroqModelProvider,
     "deepseek": DeepSeekModelProvider,
@@ -24,11 +21,18 @@ PROVIDER_CLASSES: dict[str, type[BaseProvider]] = {
 
 @dataclass(frozen=True)
 class ProviderEntry:
-    """Single source of truth for a provider: id, settings key,
-    models, and optional display name."""
+    """Registry entry for an AI provider.
+
+    Attributes:
+        id: Unique provider identifier.
+        settings_key: The configuration key for the provider's API secret.
+        models: Tuple of supported model identifiers.
+        default_model: The model to use if none is specified.
+        display_name: Human-readable name for the provider.
+    """
 
     id: str
-    settings_key: str | None  # None for mock (always available)
+    settings_key: str | None
     models: tuple[str, ...]
     default_model: str
     display_name: str | None = None
@@ -76,13 +80,13 @@ PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
 
 
 def get_available_providers_and_models(settings: Settings) -> list[ProviderModels]:
-    """Returns providers and their models for which the user has an API key (or mock).
+    """Retrieves providers and models for which a valid API key exists.
 
     Args:
-        settings: The global application settings.
+        settings: The application settings containing API keys.
 
     Returns:
-        A list of ProviderModels objects representing active providers.
+        A list of active providers and their available models.
     """
     result: list[ProviderModels] = []
     for entry in PROVIDER_REGISTRY:
@@ -108,13 +112,13 @@ def get_available_providers_and_models(settings: Settings) -> list[ProviderModel
 
 
 def _get_registry_entry(provider_name: str) -> ProviderEntry | None:
-    """Look up a provider in the registry by id.
+    """Retrieves a provider's metadata from the registry.
 
     Args:
-        provider_name: The ID of the provider to look up.
+        provider_name: The identifier of the provider.
 
     Returns:
-        The ProviderEntry if found, else None.
+        The matching ProviderEntry or None.
     """
     for entry in PROVIDER_REGISTRY:
         if entry.id == provider_name:
@@ -123,13 +127,13 @@ def _get_registry_entry(provider_name: str) -> ProviderEntry | None:
 
 
 def get_provider_for_model(model_id: str) -> BaseProvider | None:
-    """Finds the correct provider handler for a given model ID.
+    """Identifies the appropriate provider for a specific model ID.
 
     Args:
-        model_id: The identifier of the model.
+        model_id: The model identifier to search for.
 
     Returns:
-        A BaseProvider implementation for the model, or None.
+        A BaseProvider instance or None if no match is found.
     """
     for entry in PROVIDER_REGISTRY:
         if model_id in entry.models:
@@ -138,13 +142,13 @@ def get_provider_for_model(model_id: str) -> BaseProvider | None:
 
 
 def get_provider(provider_name: str) -> BaseProvider | None:
-    """Instantiates the specialized provider handler for a given name.
+    """Instantiates the specific provider handler by name.
 
     Args:
-        provider_name: The ID of the provider (e.g. 'google', 'openai').
+        provider_name: The identifier of the provider to instantiate.
 
     Returns:
-        A BaseProvider implementation, or None.
+        A BaseProvider implementation or None.
     """
     provider_cls = PROVIDER_CLASSES.get(provider_name)
     if not provider_cls:
@@ -152,10 +156,7 @@ def get_provider(provider_name: str) -> BaseProvider | None:
 
     settings = get_settings()
 
-    # Pass settings ONLY if the provider class needs them
-    # MockModelProvider and others might not need them in __init__
     try:
-        # Check if the class accepts settings in __init__
         return provider_cls(settings)  # type: ignore
     except TypeError:
         return provider_cls()
@@ -164,15 +165,14 @@ def get_provider(provider_name: str) -> BaseProvider | None:
 def get_model(
     provider_name: str | None = None, model_id: str | None = None
 ) -> Model | None:
-    """Returns a Pydantic-AI model instance for the given provider and model.
+    """Creates a configured PydanticAI model instance.
 
     Args:
-        provider_name: The ID of the provider.
-        model_id: The specific model identifier. If None, the default for the
-            provider is used.
+        provider_name: The identifier of the provider.
+        model_id: Specific model identifier. Defaults to the provider's default.
 
     Returns:
-        A configured Pydantic AI Model instance, or None if configuration fails.
+        A configured Model instance or None if missing keys or invalid provider.
     """
     if not provider_name:
         return None
@@ -181,7 +181,6 @@ def get_model(
     if not entry:
         return None
 
-    # Check for API keys
     settings = get_settings()
     if entry.settings_key and not getattr(settings, entry.settings_key, None):
         return None

@@ -1,3 +1,9 @@
+"""Pydantic schemas for job-related API requests and responses.
+
+Defines the structure for job summaries, comprehensive status records, and
+creation requests.
+"""
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -34,6 +40,8 @@ class JobSummary(BaseModel):
 
 
 class JobListResponse(BaseModel):
+    """Wrapper response for a paginated or filtered list of jobs."""
+
     jobs: list[JobSummary]
 
 

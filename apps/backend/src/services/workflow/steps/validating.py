@@ -14,10 +14,24 @@ async def step_validating(
     plan: CurriculumPlan,
     request: JobRequest,
     job: JobRecord,
-    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    _update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> tuple[ValidationResult, RunUsage | None]:
-    """Executes the Validation step of the lesson generation workflow."""
+    """Executes the curriculum validation phase of the generation workflow.
+
+    Uses an AI validator to review the pedagogical plan for technical accuracy,
+    clarity, and alignment with the target audience.
+
+    Args:
+        plan: The curriculum plan to validate.
+        request: The initial job request details.
+        job: The current job record in the database.
+        update_job: Async callback for persisting job state changes.
+        on_thought: Async callback for streaming agent reasoning.
+
+    Returns:
+        tuple: (The ValidationResult, RunUsage object from the AI).
+    """
     usage: RunUsage | None = None
     logger.info(f"Validating curriculum plan (Mode: {job.mode})")
 

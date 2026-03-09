@@ -1,3 +1,9 @@
+"""Abstract base classes and core interfaces for the ConceptCast AI provider system.
+
+Defines the contract for model providers, ensuring consistent instantiation and
+configuration of LLMs across different backends.
+"""
+
 from abc import ABC, abstractmethod
 
 from pydantic_ai.models import Model
@@ -5,31 +11,34 @@ from pydantic_ai.settings import ModelSettings
 
 
 class BaseProvider(ABC):
-    """Abstract base class for AI model providers.
+    """Abstract base class for AI model provider adapters.
 
-    Encapsulates model creation and provider-specific configurations
-    like thinking settings and runtime parameters.
+    This class defines the interface for creating and configuring PydanticAI
+    models from different backend services (e.g., Groq, DeepSeek).
     """
 
     @abstractmethod
     def create_model(self, model_id: str) -> Model:
-        """Creates a Pydantic AI model instance for the given model ID.
+        """Creates and configures a PydanticAI Model instance.
 
         Args:
-            model_id: The identifier of the model to create.
+            model_id: The specific model identifier to instantiate.
 
         Returns:
-            A configured Pydantic AI Model instance.
+            A configured Model instance ready for execution.
         """
         pass
 
-    def get_settings(self, model_id: str) -> ModelSettings | None:
-        """Returns model-level settings (e.g. thinking/reasoning).
+    def get_settings(self, _model_id: str) -> ModelSettings | None:
+        """Retrieves provider-specific settings for a given model.
+
+        Settings may include specific token limits, temperature, or
+        backend-specific parameters like reasoning formats.
 
         Args:
-            model_id: The identifier of the model to fetch settings for.
+            model_id: The model identifier to fetch settings for.
 
         Returns:
-            A ModelSettings object or None if no specific settings are required.
+            A ModelSettings object or None if default settings are sufficient.
         """
         return None

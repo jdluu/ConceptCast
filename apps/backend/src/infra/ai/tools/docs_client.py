@@ -19,11 +19,12 @@ from infra.settings import get_settings
 CONTEXT7_BASE = "https://context7.com/api/v2"
 MANIM_COMMUNITY_LIBRARY_ID = "/websites/manim_community_en_stable"
 _TRANSIENT_STATUS_CODES = {429, 500, 502, 503, 504}
-# key -> (expires_at_epoch_seconds, formatted_result)
+
 _CTX7_CACHE: OrderedDict[str, tuple[float, str]] = OrderedDict()
 
 
 def _cache_key(query: str, api_key: str) -> str:
+    """Generates a stable cache key for a given query and identity."""
     return f"{api_key}:{query.strip().lower()}"
 
 
@@ -102,14 +103,17 @@ def _compute_backoff_delay(
 
 
 async def get_manim_docs_context(query: str, *, api_key: str) -> str:
-    """Fetch Manim Community documentation snippets for the given query.
+    """Retrieves Manim Community documentation snippets from Context7.
+
+    Fetches relevant snippets based on the provided query, applying caching
+    and automated retries for transient network issues.
 
     Args:
-        query: Natural language question or task (e.g. "Circle FadeIn animation").
-        api_key: Context7 API key (Bearer token).
+        query: Descriptive term or question for documentation retrieval.
+        api_key: Authorized Context7 API key.
 
     Returns:
-        Formatted string of relevant doc snippets, or an error message on failure.
+        A formatted string of relevant snippets, or a safe fallback message.
     """
     settings = get_settings()
     cache_ttl = max(0, getattr(settings, "context7_cache_ttl_seconds", 1800))

@@ -4,18 +4,24 @@ from infra.settings import get_settings
 
 
 def merge_usage(base: RunUsage | None, extra: RunUsage | None) -> RunUsage:
-    """Combines two Pydantic-AI RunUsage objects by summing their token counts."""
+    """Aggregates two token usage objects by summing their various counts.
+
+    Args:
+        base: The primary usage object to accumulate into.
+        extra: The additional usage to add.
+
+    Returns:
+        A new RunUsage instance representing the combined usage.
+    """
     if not base:
         return extra or RunUsage()
     if not extra:
         return base
 
-    # Create a copy to avoid mutating the original if that's preferred,
-    # but here we return a new combined result.
-    result = RunUsage()
-    result.incr(base)
-    result.incr(extra)
-    return result
+    return RunUsage(
+        input_tokens=(base.input_tokens or 0) + (extra.input_tokens or 0),
+        output_tokens=(base.output_tokens or 0) + (extra.output_tokens or 0),
+    )
 
 
 def calculate_job_cost(

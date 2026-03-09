@@ -8,7 +8,6 @@ from api.schemas import (
     VisualObject,
 )
 
-# Realistic fragments for the Analyst agent
 MOCK_PLANS = {
     "default": CurriculumPlan(
         concept_title="Understanding Quantum Entanglement",
@@ -47,7 +46,6 @@ MOCK_PLANS = {
     )
 }
 
-# Realistic fragments for the Validator agent
 MOCK_VALIDATIONS = {
     "default": ValidationResult(
         is_valid=True,
@@ -61,7 +59,6 @@ MOCK_VALIDATIONS = {
     )
 }
 
-# Realistic fragments for the Architect agent
 MOCK_STORYBOARDS = {
     "default": Storyboard(
         concept_title="Understanding Quantum Entanglement",
@@ -95,7 +92,6 @@ MOCK_STORYBOARDS = {
     )
 }
 
-# Realistic fragments for the Animator agent (Manim code)
 MOCK_MANIM_CODE = """
 from manim import *
 
@@ -116,7 +112,6 @@ class SceneGen(Scene):
         self.wait(2)
 """
 
-# Realistic fragments for the Reviewer agent
 MOCK_REVIEWS = {
     "default": AnimationReview(
         approved=True,
@@ -129,16 +124,33 @@ MOCK_REVIEWS = {
 
 
 def inject_topic(text: str, topic: str) -> str:
-    """Simple helper to replace placeholder with the user topic."""
+    """Injects the user's topic into a text template.
+
+    Args:
+        text: The template text containing '{{concept_title}}'.
+        topic: The topic name to inject.
+
+    Returns:
+        The template with placeholders replaced by the actual topic.
+    """
     if not topic:
         return text.replace("{{concept_title}}", "ConceptCast")
     return text.replace("{{concept_title}}", topic)
 
 
 def get_realistic_response(
-    prompt: str, output_type: type, topic: str | None = None
+    _prompt: str, output_type: type, topic: str | None = None
 ) -> str:
-    """Returns a realistic-looking mock response based on the output type requested."""
+    """Retrieves a realistic mock response for demonstration and testing.
+
+    Args:
+        prompt: The input prompt (currently ignored in the mock).
+        output_type: The expected Pydantic model class for the output.
+        topic: The topic requested by the user.
+
+    Returns:
+        A JSON string or plain text representing the mock response.
+    """
     if output_type == CurriculumPlan:
         plan = MOCK_PLANS["default"]
         if topic:

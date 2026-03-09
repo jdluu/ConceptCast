@@ -1,3 +1,9 @@
+"""Agent specialized in visual quality assurance and iterative review.
+
+Compares rendered outputs or execution logs against storyboards to ensure
+correctness, readability, and alignment with pedagogical goals.
+"""
+
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
@@ -60,20 +66,18 @@ async def review_animation(
 ) -> tuple[AnimationReview, RunUsage]:
     """Compares rendered output against the storyboard for visual fidelity.
 
-    Runs the Reviewer Agent which uses sandbox-based linting and Context7
-    documentation to approve or request revisions for the generated animation.
-    Streams intermediate reasoning steps via ``on_thought`` if provided.
+    Uses sandbox-based linting and vision/log analysis to approve or request
+    revisions for generated animations.
 
     Args:
         storyboard: The target visual sequence the animation should reproduce.
-        frame_path: Path to a rendered PNG frame, or None for log-only review.
+        frame_path: Optional path to a rendered PNG frame for vision analysis.
         execution_logs: Combined stdout/stderr from the Manim render process.
-        model: PydanticAI model instance to use for the review.
-        on_thought: Optional callback for streaming agent thoughts in real time.
+        model: PydanticAI model instance for the review.
+        on_thought: Optional callback for real-time thought streaming.
 
     Returns:
-        tuple[AnimationReview, RunUsage]: The structured review decision
-        and the token usage incurred by this agent run.
+        tuple: (Structured AnimationReview decision, RunUsage data).
     """
     agent = Agent(
         model,
@@ -84,7 +88,6 @@ async def review_animation(
     agent.tool(lint_manim_code)
     agent.tool(search_manim_docs, prepare=prepare_manim_docs)  # type: ignore
 
-    # Construct the review prompt
     prompt_parts = [
         "**Perform a Visual QA Review**",
         f"**Execution Logs**:\n```\n{execution_logs}\n```",
@@ -106,11 +109,10 @@ async def review_animation(
 
     prompt = "\n\n".join(prompt_parts)
 
-    # If we have an image, we pass it as a list of parts to run_agent_streamed
     final_prompt: str | list[ModelRequestPart] = prompt
     if content_with_images and frame_path:
         try:
-            with open(frame_path, "rb") as f:
+            with Path(frame_path).open("rb") as f:
                 image_data = f.read()
             final_prompt = [
                 UserPromptPart(content=prompt),

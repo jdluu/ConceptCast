@@ -12,18 +12,23 @@ from pydantic_settings import BaseSettings
 
 
 def _discover_project_root() -> Path:
-    """Discovers the project root by looking for a marker file."""
+    """Traverses upward from the current file to discover the project root directory.
+
+    Heuristically identifies the root by searching for 'pnpm-workspace.yaml',
+    '.git', or 'pyproject.toml' in combination with an 'apps' directory.
+
+    Returns:
+        Path: The absolute path to the discovered project root.
+    """
     current = Path(__file__).resolve().parent
-    for _ in range(10):  # Limit search depth
+    for _ in range(10):
         if (current / "pnpm-workspace.yaml").exists() or (current / ".git").exists():
             return current
         if (current / "pyproject.toml").exists() and (current.parent / "apps").exists():
-            # If we're in apps/backend, the root is two levels up
             return current.parent.parent
         if current.parent == current:
             break
         current = current.parent
-    # Fallback to the current logic if discovery fails
     return Path(__file__).resolve().parent.parent.parent.parent.parent
 
 
@@ -32,24 +37,28 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables.
+    """Application settings and secrets loaded from environment variables and .env.
 
     Attributes:
-        google_api_key: Google AI API key for Gemini models.
         groq_api_key: Groq API key for Llama/Mixtral models.
-        deepseek_api_key: DeepSeek API key.
-        synthetic_api_key: Synthetic provider API key.
-        context7_api_key: Context7 API key for doc retrieval (e.g. Manim Community).
-        context7_cache_ttl_seconds: TTL for Context7 response cache.
-        context7_cache_max_entries: Max Context7 cache entries kept in-memory.
-        context7_max_retries: Retries for transient Context7 API failures.
-        deepseek_model_name: Override for DeepSeek model name.
-        synthetic_model_name: Override for Synthetic model name.
-        render_quality: Manim quality profile for rendering (ql/qm/qh).
-        streamed_thoughts_max_entries: Max persisted streamed thought deltas per job.
-        database_url: SQLAlchemy database URL.
-        redis_url: Taskiq Redis broker URL.
-        cors_origins: Comma-separated list of allowed CORS origins.
+        deepseek_api_key: DeepSeek API key for chat models.
+        synthetic_api_key: Synthetic provider API key for local/VLLM proxies.
+        context7_api_key: Context7 API key for high-quality package documentation.
+        context7_cache_ttl_seconds: Seconds before cached documentation expires.
+        context7_cache_max_entries: Max entries kept in the documentation cache.
+        context7_max_retries: Retry limit for transient Context7 API errors.
+        deepseek_model_name: Overridable model identifier for DeepSeek.
+        synthetic_model_name: Overridable model identifier for the synthetic provider.
+        render_quality: Default Manim render quality (low, medium, high).
+        streamed_thoughts_max_entries: Max thought deltas stored per job execution.
+        database_url: SQLAlchemy compatible database connection string.
+        redis_url: Connection URL for the Taskiq Redis backend.
+        cors_origins: List of allowed origins for cross-origin requests.
+        data_dir: Absolute path for storing application state and artifacts.
+        pricing_input_rate: Estimated USD cost per 1k input tokens.
+        pricing_output_rate: Estimated USD cost per 1k output tokens.
+        pricing_render_rate_per_min: Estimated rendering cost per minute.
+        pricing_base_overhead: Fixed processing overhead per job.
     """
 
     groq_api_key: str | None = None
@@ -70,7 +79,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     data_dir: Path = PROJECT_ROOT / "data"
 
-    # Pricing (USD)
+    # Pricing Estimation Constants (USD)
     pricing_input_rate: float = 0.005 / 1000
     pricing_output_rate: float = 0.015 / 1000
     pricing_render_rate_per_min: float = 0.10
@@ -78,7 +87,7 @@ class Settings(BaseSettings):
 
     @property
     def jobs_dir(self) -> Path:
-        """Returns the absolute path to the jobs artifact directory."""
+        """Absolute path to the dedicated storage for job artifacts."""
         return self.data_dir / "jobs"
 
     model_config = {
@@ -89,22 +98,32 @@ class Settings(BaseSettings):
     }
 
     def has_any_api_key(self) -> bool:
-        """Returns True if at least one real AI provider API key is set."""
+        """Determines if any valid AI provider API key is available.
+
+        Returns:
+            bool: True if at least one API key is detected.
+        """
         return bool(
-            self.groq_api_key
-            or self.deepseek_api_key
-            or self.synthetic_api_key
+            self.groq_api_key or self.deepseek_api_key or self.synthetic_api_key
         )
+
+    def is_dummy_key(self) -> bool:
+        """Checks if configured API keys are placeholders.
+
+        Returns:
+            bool: True if keys match known dummy values (e.g., 'your-key-here').
+        """
+        keys = [self.groq_api_key, self.deepseek_api_key, self.synthetic_api_key]
+        return any(k and "your-key-here" in k.lower() for k in keys)
 
 
 @lru_cache
 def get_settings() -> Settings:
-    """Returns a cached singleton Settings instance.
+    """Returns a memoized singleton instance of the application settings.
 
-    Values are loaded from environment variables and .env file.
-    Infisical is expected to inject secrets into the environment.
+    Environment variables are parsed on first call and cached for subsequent use.
 
     Returns:
-        Settings: The application settings.
+        Settings: The parsed application configuration.
     """
     return Settings()

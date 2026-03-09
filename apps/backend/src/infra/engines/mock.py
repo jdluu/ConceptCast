@@ -18,9 +18,16 @@ async def run_mock_flow(
     update_job: Callable[[dict[str, Any]], Any],
     on_thought: Callable[[str, str, str], Any],
 ) -> None:
-    """
-    Executes the mock generation flow for testing or demonstration purposes.
-    Simulates the exact timing and steps of a live run.
+    """Executes a simulated generation workflow for testing and UI demonstration.
+
+    Replicates the timing and sequential logic of a live generation run
+    using deterministic sleep intervals and predefined mock data.
+
+    Args:
+        topic: The simulated educational topic.
+        target_audience: The intended audience for the mock content.
+        update_job: Callback to update the persisted Job state.
+        on_thought: Callback to emit agent reasoning steps.
     """
     from datetime import UTC, datetime
 
@@ -47,9 +54,7 @@ async def run_mock_flow(
         await on_thought("analyst", "Curriculum Design", "Structuring lesson plan...")
         await asyncio.sleep(1.0 * sleep_mult)
 
-        plan = generate_mock_plan(
-            topic, target_audience or "General Audience"
-        )
+        plan = generate_mock_plan(topic, target_audience or "General Audience")
         await update_job(
             {
                 "plan": plan.model_dump(),
@@ -154,15 +159,14 @@ async def run_mock_flow(
 
 
 def generate_mock_plan(topic: str, target_audience: str) -> CurriculumPlan:
-    """
-    Generates a deterministic mock curriculum plan for development/testing.
+    """Generates a pedagogical curriculum plan for testing.
 
     Args:
-        topic: The requested topic.
-        target_audience: The target audience.
+        topic: The topic to structure.
+        target_audience: The intended user base.
 
     Returns:
-        CurriculumPlan: A structured mock plan.
+        A structured CurriculumPlan with mock steps.
     """
     return CurriculumPlan(
         concept_title=f"Mock: {topic}",
@@ -185,14 +189,13 @@ def generate_mock_plan(topic: str, target_audience: str) -> CurriculumPlan:
 
 
 def generate_mock_storyboard(plan: CurriculumPlan) -> Storyboard:
-    """
-    Generates a mock storyboard based on a curriculum plan.
+    """Orchestrates a visual storyboard based on a mock curriculum plan.
 
     Args:
-        plan: The curriculum plan.
+        plan: The source curriculum plan.
 
     Returns:
-        Storyboard: A mock storyboard.
+        A Storyboard containing mock scene and object definitions.
     """
     return Storyboard(
         concept_title=plan.concept_title,
@@ -232,9 +235,7 @@ def generate_mock_storyboard(plan: CurriculumPlan) -> Storyboard:
 
 
 def generate_mock_code() -> str:
-    """
-    Generates mock Manim code for testing.
-    """
+    """Produces a minimal, valid Manim Python snippet for testing."""
     return """
 from manim import *
 
@@ -247,9 +248,7 @@ class SceneGen(Scene):
 
 
 def generate_mock_validation() -> ValidationResult:
-    """
-    Generates a mock passing validation result.
-    """
+    """Produces a passing pedagogical validation result for testing."""
     return ValidationResult(
         is_valid=True,
         feedback="Mock: Curriculum plan is pedagogically sound.",

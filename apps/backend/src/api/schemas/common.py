@@ -1,3 +1,8 @@
+"""Common Pydantic schemas shared across multiple API domains.
+
+Includes shared structures for logging, model capabilities, and generic responses.
+"""
+
 from pydantic import BaseModel
 
 

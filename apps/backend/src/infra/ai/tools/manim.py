@@ -9,7 +9,7 @@ from .docs_client import get_manim_docs_context
 
 # Curated fallback when CONTEXT7_API_KEY is not set. With Context7 we use
 # Manim Community docs at /websites/manim_community_en_stable instead.
-MANIM_DOCS = {
+MANIM_DOCS: dict[str, str] = {
     "Line": (
         "Line(start=LEFT, end=RIGHT, buff=0). "
         "A straight line segment between two points. "
@@ -144,30 +144,25 @@ MANIM_DOCS = {
 async def prepare_manim_docs(
     ctx: RunContext[Storyboard], tool_def: ToolDefinition
 ) -> ToolDefinition | None:
-    """
-    Advanced Tool Pattern: Dynamically adjusts the tool description
-    based on the Storyboard's current needs.
+    """Prepares and filters Manim documentation for the current storyboard.
 
-    Filters the Manim documentation to only include types referenced in
-    the current storyboard scenes, preserving context window space.
+    This 'prepare' callback dynamically adjusts the tool's description
+    to include only those Manim types that are mentioned in the storyboard,
+    reducing token usage and focusing the agent's attention.
 
     Args:
-        ctx (RunContext): The tool execution context.
-        tool_def (ToolDefinition): The original tool definition.
+        ctx: Run context containing the current Storyboard state.
+        tool_def: The definition of the search tool being prepared.
 
     Returns:
-        ToolDefinition | None: The modified tool definition with context-aware docs.
+        The modified ToolDefinition with an contextually relevant description.
     """
     storyboard = ctx.deps
-    mentioned_types = set()
-    for scene in storyboard.scenes:
-        for obj in scene.objects:
-            mentioned_types.add(obj.type)
+    mentioned_types = {obj.type for scene in storyboard.scenes for obj in scene.objects}
 
-    # Filter docs to only include relevant info to save context window
     relevant_docs = {k: v for k, v in MANIM_DOCS.items() if k in mentioned_types}
-
     doc_summary = "\n".join([f"- {k}: {v}" for k, v in relevant_docs.items()])
+
     tool_def.description = (
         f"Search for Manim syntax. Curated context for this storyboard:\n{doc_summary}"
     )
@@ -175,23 +170,19 @@ async def prepare_manim_docs(
     return tool_def
 
 
-async def search_manim_docs(ctx: RunContext[Storyboard], query: str) -> str:
-    """
-    Searches for Manim Community documentation.
+async def search_manim_docs(_ctx: RunContext[Storyboard], query: str) -> str:
+    """Keyword or semantic search for Manim Community documentation.
 
-    When CONTEXT7_API_KEY is set, uses Context7 API to retrieve relevant
-    snippets from Manim Community docs. Otherwise falls back to keyword
-    search over the curated MANIM_DOCS dict.
-    When used with prepare=prepare_manim_docs, pydantic_ai requires the first
-    parameter to be RunContext[Storyboard] so the tool is context-aware.
+    Leverages Context7 for external documentation retrieval if an API key
+    is present. Otherwise, performs a simple keyword match against the
+    curated `MANIM_DOCS` list.
 
     Args:
-        ctx: Run context (deps=Storyboard); used by prepare, not in body.
-        query: The search term or question (e.g., 'Circle', 'FadeIn animation').
+        ctx: Run context containing the current Storyboard.
+        query: Search term or question regarding Manim syntax/objects.
 
     Returns:
-        str: JSON string with key "documentation" so providers
-        that parse tool results as JSON succeed.
+        JSON string containing the retrieved documentation.
     """
     api_key = get_settings().context7_api_key
     if api_key:

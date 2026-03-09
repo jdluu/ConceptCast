@@ -11,8 +11,12 @@ if TYPE_CHECKING:
 
 
 class JobRecord(Base):
-    """
-    SQLAlchemy model for storing job state and artifacts.
+    """SQLAlchemy model representing a content generation job.
+
+    Tracks the entire lifecycle of a job, from initial planning through
+    validation, architecting, and final rendering. Stores both state
+    information and references to generated artifacts (plan, storyboard,
+    video URL).
     """
 
     __tablename__ = "jobs"
@@ -53,7 +57,14 @@ class JobRecord(Base):
     )
 
     def to_status_schema(self) -> "JobStatus":
-        """Converts the database record to the JobStatus Pydantic schema."""
+        """Converts the database record to a validated Pydantic schema.
+
+        Handles the mapping of internal state and JSON blobs to structured
+        objects for API responses.
+
+        Returns:
+            A JobStatus instance representing the current state.
+        """
         from api.schemas import (
             CurriculumPlan,
             JobStatus,

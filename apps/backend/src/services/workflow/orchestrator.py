@@ -1,3 +1,9 @@
+"""Orchestration layer for the pedagogical video generation workflow.
+
+Coordinates multiple AI agents and background tasks to transform a topic
+into a structured curriculum and eventually a rendered Manim animation.
+"""
+
 import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
@@ -19,11 +25,11 @@ from infra.models.job import JobRecord
 from services.workflow.utils import calculate_job_cost, merge_usage
 
 from ..jobs.manager import (
-    append_job_thought,
     prepare_job_for_retry_logic,
     update_job_record,
     update_job_status,
 )
+from ..jobs.thoughts import append_job_thought
 from .steps.animating import step_animating
 from .steps.architecting import step_architecting
 from .steps.planning import step_planning
@@ -33,7 +39,18 @@ from .steps.validating import step_validating
 async def prepare_job_for_retry(
     job_id: str, db_session_factory: Callable[[], AsyncSession]
 ) -> JobRecord:
-    """Wrapper for the job-reset logic to satisfy API expectations."""
+    """Prepares a failed job for re-execution.
+
+    Resets transient state and error flags while preserving foundational
+    artifacts from previous successful steps.
+
+    Args:
+        job_id: The unique identifier for the job.
+        db_session_factory: Factory for providing DB sessions.
+
+    Returns:
+        The updated JobRecord in 'pending_retry' state.
+    """
     return await prepare_job_for_retry_logic(job_id, db_session_factory)
 
 
@@ -197,7 +214,7 @@ async def execute_workflow(
 
             # Step 5: Rendering (Dispatched to background worker)
             from infra.tasks import render_video_task
-            
+
             await render_video_task.kiq(
                 job_id=job_id,
                 code=code,
@@ -206,7 +223,7 @@ async def execute_workflow(
                 resolution=cast(str, job_state.resolution),
                 frame_rate=cast(int, job_state.frame_rate),
             )
-            
+
             logger.info(f"Job {job_id}: Rendering dispatched to Taskiq worker.")
 
         except Exception as e:

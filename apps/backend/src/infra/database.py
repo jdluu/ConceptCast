@@ -1,3 +1,9 @@
+"""Database configuration and lifecycle management for the ConceptCast backend.
+
+Configures SQLAlchemy async engine, session factory, and provides utilities for
+database initialization and health checks.
+"""
+
 from collections.abc import AsyncGenerator
 
 from loguru import logger
@@ -16,14 +22,19 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 
 
 class Base(DeclarativeBase):
+    """Base class for SQLAlchemy declarative models."""
+
     pass
 
 
 async def init_db() -> None:
-    """Initializes the database tables asynchronously."""
+    """Initializes the database tables and ensures WAL mode is enabled.
+
+    This function creates all tables defined in the metadata and sets the
+    SQLite journal mode to WAL for improved concurrency support.
+    """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Enable WAL (Write-Ahead Logging) for better concurrency
         await conn.execute(text("PRAGMA journal_mode=WAL;"))
 
     if "sqlite" in DATABASE_URL:
@@ -31,7 +42,10 @@ async def init_db() -> None:
 
 
 async def _migrate_sqlite_schema() -> None:
-    """Detects and adds missing columns to the SQLite jobs table."""
+    """Performs lightweight schema migrations for SQLite.
+
+    Detects missing columns in the 'jobs' table and adds them with default values.
+    """
     column_definitions = {
         "resolution": "VARCHAR DEFAULT '720p'",
         "frame_rate": "INTEGER DEFAULT 30",
@@ -40,8 +54,6 @@ async def _migrate_sqlite_schema() -> None:
 
     try:
         async with engine.connect() as conn:
-            from sqlalchemy import text
-
             result = await conn.execute(text("PRAGMA table_info(jobs)"))
             existing_columns = {row[1] for row in result.fetchall()}
 
@@ -62,21 +74,25 @@ async def _migrate_sqlite_schema() -> None:
 
 
 async def check_db_health() -> bool:
-    """Verifies that the database is reachable and responding."""
+    """Verifies that the database connection is alive.
+
+    Returns:
+        True if the database responds to a simple query, False otherwise.
+    """
     try:
         async with engine.connect() as conn:
-            from sqlalchemy import text
-
             await conn.execute(text("SELECT 1"))
             return True
     except Exception as e:
-        from loguru import logger
-
         logger.error(f"Database health check failed: {e}")
         return False
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Dependency for providing asynchronous database sessions."""
+    """Provides an asynchronous database session for dependency injection.
+
+    Yields:
+        An active SQLAlchemy AsyncSession instance.
+    """
     async with AsyncSessionLocal() as session:
         yield session

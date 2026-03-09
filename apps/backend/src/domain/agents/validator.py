@@ -1,3 +1,9 @@
+"""Agent specialized in pedagogical auditing and content validation.
+
+Reviews curriculum plans for logical progression, concept clarity, and
+visual metaphor effectiveness.
+"""
+
 from collections.abc import Awaitable, Callable
 
 from pydantic_ai import Agent
@@ -6,9 +12,6 @@ from pydantic_ai.usage import RunUsage
 
 from api.schemas import CurriculumPlan, ValidationResult
 from infra.ai.streaming import run_agent_streamed
-
-# Define the Validator Agent
-# "The Critic" - Ensures curricula are pedagogically sound.
 
 system_prompt = """
 You are the **Validator Agent** (The Critic) for ConceptCast.
@@ -35,7 +38,16 @@ async def validate_curriculum(
     model: Model,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
 ) -> tuple[ValidationResult, RunUsage]:
-    """Audits a curriculum plan for pedagogical and visual alignment."""
+    """Audits a curriculum plan for pedagogical and visual alignment.
+
+    Args:
+        plan: The curriculum plan to validate.
+        model: The PydanticAI model instance for generation.
+        on_thought: Optional callback for streaming agent thoughts.
+
+    Returns:
+        tuple: (The structured ValidationResult, RunUsage data).
+    """
     agent = Agent(
         model,
         system_prompt=system_prompt,

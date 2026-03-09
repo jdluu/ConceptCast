@@ -23,7 +23,7 @@ def determine_execution_mode(request: JobRequest) -> bool:
     settings = get_settings()
     return (
         request.provider == "mock"
-        or (not settings.has_any_api_key() and not request.provider)
+        or not settings.has_any_api_key()
         or settings.is_dummy_key()
     )
 
@@ -104,69 +104,3 @@ async def prepare_job_for_retry_logic(
         await job_event_manager.notify(job_id)
         await db.refresh(job)
         return job
-
-
-async def append_job_thought(
-    db_session_factory: Callable[[], AsyncSession],
-    job_id: str,
-    agent: str,
-    phase: str,
-    content: str,
-) -> None:
-    """Appends an agent thought to the job's streamed_thoughts array.
-
-    Args:
-        db_session_factory: A factory function that returns an AsyncSession.
-        job_id: The unique identifier of the job.
-        agent: The name of the agent generating the thought.
-        phase: The current phase of the agent's work.
-        content: The text content of the thought.
-    """
-    async with db_session_factory() as db:
-        try:
-            result = await db.execute(
-                select(JobRecord).where(JobRecord.job_id == job_id)
-            )
-            job = result.scalar_one_or_none()
-            if job:
-                thoughts = list(getattr(job, "streamed_thoughts", None) or [])
-                now = datetime.now(UTC)
-
-                # Try to aggregate with the last thought if it's the same agent/phase
-                # and happened recently (within 10 seconds)
-                should_aggregate = False
-                if thoughts:
-                    last_thought = thoughts[-1]
-                    last_ts = datetime.fromisoformat(last_thought.get("ts", ""))
-                    time_diff = (now - last_ts).total_seconds()
-
-                    if (
-                        last_thought.get("agent") == agent
-                        and last_thought.get("phase") == phase
-                        and time_diff < 10.0
-                    ):
-                        should_aggregate = True
-
-                if should_aggregate:
-                    # Append content to the existing thought
-                    # If content starts with a space or last one ends with one, join
-                    # Otherwise add a space if needed
-                    existing_content = thoughts[-1].get("content", "")
-                    thoughts[-1]["content"] = existing_content + content
-                    thoughts[-1]["ts"] = now.isoformat()
-                else:
-                    thoughts.append(
-                        {
-                            "agent": agent,
-                            "phase": phase,
-                            "content": content,
-                            "ts": now.isoformat(),
-                        }
-                    )
-
-                job.streamed_thoughts = thoughts
-                job.updated_at = now
-                await db.commit()
-        except Exception:
-            await db.rollback()
-            raise

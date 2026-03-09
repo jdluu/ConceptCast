@@ -17,10 +17,29 @@ async def step_animating(
     storyboard: Storyboard,
     request: JobRequest,
     job: JobRecord,
-    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    _update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> tuple[str, RunUsage]:
-    """Executes the Animating step with iterative self-correction."""
+    """Executes the AI-driven animation phase with iterative self-correction.
+
+    Combines Manim code generation, sandboxed rendering, and automated visual
+    review to ensure the final animation aligns with the storyboard and is
+    syntactically correct.
+
+    Args:
+        storyboard: The visual architectural plan for the video.
+        request: The initial job request details.
+        job: The current job record in the database.
+        update_job: Async callback for persisting job state changes.
+        on_thought: Async callback for streaming agent reasoning.
+
+    Returns:
+        tuple: (The final sanitized Manim code, Total RunUsage from the loop).
+
+    Raises:
+        AnimationGenerationError: If valid code cannot be generated or rendered
+            within the iteration limit.
+    """
     logger.info(f"Starting animation generation loop (Mode: {job.mode})")
 
     from services.workflow.base import get_step_model

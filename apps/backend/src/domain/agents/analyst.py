@@ -1,3 +1,9 @@
+"""Agent specialized in curriculum planning and pedagogical deconstruction.
+
+Uses self-correction via a critic tool to ensure the generated learning
+dependency graph is logical and effective for the target audience.
+"""
+
 from collections.abc import Awaitable, Callable
 
 from pydantic_ai import Agent, RunContext
@@ -5,12 +11,8 @@ from pydantic_ai.models import Model
 from pydantic_ai.usage import RunUsage
 
 from api.schemas import CurriculumPlan, ValidationResult
+from domain.agents.validator import validate_curriculum
 from infra.ai.streaming import run_agent_streamed
-
-from .validator import validate_curriculum
-
-# Define the Analyst Agent
-# "The Pedagogue" - Deconstructs topics into pedagogical steps.
 
 system_prompt = """
 You are the **Analyst Agent** (The Pedagogue) for ConceptCast.
@@ -43,7 +45,7 @@ async def generate_curriculum(
         on_thought: Optional callback for streaming agent thoughts.
 
     Returns:
-        tuple[CurriculumPlan, RunUsage]: The structured curriculum and AI usage data.
+        tuple: (The structured CurriculumPlan, RunUsage data).
     """
     agent = Agent(
         model,
@@ -53,8 +55,17 @@ async def generate_curriculum(
 
     @agent.tool
     async def consult_critic(
-        ctx: RunContext[None], plan: CurriculumPlan
+        _ctx: RunContext[None], plan: CurriculumPlan
     ) -> ValidationResult:
+        """Consults the Validator Agent to review the generated curriculum plan.
+
+        Args:
+            ctx: The run context.
+            plan: The curriculum plan to validate.
+
+        Returns:
+            The validation result from the reviewer.
+        """
         res, _ = await validate_curriculum(plan, model, on_thought=on_thought)
         return res
 

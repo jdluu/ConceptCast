@@ -1,3 +1,9 @@
+"""Agent specialized in visual architecting and scene storyboarding.
+
+Transforms abstract pedagogical plans into concrete visual objects and
+animations for the Manim engine.
+"""
+
 from collections.abc import Awaitable, Callable
 
 from pydantic_ai import Agent
@@ -6,9 +12,6 @@ from pydantic_ai.usage import RunUsage
 
 from api.schemas import CurriculumPlan, Storyboard
 from infra.ai.streaming import run_agent_streamed
-
-# Define the Visual Architect Agent
-# "The Scenographer" - Translates pedagogy into visual scenes.
 
 system_prompt = """
 You are the **Visual Architect Agent** (The Scenographer) for ConceptCast.
@@ -44,7 +47,7 @@ async def generate_storyboard(
         on_thought: Optional callback for streaming agent thoughts.
 
     Returns:
-        tuple[Storyboard, RunUsage]: The structured storyboard and AI usage data.
+        tuple: (The structured Storyboard, RunUsage data).
     """
     agent = Agent(
         model,
