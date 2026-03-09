@@ -52,7 +52,6 @@ class Settings(BaseSettings):
         cors_origins: Comma-separated list of allowed CORS origins.
     """
 
-    google_api_key: str | None = None
     groq_api_key: str | None = None
     deepseek_api_key: str | None = None
     synthetic_api_key: str | None = None
@@ -87,15 +86,10 @@ class Settings(BaseSettings):
     def has_any_api_key(self) -> bool:
         """Returns True if at least one real AI provider API key is set."""
         return bool(
-            self.google_api_key
-            or self.groq_api_key
+            self.groq_api_key
             or self.deepseek_api_key
             or self.synthetic_api_key
         )
-
-    def is_dummy_key(self) -> bool:
-        """Returns True if the Google key is the development placeholder."""
-        return self.google_api_key == "dummy_key_for_development"
 
 
 @lru_cache
@@ -103,6 +97,7 @@ def get_settings() -> Settings:
     """Returns a cached singleton Settings instance.
 
     Values are loaded from environment variables and .env file.
+    Infisical is expected to inject secrets into the environment.
 
     Returns:
         Settings: The application settings.
