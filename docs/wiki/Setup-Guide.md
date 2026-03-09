@@ -6,30 +6,28 @@
 - Podman (recommended for sandboxing Manim rendering)
 - Manim (locally if fallback execution is needed)
 
-## Installation
+## Configuration
 
-### Root Dependencies
+### Infisical Authentication
+This project uses Infisical for secret management. You must authenticate before starting development:
 ```bash
-pnpm install
+infisical login
 ```
 
-### Backend Setup
+### Recommended Setup (from Root)
 ```bash
-cd apps/backend
-uv venv
-source .venv/bin/activate
-uv sync
+make setup
 ```
 
-### Frontend Setup
+### Manual Installation (Fallback)
 ```bash
-cd apps/frontend
 pnpm install
+cd apps/backend && uv sync
 ```
 
 ## Running the Application
 From the root directory:
 ```bash
-pnpm dev
+make dev
 ```
-This will start both the backend (port 8000) and frontend (host/vite).
+This will start Redis, the backend (port 8000), the background worker, and the frontend (port 5173). Secrets are automatically injected via Infisical.
