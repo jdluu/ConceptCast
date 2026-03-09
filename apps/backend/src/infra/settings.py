@@ -81,7 +81,12 @@ class Settings(BaseSettings):
         """Returns the absolute path to the jobs artifact directory."""
         return self.data_dir / "jobs"
 
-    model_config = {"env_file": str(PROJECT_ROOT / ".env"), "extra": "ignore"}
+    model_config = {
+        "env_file": str(PROJECT_ROOT / ".env"),
+        "extra": "ignore",
+        "env_prefix": "",
+        "case_sensitive": False,
+    }
 
     def has_any_api_key(self) -> bool:
         """Returns True if at least one real AI provider API key is set."""
