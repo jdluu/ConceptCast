@@ -93,6 +93,8 @@ async def prepare_job_for_retry_logic(
             "retry_count": job.retry_count + 1,
             "streamed_thoughts": [],
             "render_progress": 0,
+            "started_at": None,
+            "finished_at": None,
         }
 
         for key, value in updates.items():

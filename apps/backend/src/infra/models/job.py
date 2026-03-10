@@ -47,6 +47,7 @@ class JobRecord(Base):
     )
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    total_execution_time: Mapped[float] = mapped_column(default=0.0)
     resolution: Mapped[str] = mapped_column(String, default="720p")
     frame_rate: Mapped[int] = mapped_column(Integer, default=30)
     render_progress: Mapped[int] = mapped_column(Integer, default=0)
@@ -91,6 +92,18 @@ class JobRecord(Base):
 
         thoughts = [ThoughtLog(**t) for t in (self.streamed_thoughts or [])]
 
+        # Calculate processing duration
+        # If running: total confirmed + duration of current session
+        # If terminal: purely the total confirmed time
+        is_active = status_literal not in ("completed", "failed", "pending_retry")
+        current_session_duration = 0.0
+        if is_active and self.started_at:
+            current_session_duration = (
+                datetime.now(UTC) - self.started_at
+            ).total_seconds()
+
+        duration_seconds = self.total_execution_time + current_session_duration
+
         return JobStatus(
             job_id=self.job_id,
             topic=self.topic,
@@ -110,11 +123,7 @@ class JobRecord(Base):
             frame_rate=self.frame_rate,
             started_at=self.started_at.isoformat() if self.started_at else None,
             finished_at=self.finished_at.isoformat() if self.finished_at else None,
-            duration_seconds=(
-                (self.finished_at - self.started_at).total_seconds()
-                if self.started_at and self.finished_at
-                else None
-            ),
+            duration_seconds=max(0.0, duration_seconds),
             cost=self.cost,
             retry_count=self.retry_count,
             thumbnail_url=self.thumbnail_url,

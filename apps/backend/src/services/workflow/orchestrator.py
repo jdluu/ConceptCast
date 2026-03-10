@@ -279,9 +279,27 @@ async def execute_workflow(
 
             logger.info(f"Job {job_id}: Rendering dispatched to Taskiq worker.")
 
+            # Update cumulative processing time on success (before final rendering)
+            if job_state.started_at:
+                session_duration = (
+                    datetime.now(UTC) - job_state.started_at
+                ).total_seconds()
+                await update_job(
+                    {
+                        "total_execution_time": job_state.total_execution_time
+                        + session_duration
+                    }
+                )
+
         except Exception as e:
             logger.exception(f"Workflow failed for job {job_id}: {e}")
             final_cost = calculate_job_cost(total_usage)
+            session_duration = 0.0
+            if job_state.started_at:
+                session_duration = (
+                    datetime.now(UTC) - job_state.started_at
+                ).total_seconds()
+
             await update_job_record(
                 db_session_factory=AsyncSessionLocal,
                 job_id=job_id,
@@ -290,6 +308,8 @@ async def execute_workflow(
                     "error": str(e),
                     "cost": final_cost,
                     "finished_at": datetime.now(UTC),
+                    "total_execution_time": job_state.total_execution_time
+                    + session_duration,
                 },
             )
             raise

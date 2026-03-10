@@ -107,14 +107,20 @@ export function JobRow({
         </td>
         <td className="px-4 py-5 font-medium whitespace-nowrap">
           <div className="flex flex-col">
-            <span className="flex items-center gap-1.5 text-xs text-[var(--foreground)]">
+            <div className="flex items-center gap-1.5">
               <PlayCircle className="h-3 w-3 text-indigo-500/50" />
-              {formatDuration(Number(metadata.duration))}
-            </span>
-            <span className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
-              <Clock className="h-2.5 w-2.5" />
-              {formatGenerationTime(job.duration_seconds)}
-            </span>
+              <span className="text-[10px] font-semibold text-indigo-600/70 uppercase">Video</span>
+              <span className="text-xs text-[var(--foreground)]">
+                {formatDuration(Number(metadata.duration))}
+              </span>
+            </div>
+            <div className="mt-0.5 flex items-center gap-1.5">
+              <Clock className="h-2.5 w-2.5 text-[var(--text-muted)]" />
+              <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase">AI</span>
+              <span className="text-[10px] text-[var(--text-muted)]">
+                {formatGenerationTime(job.duration_seconds)}
+              </span>
+            </div>
           </div>
         </td>
         <td className="px-4 py-5">
