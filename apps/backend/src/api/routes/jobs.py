@@ -116,9 +116,16 @@ async def create_job(
 
         is_mock = determine_execution_mode(request)
         mode = "mock" if is_mock else "live"
+        
+        # If in mock mode, we always use the canonical mock topic to ensure
+        # alignment between the UI, agents, and the Manim renderer.
+        effective_topic = (
+            "Understanding Quantum Entanglement" if is_mock else request.topic
+        )
+
         new_job = JobRecord(
             job_id=job_id,
-            topic=request.topic,
+            topic=effective_topic,
             target_audience=request.target_audience,
             status="planning",
             mode=mode,
@@ -135,11 +142,15 @@ async def create_job(
         session_factory = getattr(
             req.app.state, "db_session_factory", AsyncSessionLocal
         )
-        background_tasks.add_task(process_job_logic, job_id, request, session_factory)
+        
+        # Ensure the orchestrator also uses the effective topic
+        background_tasks.add_task(
+            process_job_logic, job_id, request.model_copy(update={"topic": effective_topic}), session_factory
+        )
 
         return JobStatus(
             job_id=job_id,
-            topic=request.topic,
+            topic=effective_topic,
             status="planning",
             mode=cast(Literal["live", "mock"], mode),
             provider=request.provider,

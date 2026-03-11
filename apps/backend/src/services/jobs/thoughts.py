@@ -77,7 +77,14 @@ async def append_job_thought(
             job.streamed_thoughts = thoughts[-max_entries:]
             job.updated_at = now
             await db.commit()
-            await job_event_manager.notify(job_id)
+
+            # Reduce UI noise: only notify if the chunk indicates a logical pause
+            # or if it's the first chunk of a new thought.
+            is_boundary = any(content.endswith(c) for c in ('.', '!', '?', '\n', ':', ';'))
+            is_long = len(content) > 100
+            
+            if not should_aggregate or is_boundary or is_long:
+                await job_event_manager.notify(job_id)
         except Exception:
             await db.rollback()
             raise

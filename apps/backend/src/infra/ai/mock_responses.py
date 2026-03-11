@@ -7,6 +7,7 @@ from api.schemas import (
     ValidationResult,
     VisualObject,
 )
+from pydantic import BaseModel
 
 MOCK_PLANS = {
     "default": CurriculumPlan(
@@ -17,30 +18,61 @@ MOCK_PLANS = {
                 step_id=1,
                 concept="The Spin Property",
                 visual_metaphor="Rotating spheres with glowing axes",
-                narration=(
-                    "Imagine two particles, like tiny spinning tops. In the quantum "
-                    "world, their spin can be linked in a way that defies classical "
-                    "logic."
-                ),
+                narration="Imagine two particles, like tiny spinning tops.",
             ),
             TeachingStep(
                 step_id=2,
                 concept="Superposition",
                 visual_metaphor="A blurry, shifting state between two colors",
-                narration=(
-                    "Until measured, a particle exists in multiple states at once. "
-                    "This uncertainty is the heart of quantum mechanics."
-                ),
+                narration="Until measured, a particle exists in multiple states.",
             ),
             TeachingStep(
                 step_id=3,
                 concept="Non-locality",
                 visual_metaphor="A bridge of light connecting two distant points",
-                narration=(
-                    "Entanglement means that measuring one particle instantly "
-                    "determines the state of the other, no matter the distance "
-                    "between them."
-                ),
+                narration="Entanglement means measuring one determines the other.",
+            ),
+            TeachingStep(
+                step_id=4,
+                concept="Quantum Gates",
+                visual_metaphor="Crystal prisms refracting light beams",
+                narration="Gates manipulate the state of entangled qubits.",
+            ),
+            TeachingStep(
+                step_id=5,
+                concept="Bell's Theorem",
+                visual_metaphor="Statistical charts with impossible correlations",
+                narration="Proving that local hidden variables don't exist.",
+            ),
+            TeachingStep(
+                step_id=6,
+                concept="Quantum Circuitry",
+                visual_metaphor="Glowing blue lines on a dark obsidian substrate",
+                narration="Building a computer from entangled particles.",
+            ),
+            TeachingStep(
+                step_id=7,
+                concept="Decoherence",
+                visual_metaphor="Shattering glass becoming sand",
+                narration="When the outside world breaks the delicate link.",
+            ),
+            TeachingStep(
+                step_id=8,
+                concept="Error Correction",
+                visual_metaphor="Self-weaving golden threads",
+                narration="Protecting information from quantum noise.",
+            ),
+            TeachingStep(
+                step_id=9,
+                concept="Superdense Coding",
+                visual_metaphor="Compressing light into a single point",
+                narration="Sending two bits using only one qubit.",
+            ),
+            TeachingStep(
+                step_id=10,
+                concept="Teleportation",
+                visual_metaphor="A particle vanishing here and appearing there",
+                narration="Moving information without moving matter.",
             ),
         ],
     )
@@ -64,30 +96,75 @@ MOCK_STORYBOARDS = {
         concept_title="Understanding Quantum Entanglement",
         scenes=[
             Scene(
-                scene_id=0,
-                title="Introduction to Quantum Void",
+                scene_id=1,
+                title="Quantum Void",
                 description="Opening shot: Two particles appearing in a void.",
-                narration=(
-                    "In the vastness of the quantum void, particles are "
-                    "never truly alone."
-                ),
-                objects=[
-                    VisualObject(
-                        name="p1",
-                        type="Circle",
-                        color="BLUE",
-                        position="LEFT",
-                        label=None,
-                    ),
-                    VisualObject(
-                        name="p2",
-                        type="Circle",
-                        color="RED",
-                        position="RIGHT",
-                        label=None,
-                    ),
-                ],
-            )
+                narration="In the vastness of the quantum void.",
+                objects=[],
+            ),
+            Scene(
+                scene_id=2,
+                title="Spin Alignment",
+                description="Particles start spinning in synchrony.",
+                narration="Watch as their fates become intertwined.",
+                objects=[],
+            ),
+            Scene(
+                scene_id=3,
+                title="Measurement",
+                description="A flash of light hits the first particle.",
+                narration="One choice determines the entire system.",
+                objects=[],
+            ),
+            Scene(
+                scene_id=4,
+                title="The Bridge",
+                description="A glowing link forms between the spheres.",
+                narration="Distance is no longer a barrier.",
+                objects=[],
+            ),
+            Scene(
+                scene_id=5,
+                title="Quantum Gate",
+                description="The particles pass through a prism.",
+                narration="Logic transformed by quantum rules.",
+                objects=[],
+            ),
+            Scene(
+                scene_id=6,
+                title="Correlation",
+                description="Charts showing linked probabilities.",
+                narration="Patterns that classical physics can't explain.",
+                objects=[],
+            ),
+            Scene(
+                scene_id=7,
+                title="Computer Core",
+                description="Zoom out to show a complex circuit.",
+                narration="The foundation of a new era of computing.",
+                objects=[],
+            ),
+            Scene(
+                scene_id=8,
+                title="The Noise",
+                description="Static begins to cloud the vision.",
+                narration="The challenge of decoherence.",
+                objects=[],
+            ),
+            Scene(
+                scene_id=9,
+                title="Error Correction",
+                description="Golden threads of light repair the static.",
+                narration="Overcoming noise with quantum redundancy.",
+                objects=[],
+            ),
+            Scene(
+                scene_id=10,
+                title="Teleportation",
+                description="A particle vanishes and reappears instantly.",
+                narration="The ultimate mastery of quantum information.",
+                objects=[],
+            ),
         ],
     )
 }
@@ -123,19 +200,44 @@ MOCK_REVIEWS = {
 }
 
 
-def inject_topic(text: str, topic: str) -> str:
-    """Injects the user's topic into a text template.
+def inject_topic_recursively(obj: Any, topic: str) -> Any:
+    """Recursively replaces topic keywords with the user's topic.
 
     Args:
-        text: The template text containing '{{concept_title}}'.
+        obj: The object (Pydantic model, list, or dict) to process.
         topic: The topic name to inject.
 
     Returns:
-        The template with placeholders replaced by the actual topic.
+        The object with all topic placeholders replaced.
     """
-    if not topic:
-        return text.replace("{{concept_title}}", "ConceptCast")
-    return text.replace("{{concept_title}}", topic)
+    replacements = {
+        "Understanding Quantum Entanglement": topic,
+        "Quantum Entanglement": topic,
+        "quantum": "core",
+        "particles": "components",
+        "particle": "component",
+    }
+    
+    if isinstance(obj, str):
+        res = obj
+        for target, replacement in replacements.items():
+            res = res.replace(target, replacement)
+        return res
+    
+    if isinstance(obj, list):
+        return [inject_topic_recursively(item, topic) for item in obj]
+    
+    if isinstance(obj, dict):
+        return {k: inject_topic_recursively(v, topic) for k, v in obj.items()}
+    
+    if hasattr(obj, "__dict__") or isinstance(obj, BaseModel):
+        # Handle Pydantic models and simple objects
+        fields = obj.__dict__ if not isinstance(obj, BaseModel) else obj.model_fields
+        for field_name in fields:
+            val = getattr(obj, field_name)
+            setattr(obj, field_name, inject_topic_recursively(val, topic))
+    
+    return obj
 
 
 def get_realistic_response(
@@ -152,23 +254,31 @@ def get_realistic_response(
         A JSON string or plain text representing the mock response.
     """
     if output_type == CurriculumPlan:
-        plan = MOCK_PLANS["default"]
+        plan = MOCK_PLANS["default"].model_copy(deep=True)
         if topic:
-            plan.concept_title = topic
+            plan = inject_topic_recursively(plan, topic)
         return plan.model_dump_json()
 
     if output_type == ValidationResult:
         return MOCK_VALIDATIONS["default"].model_dump_json()
 
     if output_type == Storyboard:
-        sb = MOCK_STORYBOARDS["default"]
+        sb = MOCK_STORYBOARDS["default"].model_copy(deep=True)
         if topic:
-            sb.concept_title = topic
+            sb = inject_topic_recursively(sb, topic)
         return sb.model_dump_json()
 
     if output_type == AnimationReview:
         return MOCK_REVIEWS["default"].model_dump_json()
 
+    # Handle Manim code injection
+    manim_template = MOCK_MANIM_CODE
     if topic:
-        return inject_topic(MOCK_MANIM_CODE, topic)
-    return MOCK_MANIM_CODE
+        # Replacement for the template placeholder
+        manim_template = manim_template.replace("{{concept_title}}", topic)
+        # Also handle any lingering default strings
+        manim_template = manim_template.replace("Understanding Quantum Entanglement", topic)
+    else:
+        manim_template = manim_template.replace("{{concept_title}}", "ConceptCast")
+    
+    return manim_template

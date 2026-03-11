@@ -10,6 +10,7 @@ from pydantic_ai import (
     PartDeltaEvent,
     TextPartDelta,
     ThinkingPartDelta,
+    ToolCallPartDelta,
 )
 from pydantic_ai.usage import RunUsage
 
@@ -54,6 +55,14 @@ async def run_agent_streamed(
                 and event.delta.content_delta
             ):
                 await on_thought(agent_name, "output", event.delta.content_delta)
+            elif (
+                isinstance(event.delta, ToolCallPartDelta)
+                and on_thought
+                and event.delta.tool_name
+            ):
+                await on_thought(
+                    agent_name, "tool_call", f"Invoking tool: {event.delta.tool_name}..."
+                )
         elif isinstance(event, AgentRunResultEvent):
             final = event.result.output
             usage = event.result.usage()

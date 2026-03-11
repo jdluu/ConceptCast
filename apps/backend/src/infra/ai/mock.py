@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 from collections.abc import AsyncIterator
@@ -17,6 +18,7 @@ from pydantic_ai.messages import (
     PartStartEvent,
     SystemPromptPart,
     TextPart,
+    ThinkingPart,
     ToolCallPart,
     UserPromptPart,
 )
@@ -54,15 +56,33 @@ class MockStreamedResponse(StreamedResponse):
     _parts: list[ModelResponsePart]
 
     async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
-        """Yields events simulated from the predefined parts."""
+        """Yields events simulated from the predefined parts with realistic delays."""
         for i, part in enumerate(self._parts):
-            if isinstance(part, TextPart):
-                events = self._parts_manager.handle_text_delta(
-                    vendor_part_id=i, content=part.content
-                )
-                for event in events:
-                    yield event
+            if isinstance(part, (TextPart, ThinkingPart)):
+                # Split content into parts, preserving the delimiters (newlines or sentence-ending spaces)
+                # This ensures Python code blocks (Manim) preserve their syntax.
+                content = part.content
+                parts_list = re.split(r'((?<=[.!?])\s+|\n)', content)
+                for part_chunk in parts_list:
+                    if not part_chunk:
+                        continue
+                    
+                    if isinstance(part, TextPart):
+                        events = self._parts_manager.handle_text_delta(
+                            vendor_part_id=i, content=part_chunk
+                        )
+                    else:
+                        events = self._parts_manager.handle_thinking_delta(
+                            vendor_part_id=i, content=part_chunk
+                        )
+
+                    for event in events:
+                        yield event
+                    
+                    # Small delay between chunks for realism
+                    await asyncio.sleep(0.1)
             elif isinstance(part, ToolCallPart):
+                await asyncio.sleep(0.5)  # Simulate "thinking" before tool call
                 yield self._parts_manager.handle_tool_call_part(
                     vendor_part_id=i,
                     tool_name=part.tool_name,
@@ -177,11 +197,18 @@ class RealisticMockModel(Model):
             response_json = get_realistic_response("", CurriculumPlan, user_topic)
             return ModelResponse(
                 parts=[
+                    ThinkingPart(
+                        content=(
+                            f"Analyzing the topic '{user_topic or 'Unknown'}' for pedagogical structure. "
+                            "Breaking down key concepts and identifying logical dependencies. "
+                            "I will now consult the Validator to ensure the plan is sound."
+                        )
+                    ),
                     ToolCallPart(
                         tool_name="consult_critic",
                         args=json.loads(response_json),
                         tool_call_id="mock_call_1",
-                    )
+                    ),
                 ]
             )
 
@@ -216,15 +243,25 @@ class RealisticMockModel(Model):
             if actual_tool:
                 return ModelResponse(
                     parts=[
+                        ThinkingPart(
+                            content=f"Preparing final {target_type.__name__ if target_type else 'output'} based on council feedback."
+                        ),
                         ToolCallPart(
                             tool_name=actual_tool.name,
                             args=json.loads(response_text),
                             tool_call_id="mock_call_final",
-                        )
+                        ),
                     ]
                 )
 
-        return ModelResponse(parts=[TextPart(content=response_text)])
+        return ModelResponse(
+            parts=[
+                ThinkingPart(
+                    content=f"Synthesizing {agent_label} outputs for '{user_topic or 'the topic'}'. Finalizing artifacts."
+                ),
+                TextPart(content=response_text),
+            ]
+        )
 
     def name(self) -> str:
         return "realistic-mock"
