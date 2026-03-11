@@ -7,6 +7,7 @@ import {
   Check,
   Sparkles,
 } from 'lucide-react';
+import { ArtifactBadge } from './artifacts/ArtifactCommon';
 
 interface AnalystVerdictProps {
   /** Validation result object from the backend. */
@@ -16,9 +17,6 @@ interface AnalystVerdictProps {
 /**
  * Displays the AI analyst's validation verdict including feedback,
  * quality checks, and optimization suggestions.
- *
- * @param {AnalystVerdictProps} props - Component properties.
- * @returns {JSX.Element} The rendered verdict panel.
  */
 export function AnalystVerdict({ validation }: AnalystVerdictProps) {
   return (
@@ -26,62 +24,65 @@ export function AnalystVerdict({ validation }: AnalystVerdictProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {validation.is_valid ? (
-            <ShieldCheck className="h-5 w-5 text-emerald-500" />
+            <ShieldCheck className="h-5 w-5 text-success" />
           ) : (
-            <AlertCircle className="h-5 w-5 text-amber-500" />
+            <AlertCircle className="h-5 w-5 text-warning" />
           )}
           <span
-            className={`text-xs font-bold tracking-wider uppercase ${validation.is_valid ? 'text-emerald-500' : 'text-amber-500'}`}
+            className={`text-xs font-bold tracking-wider uppercase ${validation.is_valid ? 'text-success' : 'text-warning'}`}
           >
             {validation.is_valid ? 'Council Approved' : 'Needs Refinement'}
           </span>
         </div>
       </div>
 
-      <div className="relative rounded-xl border border-indigo-500/10 bg-indigo-500/5 p-4 italic">
-        <MessageSquare className="absolute -top-3 -left-3 h-6 w-6 fill-indigo-500/10 text-indigo-500/20" />
-        <p className="line-clamp-3 text-sm leading-relaxed text-[var(--foreground)] italic">
+      {/* Analyst Feedback Quote */}
+      <div className="relative rounded-xl border border-council-active/10 bg-council-active/5 p-4 italic">
+        <MessageSquare className="absolute -top-3 -left-3 h-6 w-6 fill-council-active/10 text-council-active/20" />
+        <p className="line-clamp-3 text-sm-plus leading-relaxed text-foreground italic">
           "{validation.feedback}"
         </p>
-        <div className="mt-3 flex items-center gap-2 text-[10px] font-medium tracking-widest text-indigo-500/60 uppercase">
-          <span>— Analyst A2A</span>
-          <span className="h-1 w-1 rounded-full bg-indigo-500/20" />
-          <span>Verified Step 4</span>
+        <div className="mt-4 flex items-center gap-2">
+           <ArtifactBadge variant="active">— Analyst A2A</ArtifactBadge>
+           <span className="h-1 w-1 rounded-full bg-council-active/20" />
+           <ArtifactBadge>Verified Step 4</ArtifactBadge>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
-        <div className="flex items-center justify-between rounded-lg border border-[var(--surface-border)] bg-[var(--background)] p-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="flex items-center justify-between rounded-xl border border-surface-border bg-background p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <Layers className="h-4 w-4 text-indigo-400" />
-            <span className="text-xs font-medium text-[var(--text-muted)]">
+            <Layers className="h-4 w-4 text-council-completed" />
+            <span className="text-xs font-bold text-text-muted uppercase tracking-tight">
               Conceptual Accuracy
             </span>
           </div>
-          <Check className="h-4 w-4 text-emerald-500" />
+          <Check className="h-4 w-4 text-success" />
         </div>
-        <div className="flex items-center justify-between rounded-lg border border-[var(--surface-border)] bg-[var(--background)] p-3">
+        <div className="flex items-center justify-between rounded-xl border border-surface-border bg-background p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <Clock className="h-4 w-4 text-indigo-400" />
-            <span className="text-xs font-medium text-[var(--text-muted)]">Pacing & Flow</span>
+            <Clock className="h-4 w-4 text-council-completed" />
+            <span className="text-xs font-bold text-text-muted uppercase tracking-tight">Pacing & Flow</span>
           </div>
-          <Check className="h-4 w-4 text-emerald-500" />
+          <Check className="h-4 w-4 text-success" />
         </div>
       </div>
 
       {validation.suggestions?.length > 0 && (
-        <div className="space-y-3 pt-2">
-          <h4 className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-indigo-400 uppercase">
-            <Sparkles className="h-3 w-3" />
-            Optimization Tips
-          </h4>
-          <ul className="space-y-2">
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-council-active" />
+            <h4 className="text-tiny font-bold tracking-[0.2em] text-text-muted uppercase">
+              Optimization Tips
+            </h4>
+          </div>
+          <ul className="space-y-3">
             {validation.suggestions.map((s: string, i: number) => (
-              <li key={i} className="group flex gap-3 text-xs text-[var(--text-muted)]">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-indigo-500/20 bg-indigo-500/10 text-[10px] text-indigo-500">
+              <li key={i} className="group flex gap-3 text-xs text-text-muted">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-council-active/20 bg-council-active/10 text-tiny font-bold text-council-active">
                   {i + 1}
                 </span>
-                <span className="pt-0.5 leading-relaxed">{s}</span>
+                <span className="pt-0.5 leading-relaxed font-medium">{s}</span>
               </li>
             ))}
           </ul>

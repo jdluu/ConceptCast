@@ -15,17 +15,16 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  planning: 'bg-blue-400/10 text-blue-400 border-blue-400/20',
-  validating: 'bg-purple-400/10 text-purple-400 border-purple-400/20',
-  architecting: 'bg-indigo-400/10 text-indigo-400 border-indigo-400/20',
-  animating: 'bg-cyan-400/10 text-cyan-400 border-cyan-400/20',
-  rendering: 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20',
-  reviewing: 'bg-orange-400/10 text-orange-400 border-orange-400/20',
-  completed: 'bg-green-400/10 text-green-400 border-green-400/20',
-  failed: 'bg-red-400/10 text-red-400 border-red-400/20',
-  queued:
-    'bg-[var(--surface-border)]/20 text-[var(--text-muted)] border-[var(--surface-border)]/40',
-  pending_retry: 'bg-amber-400/10 text-amber-400 border-amber-400/20',
+  planning: 'bg-agent-planning/10 text-agent-planning border-agent-planning/20',
+  validating: 'bg-agent-validating/10 text-agent-validating border-agent-validating/20',
+  architecting: 'bg-agent-architecting/10 text-agent-architecting border-agent-architecting/20',
+  animating: 'bg-agent-animating/10 text-agent-animating border-agent-animating/20',
+  rendering: 'bg-agent-rendering/10 text-agent-rendering border-agent-rendering/20',
+  reviewing: 'bg-agent-reviewing/10 text-agent-reviewing border-agent-reviewing/20',
+  completed: 'bg-council-completed/10 text-council-completed border-council-completed/20',
+  failed: 'bg-destructive/10 text-destructive border-destructive/20',
+  queued: 'bg-surface-border/20 text-text-muted border-surface-border/40',
+  pending_retry: 'bg-warning/10 text-warning border-warning/20',
 };
 
 interface StatusBadgeProps {
@@ -37,7 +36,7 @@ interface StatusBadgeProps {
 export function StatusBadge({ status, showIcon = true, className = '' }: StatusBadgeProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusColors[status] || 'border-[var(--surface-border)]/40 bg-[var(--surface-border)]/20 text-[var(--text-muted)]'} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-mini font-bold ${statusColors[status] || 'border-surface-border/40 bg-surface-border/20 text-text-muted'} ${className}`}
     >
       {showIcon && <StatusIcon status={status} className="h-3 w-3" />}
       {statusLabels[status] || status}

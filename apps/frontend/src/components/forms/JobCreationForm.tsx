@@ -2,134 +2,123 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { getAvailableModels } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
+import { getAvailableModels, type JobRequest } from '@/lib/api/client';
 import { useDeveloperMode } from '@/lib/contexts/developerMode';
-import { useAppSettings } from '@/lib/contexts/appSettings';
 import { useJobStore } from '@/lib/store/useJobStore';
-import { Button, Card } from '@/components/ui/Common';
-import { AudienceField, ModelSelectionFields, QualityFields } from './JobFormFields';
-import { LoadingOverlay, NoKeysAlert } from './JobFormFeedback';
-import { jobSchema, JobFormData, ProviderGroup } from './JobFormTypes';
+import { Button } from '@/components/ui/Common';
+import { Card } from '@/components/ui/Card';
+import {
+  AudienceField,
+  QualityFields,
+  ModelSelectionFields,
+} from '@/components/forms/JobFormFields';
+import { LoadingOverlay, NoKeysAlert } from '@/components/forms/JobFormFeedback';
+import { JobFormData, jobSchema } from '@/components/forms/JobFormTypes';
+
+function FormSection({ 
+  number, 
+  title, 
+  children, 
+  className = "" 
+}: { 
+  number: number; 
+  title: string; 
+  children: React.ReactNode; 
+  className?: string 
+}) {
+  return (
+    <section className={cn("space-y-6", className)}>
+      <div className="mb-4 flex items-center gap-3">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-council-active/10 text-xs font-bold text-council-active">
+          {number}
+        </span>
+        <h3 className="text-sm font-bold tracking-wider text-text-muted uppercase">
+          {title}
+        </h3>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export function JobCreationForm() {
   const { developerMode } = useDeveloperMode();
-  const { settings } = useAppSettings();
-  const prefersReducedMotion = useReducedMotion() || settings.reducedMotion;
   const { createJob, isSubmitting: isLoading } = useJobStore();
+
   const [showNoKeysToast, setShowNoKeysToast] = useState(true);
-
-  const { data: availableModels } = useQuery({
-    queryKey: ['available-models'],
-    queryFn: getAvailableModels,
-    staleTime: 1000 * 60 * 60,
-  });
-
-  const hasRealProviders = !availableModels?.available
-    ? true
-    : availableModels.available.some((p: { provider: string }) => p.provider !== 'mock');
-
-  const realProvidersOnly: ProviderGroup[] =
-    availableModels?.available?.filter((p: { provider: string }) => p.provider !== 'mock') ?? [];
-
-  const firstRealProvider = realProvidersOnly[0];
-  const defaultProvider = firstRealProvider?.provider ?? '';
-  const defaultModel = firstRealProvider?.models?.[0] ?? '';
+  const topicInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
     handleSubmit,
-    control,
     setValue,
-    getValues,
+    control,
     formState: { errors },
   } = useForm<JobFormData>({
-    resolver: zodResolver(jobSchema as any),
+    resolver: zodResolver(jobSchema),
     defaultValues: {
-      topic: '',
-      target_audience: 'General Audience',
+      target_audience: 'University Student',
+      resolution: '720p',
+      frame_rate: 30,
       provider: 'mock',
-      model_id: 'mock-llm',
-      resolution: settings.resolution as '720p' | '1080p',
-      frame_rate: settings.frameRate as 30 | 60,
+      model_id: 'mock-gpt-4',
     },
   });
 
-  const topicInputRef = useRef<HTMLInputElement>(null);
-  const { ref: topicRef, ...topicRegister } = register('topic');
-
-  // Focus management when loading ends
-  const prevLoading = useRef(isLoading);
-  useEffect(() => {
-    if (prevLoading.current && !isLoading) {
-      topicInputRef.current?.focus();
-    }
-    prevLoading.current = isLoading;
-  }, [isLoading]);
-
   const selectedProvider = useWatch({ control, name: 'provider' });
-  const hasSetRealDefaults = useRef(false);
+
+  const { data } = useQuery({
+    queryKey: ['models'],
+    queryFn: getAvailableModels,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const providers = data?.available ?? [];
+  const realProvidersOnly = providers.filter((p) => p.provider !== 'mock');
+  const hasRealProviders = realProvidersOnly.length > 0;
+  const noKeys = !hasRealProviders;
 
   useEffect(() => {
-    if (hasRealProviders && firstRealProvider && !hasSetRealDefaults.current) {
-      hasSetRealDefaults.current = true;
-      setValue('provider', defaultProvider);
-      setValue('model_id', defaultModel);
+    if (hasRealProviders && selectedProvider === 'mock') {
+      const firstReal = realProvidersOnly[0];
+      setValue('provider', firstReal.provider);
+      setValue('model_id', firstReal.models[0]);
     }
-  }, [hasRealProviders, defaultProvider, defaultModel, firstRealProvider, setValue]);
+  }, [hasRealProviders, selectedProvider, realProvidersOnly, setValue]);
 
-  useEffect(() => {
-    if (!selectedProvider || !hasRealProviders) return;
-    const models = realProvidersOnly.find((p) => p.provider === selectedProvider)?.models ?? [];
-    const firstModel = models[0];
-    if (firstModel) setValue('model_id', firstModel);
-  }, [selectedProvider, hasRealProviders, setValue]);
-
-  /**
-   * Final form submission handler.
-   * Initiates the backend generation workflow via the job store.
-   *
-   * @param {JobFormData} data - Validated form inputs.
-   */
   const onFormSubmit = async (data: JobFormData) => {
     try {
-      await createJob({
+      const request: JobRequest = {
         topic: data.topic,
-        target_audience: data.target_audience || 'General Audience',
-        provider: data.provider || null,
-        model_id: data.model_id || null,
+        target_audience: data.target_audience || 'General',
         resolution: data.resolution,
         frame_rate: data.frame_rate as 30 | 60,
-      });
-      toast.success('Council consulting started!');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to start generation');
+        provider: data.provider,
+        model_id: data.model_id,
+      };
+      await createJob(request);
+    } catch (error) {
+      console.error('Submission failed:', error);
+      toast.error('Failed to initiate orchestration. Check your connection.');
     }
   };
 
-  /**
-   * Triggers a simulated generation workflow for demonstration purposes.
-   */
-  const runMockDemo = async () => {
-    const values = getValues();
-    try {
-      await createJob({
-        topic: values.topic || 'Understanding Quantum Entanglement',
-        target_audience: values.target_audience || 'General Audience',
-        provider: 'mock',
-        model_id: 'mock-llm',
-        resolution: values.resolution,
-        frame_rate: values.frame_rate as 30 | 60,
-      });
-      toast.info('Running mock demo sequence');
-    } catch {
-      toast.error('Mock demo failed');
-    }
+  const runMockDemo = () => {
+    createJob({
+      topic: 'The double-slit experiment and quantum wave-particle duality',
+      target_audience: 'High School Student',
+      resolution: '720p',
+      frame_rate: 30,
+      provider: 'mock',
+      model_id: 'mock-gpt-4',
+    });
   };
 
-  const noKeys = !hasRealProviders && !!availableModels?.available?.length;
   const showMockButton = developerMode;
+  const { ref: topicRef, ...topicRegister } = register('topic');
 
   return (
     <motion.div
@@ -137,13 +126,13 @@ export function JobCreationForm() {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="relative max-w-xl overflow-hidden">
+      <Card variant="premium" className="relative max-w-xl overflow-hidden p-8">
         <LoadingOverlay isLoading={isLoading} />
 
-        <h2 className="mb-1 bg-gradient-to-r from-[var(--foreground)] to-[var(--text-muted)] bg-clip-text text-xl font-bold text-transparent">
+        <h2 className="mb-1 bg-gradient-to-r from-foreground to-text-muted bg-clip-text text-xl font-bold text-transparent">
           Create New Concept
         </h2>
-        <p className="mb-8 text-sm text-[var(--text-muted)]">
+        <p className="mb-8 text-sm text-text-muted">
           Orchestrate a pedagogical animation with the Council agents.
         </p>
 
@@ -153,93 +142,75 @@ export function JobCreationForm() {
 
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-12">
           <div className="grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2">
-            <section className="md:col-span-2">
-              <div className="mb-4 flex items-center gap-3">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/10 text-xs font-bold text-indigo-500">
-                  1
-                </span>
-                <h3 className="text-sm font-bold tracking-wider text-[var(--text-muted)] uppercase">
-                  Subject Matter
-                </h3>
+            <FormSection number={1} title="Subject Matter" className="md:col-span-2">
+              <div className="space-y-2">
+                <label
+                  htmlFor="topic"
+                  className="block text-sm font-semibold text-foreground"
+                >
+                  What would you like to learn?
+                </label>
+                <input
+                  {...topicRegister}
+                  ref={(e) => {
+                    topicRef(e);
+                    (topicInputRef as any).current = e;
+                  }}
+                  type="text"
+                  id="topic"
+                  className="w-full rounded-xl border border-surface-border bg-background/50 px-4 py-3.5 text-foreground transition-all outline-none placeholder:text-text-muted hover:border-council-active/50 focus:border-transparent focus:ring-2 focus:ring-council-active"
+                  placeholder="e.g. Quantum Entanglement, The French Revolution..."
+                />
+                {errors.topic && (
+                  <p className="flex items-center gap-1 text-xs font-semibold text-destructive">
+                    <span className="h-1 w-1 rounded-full bg-destructive" />
+                    {errors.topic.message as string}
+                  </p>
+                )}
               </div>
-              <label
-                htmlFor="topic"
-                className="mb-2 block text-sm font-semibold text-[var(--foreground)]"
-              >
-                What would you like to learn?
-              </label>
-              <input
-                {...topicRegister}
-                ref={(e) => {
-                  topicRef(e);
-                  (topicInputRef as any).current = e;
-                }}
-                type="text"
-                id="topic"
-                className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--background)]/50 px-4 py-3.5 text-[var(--foreground)] transition-all outline-none placeholder:text-[var(--text-muted)] hover:border-indigo-500/50 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
-                placeholder="e.g. Quantum Entanglement, The French Revolution..."
-              />
-              {errors.topic && (
-                <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-red-500">
-                  <span className="h-1 w-1 rounded-full bg-red-500" />
-                  {errors.topic.message as string}
-                </p>
-              )}
-            </section>
+            </FormSection>
 
-            <section className="space-y-6">
-              <div className="mb-1 flex items-center gap-3">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/10 text-xs font-bold text-indigo-500">
-                  2
-                </span>
-                <h3 className="text-sm font-bold tracking-wider text-[var(--text-muted)] uppercase">
-                  Context
-                </h3>
+            <FormSection number={2} title="Context">
+              <div className="space-y-6">
+                <AudienceField register={register} />
+                {errors.target_audience && (
+                  <p className="mt-1 text-xs text-destructive">
+                    {errors.target_audience.message as string}
+                  </p>
+                )}
+
+                <QualityFields register={register} />
+                {errors.resolution && (
+                  <p className="mt-1 text-xs text-destructive">{errors.resolution.message as string}</p>
+                )}
+                {errors.frame_rate && (
+                  <p className="mt-1 text-xs text-destructive">{errors.frame_rate.message as string}</p>
+                )}
               </div>
-              <AudienceField register={register} />
-              {errors.target_audience && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors.target_audience.message as string}
-                </p>
-              )}
-
-              <QualityFields register={register} />
-              {errors.resolution && (
-                <p className="mt-1 text-xs text-red-500">{errors.resolution.message as string}</p>
-              )}
-              {errors.frame_rate && (
-                <p className="mt-1 text-xs text-red-500">{errors.frame_rate.message as string}</p>
-              )}
-            </section>
+            </FormSection>
 
             {hasRealProviders && (
-              <section className="space-y-6">
-                <div className="mb-1 flex items-center gap-3">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/10 text-xs font-bold text-indigo-500">
-                    3
-                  </span>
-                  <h3 className="text-sm font-bold tracking-wider text-[var(--text-muted)] uppercase">
-                    Intelligence
-                  </h3>
+              <FormSection number={3} title="Intelligence">
+                <div className="space-y-6">
+                  <ModelSelectionFields
+                    register={register}
+                    selectedProvider={selectedProvider}
+                    realProvidersOnly={realProvidersOnly}
+                  />
+                  {errors.provider && (
+                    <p className="mt-1 text-xs text-destructive">{errors.provider.message as string}</p>
+                  )}
+                  {errors.model_id && (
+                    <p className="mt-1 text-xs text-destructive">{errors.model_id.message as string}</p>
+                  )}
                 </div>
-                <ModelSelectionFields
-                  register={register}
-                  selectedProvider={selectedProvider}
-                  realProvidersOnly={realProvidersOnly}
-                />
-                {errors.provider && (
-                  <p className="mt-1 text-xs text-red-500">{errors.provider.message as string}</p>
-                )}
-                {errors.model_id && (
-                  <p className="mt-1 text-xs text-red-500">{errors.model_id.message as string}</p>
-                )}
-              </section>
+              </FormSection>
             )}
 
             {noKeys && (
-              <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm font-medium text-amber-500 italic md:col-span-2">
+              <div className="flex items-center gap-3 rounded-xl border border-warning/20 bg-warning/5 p-4 text-sm font-medium text-warning italic md:col-span-2">
                 <div
-                  className={`h-2 w-2 rounded-full bg-amber-500 ${prefersReducedMotion ? '' : 'animate-pulse'}`}
+                  className={`h-2 w-2 rounded-full bg-warning animate-pulse`}
                 />
                 No real AI providers configured. Using simulated engine.
               </div>
@@ -250,7 +221,7 @@ export function JobCreationForm() {
             <Button
               type="submit"
               disabled={isLoading || noKeys}
-              className="h-12 w-full rounded-xl text-base font-bold shadow-lg shadow-indigo-500/20"
+              className="w-full"
             >
               {isLoading ? 'Consulting Council...' : 'Generate Lesson'}
             </Button>
@@ -260,7 +231,7 @@ export function JobCreationForm() {
                 variant="outline"
                 onClick={runMockDemo}
                 disabled={isLoading}
-                className="h-11 w-full"
+                className="w-full"
               >
                 Run mock demo
               </Button>

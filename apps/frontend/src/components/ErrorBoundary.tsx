@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { Button } from '@/components/ui/Common';
 
 interface Props {
   children?: ReactNode;
@@ -25,26 +26,26 @@ class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--background)] p-4 text-[var(--foreground)]">
-          <div className="w-full max-w-lg rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] p-8 shadow-2xl">
-            <h2 className="mb-4 text-2xl font-bold text-red-500">Something went wrong.</h2>
-            <p className="mb-4 font-medium text-[var(--text-muted)]">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground">
+          <div className="w-full max-w-lg rounded-3xl border border-surface-border bg-surface p-10 shadow-2xl">
+            <h2 className="mb-4 text-2xl font-bold text-destructive uppercase tracking-tight">Something went wrong.</h2>
+            <p className="mb-6 font-medium text-text-muted">
               An unexpected error occurred. Please try refreshing the page.
             </p>
             {this.state.error && (
-              <details className="mb-6 max-h-48 overflow-auto rounded-xl border border-[var(--surface-border)] bg-[var(--background)] p-4 font-mono text-xs whitespace-pre-wrap text-red-500/80">
-                <summary className="mb-2 cursor-pointer font-bold tracking-widest uppercase opacity-60">
+              <details className="mb-8 max-h-48 overflow-auto rounded-2xl border border-surface-border bg-background/50 p-4 font-mono text-mini whitespace-pre-wrap text-destructive/80">
+                <summary className="mb-2 cursor-pointer font-bold tracking-[0.2em] uppercase opacity-60">
                   Error Details
                 </summary>
                 {this.state.error.toString()}
               </details>
             )}
-            <button
+            <Button
               onClick={() => window.location.reload()}
-              className="w-full rounded bg-red-600 px-4 py-2 font-bold text-white transition-colors hover:bg-red-700"
+              className="w-full h-12"
             >
               Refresh Page
-            </button>
+            </Button>
           </div>
         </div>
       );

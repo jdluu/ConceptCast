@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
-import { cn } from '@/lib/utils';
-import { Button as ShadcnButton } from '@/components/ui/Button';
-import { Card as ShadcnCard } from '@/components/ui/Card';
+import { Button as BaseButton } from '@/components/ui/Button';
+import { Card as BaseCard } from '@/components/ui/Card';
 import {
   Dialog,
   DialogContent,
@@ -10,20 +9,22 @@ import {
   DialogDescription,
 } from '@/components/ui/Dialog';
 
+/**
+ * Premium Card component for ConceptCast surfaces.
+ * Now a thin wrapper around the base Card with 'premium' variant.
+ */
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <ShadcnCard
-      className={cn(
-        'relative overflow-hidden rounded-2xl border-[var(--surface-border)] bg-[var(--surface)]/50 p-6 shadow-2xl backdrop-blur-xl',
-        'before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/5 before:to-transparent',
-        className,
-      )}
-    >
+    <BaseCard variant="premium" className={className}>
       {children}
-    </ShadcnCard>
+    </BaseCard>
   );
 }
 
+/**
+ * Premium Button component for ConceptCast actions.
+ * Now a thin wrapper around the base Button with 'premium' variant.
+ */
 export function Button({
   children,
   onClick,
@@ -42,28 +43,24 @@ export function Button({
   variant?: 'primary' | 'outline';
 }) {
   return (
-    <ShadcnButton
+    <BaseButton
       type={type}
       onClick={onClick}
       disabled={disabled}
       title={title}
-      variant={variant === 'primary' ? 'default' : 'outline'}
-      className={cn(
-        'rounded-xl font-extrabold transition-all duration-300 active:scale-[0.97]',
-        variant === 'primary' && [
-          'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500',
-          'border-none text-white shadow-xl shadow-indigo-500/25',
-          'hover:-translate-y-0.5 hover:shadow-indigo-500/40',
-        ],
-        variant === 'outline' && 'border-2 hover:bg-[var(--surface)]',
-        className,
-      )}
+      variant={variant === 'primary' ? 'premium' : 'outline'}
+      size={variant === 'primary' ? 'xl' : 'default'}
+      rounded="xl"
+      className={className}
     >
       {children}
-    </ShadcnButton>
+    </BaseButton>
   );
 }
 
+/**
+ * Centered modal dialog with standard ConceptCast styling.
+ */
 export function Modal({
   isOpen,
   onClose,
@@ -77,9 +74,9 @@ export function Modal({
 }) {
   return (
     <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
-      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden border-[var(--surface-border)] bg-[var(--surface)] p-0">
-        <DialogHeader className="border-b border-[var(--surface-border)] p-4">
-          <DialogTitle className="text-lg font-bold text-[var(--foreground)]">{title}</DialogTitle>
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden border-surface-border bg-surface p-0">
+        <DialogHeader className="border-b border-surface-border p-4">
+          <DialogTitle className="text-lg font-bold text-foreground">{title}</DialogTitle>
           <DialogDescription className="sr-only">Modal dialog for {title}</DialogDescription>
         </DialogHeader>
         <div className="custom-scrollbar flex-1 overflow-y-auto p-6">{children}</div>

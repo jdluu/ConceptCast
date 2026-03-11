@@ -20,10 +20,10 @@ export function CollapsibleSection({
   badge,
 }: CollapsibleSectionProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] shadow-lg transition-all duration-300">
+    <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-lg transition-all duration-300">
       <button
         onClick={onToggle}
-        className="flex w-full items-center justify-between border-b border-[var(--surface-border)] bg-[var(--surface)]/50 px-4 py-3 hover:bg-[var(--surface-border)]/20 transition-colors"
+        className="flex w-full items-center justify-between border-b border-surface-border bg-surface/50 px-4 py-3 hover:bg-surface-border/20 transition-colors"
       >
         <div className="flex items-center gap-3">
           {icon && (
@@ -35,16 +35,16 @@ export function CollapsibleSection({
               {icon}
             </motion.span>
           )}
-          <span className="text-[11px] font-bold tracking-widest text-[var(--foreground)] uppercase">
+          <span className="text-mini font-bold tracking-widest text-foreground uppercase">
             {title}
           </span>
           {badge && <div className="ml-2">{badge}</div>}
         </div>
         <div className="flex items-center gap-3">
           {isCollapsed ? (
-            <ChevronDown className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+            <ChevronDown className="h-3.5 w-3.5 text-text-muted" />
           ) : (
-            <ChevronUp className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+            <ChevronUp className="h-3.5 w-3.5 text-text-muted" />
           )}
         </div>
       </button>

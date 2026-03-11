@@ -20,13 +20,13 @@ interface FilterSelectProps {
 export function FilterSelect({ icon, value, onChange, options }: FilterSelectProps) {
   return (
     <div className="group relative">
-      <div className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--text-muted)] transition-colors group-hover:text-indigo-500">
+      <div className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-text-muted transition-colors group-hover:text-council-active">
         {icon}
       </div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="cursor-pointer appearance-none rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] py-3 pr-10 pl-10 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-all outline-none hover:border-indigo-500/30 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50"
+        className="cursor-pointer appearance-none rounded-2xl border border-surface-border bg-surface py-3 pr-10 pl-10 text-sm font-semibold text-foreground shadow-sm transition-all outline-none hover:border-council-active/30 focus:border-council-active focus:ring-2 focus:ring-council-active/50"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -34,7 +34,7 @@ export function FilterSelect({ icon, value, onChange, options }: FilterSelectPro
           </option>
         ))}
       </select>
-      <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-[var(--text-muted)] transition-colors group-hover:text-indigo-500">
+      <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-text-muted transition-colors group-hover:text-council-active">
         <ChevronDown className="h-4 w-4" />
       </div>
     </div>

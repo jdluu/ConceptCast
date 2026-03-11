@@ -29,8 +29,8 @@ export function ActionButton({ icon, title, onClick, variant = 'default' }: Acti
       className={cn(
         'rounded-lg p-2 shadow-sm transition-all active:scale-95',
         variant === 'danger'
-          ? 'text-[var(--text-muted)] hover:bg-red-500/10 hover:text-red-500'
-          : 'text-[var(--text-muted)] hover:bg-indigo-500/10 hover:text-indigo-600',
+          ? 'text-text-muted hover:bg-destructive/10 hover:text-destructive'
+          : 'text-text-muted hover:bg-council-active/10 hover:text-council-active',
       )}
     >
       {icon}
