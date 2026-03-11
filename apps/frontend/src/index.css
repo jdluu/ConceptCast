@@ -4,6 +4,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* 
+  1. Theme Variables Layer
+  Centralized source of truth for raw values that change per theme.
+*/
 @layer base {
   :root {
     --background: #ffffff;
@@ -12,12 +16,12 @@
     --surface-border: #e5e5e5;
     --text-muted: #737373;
 
-    /* Shadcn Variables */
+    /* Shadcn Semantic Mapping */
     --card: var(--surface);
     --card-foreground: var(--foreground);
     --popover: var(--surface);
     --popover-foreground: var(--foreground);
-    --primary: #4f46e5; /* Indigo 600 */
+    --primary: #4f46e5;
     --primary-foreground: #ffffff;
     --secondary: #f5f5f5;
     --secondary-foreground: #0a0a0a;
@@ -27,101 +31,134 @@
     --accent-foreground: #0a0a0a;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
+    --success: #10b981;
+    --success-foreground: #ffffff;
+    --warning: #f59e0b;
+    --warning-foreground: #ffffff;
+    --info: #3b82f6;
+    --info-foreground: #ffffff;
     --border: var(--surface-border);
     --input: var(--surface-border);
     --ring: #4f46e5;
-    /* Redesign Tokens */
-    --council-active: #3b82f6; /* Electric Blue */
-    --council-completed: #6366f1; /* Indigo */
-    --council-pending: #737373; /* Grey */
+
+    /* Brand / Domain Specific */
+    --council-active: #3b82f6;
+    --council-completed: #6366f1;
+    --council-pending: #737373;
     --terminal-bg: #171717;
     --terminal-text: #e5e5e5;
-    --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+
+    --agent-planning: #60a5fa;
+    --agent-validating: #c084fc;
+    --agent-architecting: #3b82f6;
+    --agent-animating: #22d3ee;
+    --agent-rendering: #facc15;
+    --agent-reviewing: #fb923c;
+    
+    --radius: 0.75rem;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 
-  :root.dark {
+  .dark {
     --background: #000000;
     --foreground: #ffffff;
     --surface: #121212;
     --surface-border: #262626;
     --text-muted: #a3a3a3;
 
-    /* Redesign Tokens (Dark) */
+    --primary: #6366f1;
+    --secondary: #171717;
+    --accent: #262626;
     --council-active: #60a5fa;
     --council-completed: #818cf8;
     --council-pending: #525252;
     --terminal-bg: #0a0a0a;
     --terminal-text: #d4d4d4;
-    --card-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.5);
 
-    /* Shadcn Variables Dark */
-    --card: var(--surface);
-    --card-foreground: var(--foreground);
-    --popover: var(--surface);
-    --popover-foreground: var(--foreground);
-    --primary: #6366f1; /* Indigo 500 */
-    --primary-foreground: #ffffff;
-    --secondary: #171717;
-    --secondary-foreground: #ffffff;
-    --muted: #171717;
-    --muted-foreground: var(--text-muted);
-    --accent: #262626;
-    --accent-foreground: #ffffff;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --border: var(--surface-border);
-    --input: var(--surface-border);
+    --agent-planning: #60a5fa;
+    --agent-validating: #c084fc;
+    --agent-architecting: #60a5fa;
+    --agent-animating: #22d3ee;
+    --agent-rendering: #facc15;
+    --agent-reviewing: #fb923c;
+
     --ring: #6366f1;
+    --success: #10b981;
+    --success-foreground: #ffffff;
+    --warning: #f59e0b;
+    --warning-foreground: #ffffff;
+    --info: #3b82f6;
+    --info-foreground: #ffffff;
   }
 }
 
+/* 
+  2. Tailwind Theme Extension 
+  Mapping CSS variables to Tailwind utilities.
+*/
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  /* Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+  --color-surface: var(--surface);
+  --color-surface-border: var(--surface-border);
+  --color-text-muted: var(--text-muted);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-council-active: var(--council-active);
+  --color-council-completed: var(--council-completed);
+  --color-council-pending: var(--council-pending);
+  --color-terminal-bg: var(--terminal-bg);
+  --color-terminal-text: var(--terminal-text);
+  --color-agent-planning: var(--agent-planning);
+  --color-agent-validating: var(--agent-validating);
+  --color-agent-architecting: var(--agent-architecting);
+  --color-agent-animating: var(--agent-animating);
+  --color-agent-rendering: var(--agent-rendering);
+  --color-agent-reviewing: var(--agent-reviewing);
   --color-ring: var(--ring);
+
+  /* Radius */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
 
   /* Premium Animations */
   @keyframes mesh-gradient {
-    0% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
-    }
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
   }
-
   --animate-mesh: mesh-gradient 15s ease infinite;
+
+  /* Shadow Tokens */
+  --shadow-glow-council: 0 4px 12px rgba(59, 130, 246, 0.15);
+  --shadow-glow-success: 0 0 8px rgba(16, 185, 129, 0.5);
 }
 
+/* 
+  3. Base Global Styles
+*/
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-surface-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
@@ -129,9 +166,7 @@
       radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.05) 0px, transparent 50%),
       radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%);
     background-attachment: fixed;
-    transition:
-      background-color 0.3s ease,
-      color 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease;
     min-height: 100vh;
   }
 }
@@ -140,4 +175,15 @@
   background-image:
     radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.15) 0px, transparent 50%),
     radial-gradient(at 100% 0%, rgba(9, 9, 11, 0.5) 0px, transparent 50%);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-surface-border hover:bg-text-muted/30 transition-colors;
 }
