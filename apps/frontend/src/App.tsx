@@ -25,24 +25,22 @@ import {
 } from '@tanstack/react-router';
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 import { AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/Common';
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   const errorMessage = error instanceof Error ? error.message : String(error);
   return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center px-4 text-center">
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+    <div className="flex min-h-md flex-col items-center justify-center px-4 text-center">
+      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive dark:bg-destructive/30">
         <AlertTriangle className="h-8 w-8" />
       </div>
-      <h2 className="mb-3 text-xl font-bold text-[var(--foreground)]">Something went wrong</h2>
-      <p className="mb-6 max-w-md font-mono text-sm whitespace-pre-wrap text-[var(--text-muted)]">
+      <h2 className="mb-3 text-xl font-bold text-foreground">Something went wrong</h2>
+      <p className="mb-6 max-w-md font-mono text-sm whitespace-pre-wrap text-text-muted">
         {errorMessage}
       </p>
-      <button
-        onClick={resetErrorBoundary}
-        className="rounded-xl bg-[var(--foreground)] px-6 py-2 font-medium text-[var(--background)] transition-opacity hover:opacity-90"
-      >
+      <Button onClick={resetErrorBoundary} className="px-8">
         Try again
-      </button>
+      </Button>
     </div>
   );
 }
@@ -219,7 +217,7 @@ function IndexView() {
   return (
     <div className="mx-auto max-w-3xl">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Consult the Council
         </h1>
       </header>

@@ -39,14 +39,12 @@ interface JobState {
   createJob: (data: JobRequest) => Promise<void>;
   /** Resets the job-specific state to initial values. */
   resetJob: () => void;
+  /** Remove a specific job from local state if it matches the current job. */
+  removeJob: (jobId: string) => void;
 }
 
 /**
  * Persisted store for managing the lifecycle of ConceptCast jobs.
- *
- * This store coordinates between the form submission, live SSE updates,
- * and the orchestration view. It tracks the current job's state,
- * rendering progress, and submission status.
  */
 export const useJobStore = create<JobState>()(
   persist(
@@ -94,6 +92,14 @@ export const useJobStore = create<JobState>()(
           jobStartedAt: 0,
           renderProgress: 0,
         }),
+
+      removeJob: (jobId) =>
+        set((state) => {
+          if (state.currentJob?.job_id === jobId) {
+            return { currentJob: null };
+          }
+          return state;
+        }),
     }),
     {
       name: 'concept-cast-job-store',
@@ -103,7 +109,6 @@ export const useJobStore = create<JobState>()(
 
 /**
  * Atomic selectors for fine-grained subscriptions.
- * Prevents re-renders when other parts of the store change.
  */
 export const selectCurrentJob = (state: JobState) => state.currentJob;
 export const selectIsSubmitting = (state: JobState) => state.isSubmitting;
@@ -113,4 +118,5 @@ export const selectJobActions = (state: JobState) => ({
   resetJob: state.resetJob,
   setCurrentJob: state.setCurrentJob,
   setRenderProgress: state.setRenderProgress,
+  removeJob: state.removeJob,
 });
