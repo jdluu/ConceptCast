@@ -45,16 +45,15 @@ async def step_rendering(
     """
     await update_job({"status": "rendering", "current_step": "rendering"})
     try:
-        if job.mode == "mock":
-            render_result = await mock_render_storyboard(job_id)
-        else:
-            render_result = await render_storyboard(
-                code,
-                job_id,
-                update_job=update_job,
-                resolution=job.resolution,
-                frame_rate=job.frame_rate,
-            )
+        # We always attempt a real render now, even in mock mode,
+        # because the mock Manim code is actually valid.
+        render_result = await render_storyboard(
+            code,
+            job_id,
+            update_job=update_job,
+            resolution=job.resolution,
+            frame_rate=job.frame_rate,
+        )
 
         total_cost = calculate_job_cost(
             render_duration=render_result.metadata.get("duration", 0)
