@@ -107,8 +107,6 @@ async def _handle_planning_step(
             "started_at": datetime.now(UTC),
         }
     )
-    if provider == "mock":
-        await asyncio.sleep(2)
 
     if job_state.plan:
         logger.info(f"Job {job_id}: Found existing plan, skipping planning step.")
@@ -143,13 +141,9 @@ async def _handle_architecting_steps(
     await update_job({"status": "architecting", "current_step": "parallel_execution"})
 
     async def run_validating() -> Any:
-        if provider == "mock":
-            await asyncio.sleep(2)
         return await step_validating(plan, request, job_state, update_job, on_thought)
 
     async def run_architecting() -> Any:
-        if provider == "mock":
-            await asyncio.sleep(2)
         res = await step_architecting(plan, request, job_state, update_job, on_thought)
         if not res[0]:
             raise StoryboardGenerationError(
@@ -182,8 +176,6 @@ async def _handle_animating_step(
         return job_state.manim_code, None
 
     await update_job({"status": "animating", "current_step": "animating_start"})
-    if provider == "mock":
-        await asyncio.sleep(2)
 
     code, m_usage = await step_animating(
         storyboard, request, job_state, update_job, on_thought
@@ -281,8 +273,11 @@ async def execute_workflow(
 
             # Update cumulative processing time on success (before final rendering)
             if job_state.started_at:
+                started_at = job_state.started_at
+                if started_at.tzinfo is None:
+                    started_at = started_at.replace(tzinfo=UTC)
                 session_duration = (
-                    datetime.now(UTC) - job_state.started_at
+                    datetime.now(UTC) - started_at
                 ).total_seconds()
                 await update_job(
                     {
@@ -296,8 +291,11 @@ async def execute_workflow(
             final_cost = calculate_job_cost(total_usage)
             session_duration = 0.0
             if job_state.started_at:
+                started_at = job_state.started_at
+                if started_at.tzinfo is None:
+                    started_at = started_at.replace(tzinfo=UTC)
                 session_duration = (
-                    datetime.now(UTC) - job_state.started_at
+                    datetime.now(UTC) - started_at
                 ).total_seconds()
 
             await update_job_record(

@@ -1,3 +1,4 @@
+import asyncio
 import json
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -52,6 +53,14 @@ async def step_planning(
             model=plan_model,
             on_thought=on_thought,
         )
+
+        if job.mode == "mock":
+            # Simulate incremental "filling in" of the plan for realism
+            logger.info("Simulating incremental plan population...")
+            for i in range(1, len(plan.teaching_steps) + 1):
+                partial_plan = plan.model_copy(update={"teaching_steps": plan.teaching_steps[:i]})
+                await update_job({"plan": partial_plan.model_dump()})
+                await asyncio.sleep(0.4) # Brief pause between steps
 
         job.plan = plan.model_dump()
         job.current_step = "planning_complete"

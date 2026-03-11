@@ -1,3 +1,4 @@
+import asyncio
 import json
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -51,6 +52,14 @@ async def step_architecting(
         storyboard, usage = await generate_storyboard(
             plan, architect_model, on_thought=on_thought
         )
+
+        if job.mode == "mock":
+            # Simulate incremental "filling in" of the storyboard
+            logger.info("Simulating incremental storyboard population...")
+            for i in range(1, len(storyboard.scenes) + 1):
+                partial_storyboard = storyboard.model_copy(update={"scenes": storyboard.scenes[:i]})
+                await update_job({"storyboard": partial_storyboard.model_dump()})
+                await asyncio.sleep(0.3) # Brief pause between scenes
 
         job.storyboard = storyboard.model_dump()
         job.current_step = "architecting_complete"
