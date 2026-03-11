@@ -15,7 +15,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from api.middleware.logging import LoggingMiddleware
-from api.middleware.rate_limiting import RateLimitMiddleware
 from api.routes import ai_models, health, jobs
 from infra.database import AsyncSessionLocal, init_db
 from infra.settings import get_settings
@@ -53,7 +52,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(LoggingMiddleware)
-app.add_middleware(RateLimitMiddleware, limit=3, window=300)
 
 settings.jobs_dir.mkdir(parents=True, exist_ok=True)
 app.mount(
