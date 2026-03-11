@@ -98,8 +98,11 @@ class JobRecord(Base):
         is_active = status_literal not in ("completed", "failed", "pending_retry")
         current_session_duration = 0.0
         if is_active and self.started_at:
+            started_at = self.started_at
+            if started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=UTC)
             current_session_duration = (
-                datetime.now(UTC) - self.started_at
+                datetime.now(UTC) - started_at
             ).total_seconds()
 
         duration_seconds = self.total_execution_time + current_session_duration
