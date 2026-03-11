@@ -11,30 +11,30 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
-      <h1 className="mb-10 text-3xl font-bold tracking-tight text-[var(--foreground)]">Settings</h1>
+      <h1 className="mb-10 text-3xl font-bold tracking-tight text-foreground">Settings</h1>
 
       <div className="space-y-8">
         {/* UI / UX Settings */}
         <section>
           <header className="mb-4">
-            <h2 className="text-xs font-bold tracking-[0.2em] text-[var(--text-muted)] uppercase">
+            <h2 className="text-tiny font-bold tracking-[0.2em] text-text-muted uppercase">
               UI / UX Settings
             </h2>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
+            <p className="mt-1 text-sm text-text-muted">
               Personalize your experience and improve usability.
             </p>
           </header>
 
-          <div className="overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] backdrop-blur-sm">
-            <div className="flex items-center justify-between gap-8 border-b border-[var(--surface-border)] p-6">
+          <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-8 border-b border-surface-border p-6">
               <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)]">Interface Theme</h3>
-                <p className="mt-1 text-xs text-[var(--text-muted)]">
+                <h3 className="text-sm font-semibold text-foreground">Interface Theme</h3>
+                <p className="mt-1 text-xs text-text-muted">
                   Select your preferred color scheme for the application.
                 </p>
               </div>
 
-              <div className="flex rounded-xl border border-[var(--surface-border)] bg-[var(--background)] p-1">
+              <div className="flex rounded-xl border border-surface-border bg-background p-1">
                 <ThemeButton
                   active={theme === 'light'}
                   onClick={() => setTheme('light')}
@@ -58,8 +58,8 @@ export function SettingsPage() {
 
             <div className="flex items-center justify-between gap-8 p-6">
               <div className="flex-1">
-                <h3 className="text-sm font-semibold text-[var(--foreground)]">Developer Mode</h3>
-                <p className="mt-1 text-xs text-[var(--text-muted)]">
+                <h3 className="text-sm font-semibold text-foreground">Developer Mode</h3>
+                <p className="mt-1 text-xs text-text-muted">
                   Enables advanced features like mock data demos when API keys are missing.
                 </p>
               </div>
@@ -68,8 +68,8 @@ export function SettingsPage() {
                 role="switch"
                 aria-checked={developerMode}
                 onClick={() => setDeveloperMode(!developerMode)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-indigo-500/50 focus:outline-none ${
-                  developerMode ? 'bg-indigo-600' : 'bg-[var(--surface-border)]'
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-council-active/50 focus:outline-none ${
+                  developerMode ? 'bg-council-active' : 'bg-surface-border'
                 }`}
               >
                 <span
@@ -85,25 +85,25 @@ export function SettingsPage() {
         {/* Accessibility & Notifications */}
         <section>
           <header className="mb-4">
-            <h2 className="text-xs font-bold tracking-[0.2em] text-[var(--text-muted)] uppercase">
+            <h2 className="text-tiny font-bold tracking-[0.2em] text-text-muted uppercase">
               Accessibility & Notifications
             </h2>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
+            <p className="mt-1 text-sm text-text-muted">
               Control how the application communicates and behaves.
             </p>
           </header>
 
-          <div className="overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] backdrop-blur-sm">
+          <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface backdrop-blur-sm">
             {/* Browser Notifications */}
-            <div className="flex items-center justify-between gap-8 border-b border-[var(--surface-border)] p-6">
+            <div className="flex items-center justify-between gap-8 border-b border-surface-border p-6">
               <div className="flex-1">
                 <div className="mb-1 flex items-center gap-2">
-                  <Bell className="h-4 w-4 text-indigo-500" />
-                  <h3 className="text-sm font-semibold text-[var(--foreground)]">
+                  <Bell className="h-4 w-4 text-council-active" />
+                  <h3 className="text-sm font-semibold text-foreground">
                     Completion Alerts
                   </h3>
                 </div>
-                <p className="text-xs text-[var(--text-muted)]">
+                <p className="text-xs text-text-muted">
                   Get browser notifications when a generation or rendering task completes.
                 </p>
               </div>
@@ -114,8 +114,8 @@ export function SettingsPage() {
                 onClick={() =>
                   updateSettings({ enableNotifications: !settings.enableNotifications })
                 }
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-indigo-500/50 focus:outline-none ${
-                  settings.enableNotifications ? 'bg-indigo-600' : 'bg-[var(--surface-border)]'
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-council-active/50 focus:outline-none ${
+                  settings.enableNotifications ? 'bg-council-active' : 'bg-surface-border'
                 }`}
               >
                 <span
@@ -127,13 +127,13 @@ export function SettingsPage() {
             </div>
 
             {/* Sound Effects */}
-            <div className="flex items-center justify-between gap-8 border-b border-[var(--surface-border)] p-6">
+            <div className="flex items-center justify-between gap-8 border-b border-surface-border p-6">
               <div className="flex-1">
                 <div className="mb-1 flex items-center gap-2">
-                  <Volume2 className="h-4 w-4 text-indigo-500" />
-                  <h3 className="text-sm font-semibold text-[var(--foreground)]">Sound Effects</h3>
+                  <Volume2 className="h-4 w-4 text-council-active" />
+                  <h3 className="text-sm font-semibold text-foreground">Sound Effects</h3>
                 </div>
-                <p className="text-xs text-[var(--text-muted)]">
+                <p className="text-xs text-text-muted">
                   Play subtle audio cues for status updates and completion.
                 </p>
               </div>
@@ -142,8 +142,8 @@ export function SettingsPage() {
                 role="switch"
                 aria-checked={settings.enableSound}
                 onClick={() => updateSettings({ enableSound: !settings.enableSound })}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-indigo-500/50 focus:outline-none ${
-                  settings.enableSound ? 'bg-indigo-600' : 'bg-[var(--surface-border)]'
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-council-active/50 focus:outline-none ${
+                  settings.enableSound ? 'bg-council-active' : 'bg-surface-border'
                 }`}
               >
                 <span
@@ -158,10 +158,10 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-8 p-6">
               <div className="flex-1">
                 <div className="mb-1 flex items-center gap-2">
-                  <Move className="h-4 w-4 text-indigo-500" />
-                  <h3 className="text-sm font-semibold text-[var(--foreground)]">Reduced Motion</h3>
+                  <Move className="h-4 w-4 text-council-active" />
+                  <h3 className="text-sm font-semibold text-foreground">Reduced Motion</h3>
                 </div>
-                <p className="text-xs text-[var(--text-muted)]">
+                <p className="text-xs text-text-muted">
                   Disable intensive UI animations and pulsing indicators.
                 </p>
               </div>
@@ -170,8 +170,8 @@ export function SettingsPage() {
                 role="switch"
                 aria-checked={settings.reducedMotion}
                 onClick={() => updateSettings({ reducedMotion: !settings.reducedMotion })}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-indigo-500/50 focus:outline-none ${
-                  settings.reducedMotion ? 'bg-indigo-600' : 'bg-[var(--surface-border)]'
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-council-active/50 focus:outline-none ${
+                  settings.reducedMotion ? 'bg-council-active' : 'bg-surface-border'
                 }`}
               >
                 <span
@@ -187,15 +187,15 @@ export function SettingsPage() {
         {/* AI Orchestration */}
         <section>
           <header className="mb-4">
-            <h2 className="text-xs font-bold tracking-[0.2em] text-[var(--text-muted)] uppercase">
+            <h2 className="text-tiny font-bold tracking-[0.2em] text-text-muted uppercase">
               AI Orchestration
             </h2>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
+            <p className="mt-1 text-sm text-text-muted">
               Configure how the agent council operates.
             </p>
           </header>
 
-          <div className="overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] backdrop-blur-sm">
+          <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface backdrop-blur-sm">
             {/* Agent Transparency removed - managed via UI dropdowns */}
           </div>
         </section>
@@ -203,17 +203,17 @@ export function SettingsPage() {
         {/* Danger Zone */}
         <section>
           <header className="mb-4">
-            <h2 className="flex items-center gap-2 text-xs font-bold tracking-[0.2em] text-red-500 uppercase">
+            <h2 className="flex items-center gap-2 text-tiny font-bold tracking-[0.2em] text-destructive uppercase">
               <Zap className="h-3 w-3" />
               Danger Zone
             </h2>
           </header>
 
-          <div className="overflow-hidden rounded-2xl border border-red-500/20 bg-red-500/5 backdrop-blur-sm">
+          <div className="overflow-hidden rounded-2xl border border-destructive/20 bg-destructive/5 backdrop-blur-sm">
             <div className="flex items-center justify-between gap-8 p-6">
               <div className="flex-1">
-                <h3 className="text-sm font-bold text-red-500">Clear All Job History</h3>
-                <p className="mt-1 text-xs text-red-500/60">
+                <h3 className="text-sm font-bold text-destructive">Clear All Job History</h3>
+                <p className="mt-1 text-xs text-destructive/60">
                   Permanently delete all generated videos, scripts, and logs. This action cannot be
                   undone.
                 </p>
@@ -230,11 +230,10 @@ export function SettingsPage() {
 function ClearHistoryButton() {
   const [confirming, setConfirming] = useState(false);
 
-  // Placeholder mutation - needs backend implementation
   const clearHistory = async () => {
     try {
       await fetch('http://localhost:8000/jobs', { method: 'DELETE' });
-      window.location.reload(); // Simple reload to clear state for now
+      window.location.reload();
     } catch (e) {
       console.error('Failed to clear history:', e);
       setConfirming(false);
@@ -246,13 +245,13 @@ function ClearHistoryButton() {
       <div className="animate-in fade-in slide-in-from-right-2 flex items-center gap-2 duration-200">
         <button
           onClick={() => setConfirming(false)}
-          className="rounded-lg px-3 py-1.5 text-xs font-bold text-[var(--text-muted)] transition-colors hover:text-[var(--foreground)]"
+          className="rounded-lg px-3 py-1.5 text-xs font-bold text-text-muted transition-colors hover:text-foreground"
         >
           Cancel
         </button>
         <button
           onClick={clearHistory}
-          className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-red-600/20 transition-all hover:bg-red-700 active:scale-95"
+          className="rounded-lg bg-destructive px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-destructive/20 transition-all hover:bg-destructive/90 active:scale-95"
         >
           Confirm Delete
         </button>
@@ -263,7 +262,7 @@ function ClearHistoryButton() {
   return (
     <button
       onClick={() => setConfirming(true)}
-      className="flex items-center gap-2 rounded-xl border border-red-500/20 px-4 py-2 text-xs font-bold text-red-500 transition-all hover:bg-red-500/10 active:scale-95"
+      className="flex items-center gap-2 rounded-xl border border-destructive/20 px-4 py-2 text-xs font-bold text-destructive transition-all hover:bg-destructive/10 active:scale-95"
     >
       <Trash2 className="h-4 w-4" />
       Clear History
@@ -287,8 +286,8 @@ function ThemeButton({
       onClick={onClick}
       className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
         active
-          ? 'bg-indigo-600 text-white shadow-lg'
-          : 'text-[var(--text-muted)] hover:text-[var(--foreground)]'
+          ? 'bg-council-active text-white shadow-lg'
+          : 'text-text-muted hover:text-foreground'
       }`}
     >
       {icon}

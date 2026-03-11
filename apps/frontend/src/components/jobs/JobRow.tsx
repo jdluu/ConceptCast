@@ -14,7 +14,6 @@ import {
   Square,
   Clock,
   PlayCircle,
-  Loader2,
 } from 'lucide-react';
 import { formatDuration, formatGenerationTime } from '@/lib/utils/durationUtils';
 
@@ -37,12 +36,6 @@ const formatTime = (isoString: string | null | undefined) => {
 
 /**
  * A single expandable row in the Jobs table.
- *
- * Displays a job summary with preview, status, duration, output metadata,
- * model info, and action buttons. Expands to show the full JobDetailPanel.
- *
- * @param {JobRowProps} props - Component properties.
- * @returns {JSX.Element} The rendered table row (plus optional detail row).
  */
 export function JobRow({
   job,
@@ -62,8 +55,8 @@ export function JobRow({
       <tr
         className={cn(
           'group cursor-pointer transition-all duration-200',
-          isExpanded ? 'bg-indigo-500/5' : 'hover:bg-[var(--surface-border)]/20',
-          isSelected && 'bg-indigo-500/5',
+          isExpanded ? 'bg-council-active/5' : 'hover:bg-surface-border/20',
+          isSelected && 'bg-council-active/5',
         )}
         onClick={onToggleExpand}
       >
@@ -78,27 +71,27 @@ export function JobRow({
             className={cn(
               'p-1 transition-colors',
               isSelected
-                ? 'text-indigo-500'
-                : 'text-[var(--text-muted)] group-hover:text-[var(--foreground)]',
+                ? 'text-council-active'
+                : 'text-text-muted group-hover:text-foreground',
             )}
           >
             {isSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
           </button>
         </td>
         <td className="px-4 py-5">
-          <div className="relative aspect-video w-20 overflow-hidden rounded-md border border-[var(--surface-border)] bg-[var(--background)] shadow-inner">
+          <div className="relative aspect-video w-20 overflow-hidden rounded-md border border-surface-border bg-background shadow-inner">
             {job.thumbnail_url ? (
               <img src={job.thumbnail_url} alt="" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
-                <Play className="h-4 w-4 text-[var(--text-muted)]" />
+                <Play className="h-4 w-4 text-text-muted opacity-30" />
               </div>
             )}
           </div>
         </td>
         <td className="max-w-xs px-4 py-5">
-          <span className="block truncate font-semibold text-[var(--foreground)]">{job.topic}</span>
-          <span className="mt-0.5 block font-mono text-[10px] tracking-tighter text-[var(--text-muted)] uppercase">
+          <span className="block truncate font-semibold text-foreground">{job.topic}</span>
+          <span className="mt-0.5 block font-mono text-tiny tracking-tighter text-text-muted uppercase">
             {job.job_id.split('-')[0]}
           </span>
         </td>
@@ -108,16 +101,16 @@ export function JobRow({
         <td className="px-4 py-5 font-medium whitespace-nowrap">
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <PlayCircle className="h-3 w-3 text-indigo-500/50" />
-              <span className="text-[10px] font-semibold text-indigo-600/70 uppercase">Video</span>
-              <span className="text-xs text-[var(--foreground)]">
+              <PlayCircle className="h-3 w-3 text-council-active/50" />
+              <span className="text-tiny font-semibold text-council-active/70 uppercase">Video</span>
+              <span className="text-xs text-foreground">
                 {formatDuration(Number(metadata.duration))}
               </span>
             </div>
             <div className="mt-0.5 flex items-center gap-1.5">
-              <Clock className="h-2.5 w-2.5 text-[var(--text-muted)]" />
-              <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase">AI</span>
-              <span className="text-[10px] text-[var(--text-muted)]">
+              <Clock className="h-2.5 w-2.5 text-text-muted" />
+              <span className="text-micro font-semibold text-text-muted uppercase">AI</span>
+              <span className="text-tiny text-text-muted">
                 {formatGenerationTime(job.duration_seconds)}
               </span>
             </div>
@@ -125,28 +118,28 @@ export function JobRow({
         </td>
         <td className="px-4 py-5">
           <div className="flex flex-col">
-            <span className="text-xs font-medium text-[var(--foreground)]">
+            <span className="text-xs font-medium text-foreground">
               {job.resolution
                 ? metadata.resolution && metadata.resolution !== job.resolution
                   ? `${job.resolution} (${metadata.resolution})`
                   : job.resolution
                 : metadata.resolution || '\u2014'}
             </span>
-            <span className="text-[10px] text-[var(--text-muted)]">
+            <span className="text-tiny text-text-muted">
               {metadata.file_size || (job.frame_rate ? `${job.frame_rate} FPS` : '')}
             </span>
           </div>
         </td>
         <td className="px-4 py-5 text-right">
-          <span className="block font-bold text-indigo-600 dark:text-indigo-400">
+          <span className="block font-bold text-council-active dark:text-council-active">
             {job.model_id || '\u2014'}
           </span>
         </td>
         <td className="px-4 py-5 text-right whitespace-nowrap">
-          <span className="block text-[var(--foreground)] opacity-80">
+          <span className="block text-foreground opacity-80">
             {new Date(job.created_at).toLocaleDateString()}
           </span>
-          <span className="block text-[10px] text-[var(--text-muted)]">
+          <span className="block text-tiny text-text-muted">
             {formatTime(job.created_at)}
           </span>
         </td>
@@ -180,12 +173,12 @@ export function JobRow({
                 e.stopPropagation();
                 onToggleExpand();
               }}
-              className="ml-2 border-l border-[var(--surface-border)] pl-2 transition-colors hover:text-[var(--foreground)]"
+              className="ml-2 border-l border-surface-border pl-2 transition-colors hover:text-foreground"
             >
               {isExpanded ? (
-                <ChevronUp className="h-4 w-4 text-[var(--text-muted)]" />
+                <ChevronUp className="h-4 w-4 text-text-muted" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-[var(--text-muted)]" />
+                <ChevronDown className="h-4 w-4 text-text-muted" />
               )}
             </button>
           </div>
@@ -193,15 +186,8 @@ export function JobRow({
       </tr>
       {isExpanded && (
         <tr>
-          <td colSpan={9} className="border-b border-[var(--surface-border)] p-0">
-            {detail ? (
-              <JobDetailPanel job={detail} />
-            ) : (
-              <div className="bg-[var(--surface)]/50 p-12 text-center">
-                <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-indigo-500" />
-                <span className="text-sm text-[var(--text-muted)]">Loading job artifacts...</span>
-              </div>
-            )}
+          <td colSpan={9} className="border-b border-surface-border p-0">
+            <JobDetailPanel jobId={job.job_id} initialData={detail} />
           </td>
         </tr>
       )}

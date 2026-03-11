@@ -3,246 +3,237 @@ import {
   retryJob,
   deleteJob,
   getJobStatus,
-  type JobSummary,
   type JobStatus,
 } from '@/lib/api/client';
 import { useDeveloperMode } from '@/lib/contexts/developerMode';
-import { useJobStore } from '@/lib/store/useJobStore';
+import { useJobStore, selectJobActions } from '@/lib/store/useJobStore';
 import { VideoPlayer } from '@/components/ui/VideoPlayer';
 import { FilterSelect } from '@/components/ui/FilterSelect';
+import { Modal } from '@/components/ui/Common';
 import { JobRow } from '@/components/jobs/JobRow';
 import { useJobs } from '@/lib/hooks/useJobs';
 import { Trash2, Filter, ArrowUpDown, CheckSquare, Square } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 
 export function JobsPage() {
   const { data, isPending, refetch } = useJobs();
   const jobs = data?.jobs ?? [];
-
-  const { currentJob, resetJob } = useJobStore();
-
-  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
-  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
-  const [fullJobDetails, setFullJobDetails] = useState<Record<string, JobStatus>>({});
-  const [playingJob, setPlayingJob] = useState<JobSummary | null>(null);
-
-  // Filters
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setBy] = useState<'newest' | 'duration' | 'cost'>('newest');
-
   const { developerMode } = useDeveloperMode();
+  const { removeJob } = useJobStore(useShallow(selectJobActions));
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [playingJob, setPlayingJob] = useState<JobStatus | null>(null);
+  const [expandedDetail, setExpandedDetail] = useState<JobStatus | undefined>();
+
+  // Filter & Sort State
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'topic'>('newest');
 
   const filteredJobs = useMemo(() => {
-    let result = developerMode ? jobs : jobs.filter((job) => job.mode !== 'mock');
-
-    if (statusFilter !== 'all') result = result.filter((j) => j.status === statusFilter);
-
+    let result = [...jobs];
+    if (!developerMode) {
+      result = result.filter((j) => j.mode !== 'mock');
+    }
+    if (statusFilter !== 'all') {
+      result = result.filter((j) => j.status === statusFilter);
+    }
     return result.toSorted((a, b) => {
-      if (sortBy === 'newest')
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      if (sortBy === 'duration')
-        return (
-          (Number((b as any).video_metadata?.duration) || 0) -
-          (Number((a as any).video_metadata?.duration) || 0)
-        );
-      return 0;
+      if (sortBy === 'topic') return a.topic.localeCompare(b.topic);
+      const timeA = new Date(a.created_at).getTime();
+      const timeB = new Date(b.created_at).getTime();
+      return sortBy === 'newest' ? timeB - timeA : timeA - timeB;
     });
-  }, [jobs, developerMode, statusFilter, sortBy]);
+  }, [jobs, statusFilter, sortBy, developerMode]);
 
   const toggleExpand = useCallback(
     async (jobId: string) => {
-      if (expandedJobId === jobId) {
-        setExpandedJobId(null);
+      if (expandedId === jobId) {
+        setExpandedId(null);
+        setExpandedDetail(undefined);
       } else {
-        setExpandedJobId(jobId);
-        if (!fullJobDetails[jobId]) {
-          try {
-            const details = await getJobStatus(jobId);
-            setFullJobDetails((prev) => ({ ...prev, [jobId]: details }));
-          } catch (error) {
-            console.error('Failed to fetch job details', error);
-          }
+        setExpandedId(jobId);
+        setExpandedDetail(undefined);
+        try {
+          const detail = await getJobStatus(jobId);
+          setExpandedDetail(detail);
+        } catch (e) {
+          console.error('Failed to fetch job details', e);
         }
       }
     },
-    [expandedJobId, fullJobDetails],
+    [expandedId],
   );
 
   const toggleSelect = (jobId: string) => {
-    const next = new Set(selectedJobIds);
+    const next = new Set(selectedIds);
     if (next.has(jobId)) next.delete(jobId);
     else next.add(jobId);
-    setSelectedJobIds(next);
+    setSelectedIds(next);
   };
 
   const toggleSelectAll = () => {
-    if (selectedJobIds.size === filteredJobs.length) {
-      setSelectedJobIds(new Set());
-    } else {
-      setSelectedJobIds(new Set(filteredJobs.map((j) => j.job_id)));
+    if (selectedIds.size === filteredJobs.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filteredJobs.map((j) => j.job_id)));
+  };
+
+  const handleBatchDelete = async () => {
+    if (confirm(`Delete ${selectedIds.size} jobs permanently?`)) {
+      try {
+        await Promise.all(
+          Array.from(selectedIds).map(async (id) => {
+            await deleteJob(id);
+            removeJob(id);
+          }),
+        );
+        setSelectedIds(new Set());
+        refetch();
+      } catch (e) {
+        console.error('Batch deletion failed', e);
+      }
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (!confirm(`Delete ${selectedJobIds.size} jobs?`)) return;
+  const handlePlay = async (jobId: string) => {
     try {
-      await Promise.all(Array.from(selectedJobIds).map((id) => deleteJob(id)));
-      if (currentJob && selectedJobIds.has(currentJob.job_id)) {
-        resetJob();
-      }
-      setSelectedJobIds(new Set());
-      await refetch();
-    } catch (error) {
-      console.error('Bulk delete failed', error);
+      const detail = await getJobStatus(jobId);
+      setPlayingJob(detail);
+    } catch (e) {
+      console.error('Failed to fetch video for playback', e);
     }
   };
 
   if (isPending) {
-    return <div className="p-8 text-[var(--text-muted)]">Loading jobs...</div>;
+    return <div className="p-8 text-text-muted">Synchronizing with Council database...</div>;
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-8 transition-colors duration-300">
-      <header className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
+    <div className="mx-auto max-w-7xl px-6">
+      <header className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
-            Job History
-          </h1>
-          <p className="mt-1 text-[var(--text-muted)]">
-            Monitor and manage your generation pipeline.
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Orchestration Jobs</h1>
+          <p className="mt-1 text-text-muted">Manage and monitor your pedagogical pipelines.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <FilterSelect
-            icon={<Filter className="h-3.5 w-3.5" />}
+            icon={<Filter className="h-4 w-4" />}
             value={statusFilter}
             onChange={setStatusFilter}
             options={[
               { label: 'All Statuses', value: 'all' },
               { label: 'Completed', value: 'completed' },
               { label: 'Failed', value: 'failed' },
-              { label: 'Running', value: 'rendering' },
+              { label: 'Processing', value: 'rendering' },
             ]}
           />
           <FilterSelect
-            icon={<ArrowUpDown className="h-3.5 w-3.5" />}
+            icon={<ArrowUpDown className="h-4 w-4" />}
             value={sortBy}
-            onChange={(v) => setBy(v as any)}
+            onChange={(v) => setSortBy(v as any)}
             options={[
               { label: 'Newest First', value: 'newest' },
-              { label: 'Longest Duration', value: 'duration' },
+              { label: 'Oldest First', value: 'oldest' },
+              { label: 'Topic A-Z', value: 'topic' },
             ]}
           />
-          {selectedJobIds.size > 0 && (
+          {selectedIds.size > 0 && (
             <button
-              onClick={handleBulkDelete}
-              className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-500 transition-all hover:bg-red-500/20"
+              onClick={handleBatchDelete}
+              className="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm font-bold text-destructive transition-all hover:bg-destructive/20"
             >
               <Trash2 className="h-4 w-4" />
-              Delete ({selectedJobIds.size})
+              Delete ({selectedIds.size})
             </button>
           )}
         </div>
       </header>
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] shadow-sm backdrop-blur-sm">
-        <table className="w-full border-collapse text-left text-sm">
+      <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-xl">
+        <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-[var(--surface-border)] bg-[var(--surface)] text-[11px] font-bold tracking-[0.1em] text-[var(--text-muted)] uppercase">
-              <th className="w-10 py-4 pr-4 pl-6">
+            <tr className="border-b border-surface-border bg-surface/50 text-tiny font-bold tracking-widest text-text-muted uppercase">
+              <th className="py-4 pr-4 pl-6">
                 <button
                   onClick={toggleSelectAll}
-                  className="p-1 transition-colors hover:text-[var(--foreground)]"
+                  className="p-1 transition-colors hover:text-foreground"
                 >
-                  {selectedJobIds.size === filteredJobs.length && filteredJobs.length > 0 ? (
-                    <CheckSquare className="h-4 w-4 text-indigo-500" />
+                  {selectedIds.size === filteredJobs.length && filteredJobs.length > 0 ? (
+                    <CheckSquare className="h-4 w-4 text-council-active" />
                   ) : (
                     <Square className="h-4 w-4" />
                   )}
                 </button>
               </th>
               <th className="px-4 py-4">Preview</th>
-              <th className="px-4 py-4">Scene Name</th>
+              <th className="px-4 py-4">Topic & ID</th>
               <th className="px-4 py-4">Status</th>
-              <th className="px-4 py-4">Duration</th>
-              <th className="px-4 py-4">Output</th>
+              <th className="px-4 py-4">Resources</th>
+              <th className="px-4 py-4">Format</th>
               <th className="px-4 py-4 text-right">Model</th>
-              <th className="px-4 py-4 text-right">Created</th>
+              <th className="px-4 py-4 text-right">Timestamp</th>
               <th className="py-4 pr-6 pl-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[var(--surface-border)]/50">
-            {filteredJobs.length === 0 ? (
+          <tbody className="divide-y divide-surface-border/50">
+            {filteredJobs.map((job) => (
+              <JobRow
+                key={job.job_id}
+                job={job}
+                isExpanded={expandedId === job.job_id}
+                isSelected={selectedIds.has(job.job_id)}
+                detail={expandedId === job.job_id ? expandedDetail : undefined}
+                onToggleExpand={() => toggleExpand(job.job_id)}
+                onToggleSelect={() => toggleSelect(job.job_id)}
+                onDelete={async () => {
+                  if (confirm('Delete this job?')) {
+                    await deleteJob(job.job_id);
+                    removeJob(job.job_id);
+                    refetch();
+                  }
+                }}
+                onRetry={async () => {
+                  await retryJob(job.job_id);
+                  refetch();
+                }}
+                onPlay={() => handlePlay(job.job_id)}
+              />
+            ))}
+            {filteredJobs.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-6 py-20 text-center">
-                  <p className="font-medium text-[var(--text-muted)]">No production jobs found.</p>
-                  <p className="mt-1 text-xs text-[var(--text-muted)] opacity-70">
-                    Try changing your filters or starting a new project.
-                  </p>
+                <td colSpan={9} className="py-20 text-center text-text-muted italic">
+                  No orchestration records found matching your filters.
                 </td>
               </tr>
-            ) : (
-              filteredJobs.map((job) => (
-                <JobRow
-                  key={job.job_id}
-                  job={job}
-                  isExpanded={expandedJobId === job.job_id}
-                  isSelected={selectedJobIds.has(job.job_id)}
-                  detail={fullJobDetails[job.job_id]}
-                  onToggleExpand={() => toggleExpand(job.job_id)}
-                  onToggleSelect={() => toggleSelect(job.job_id)}
-                  onDelete={() => {
-                    if (
-                      confirm('Are you sure you want to delete this job and all its artifacts?')
-                    ) {
-                      deleteJob(job.job_id).then(() => {
-                        if (currentJob?.job_id === job.job_id) {
-                          resetJob();
-                        }
-                        refetch();
-                      });
-                    }
-                  }}
-                  onRetry={() => retryJob(job.job_id).then(() => refetch())}
-                  onPlay={() => setPlayingJob(job)}
-                />
-              ))
             )}
           </tbody>
         </table>
       </div>
 
       {/* Video Preview Modal */}
-      {playingJob && (
-        <div className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-6 backdrop-blur-sm duration-300">
-          <div className="relative w-full max-w-5xl">
-            <button
-              onClick={() => setPlayingJob(null)}
-              className="absolute -top-12 right-0 flex items-center gap-2 text-xs font-bold tracking-widest text-white/60 uppercase transition-colors hover:text-white"
-            >
-              Close
-            </button>
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl">
+      <Modal
+        isOpen={!!playingJob}
+        onClose={() => setPlayingJob(null)}
+        title={playingJob?.topic || 'Playback'}
+      >
+        {playingJob && (
+          <div className="space-y-6">
+            <div className="overflow-hidden rounded-xl border border-surface-border bg-black shadow-2xl">
               <VideoPlayer src={playingJob.video_url!} />
             </div>
-            <div className="mt-6 flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold text-white">
-                  {playingJob.topic || 'Untitled Concept'}
-                </h3>
-                <p className="mt-1 text-sm text-white/50">
+                <p className="text-sm text-text-muted">
                   {playingJob.model_id || 'ConceptCast Engine v1'}
                 </p>
               </div>
-              <div className="flex gap-4">
-                <button className="rounded-xl border border-white/10 bg-white/10 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/20">
-                  Download HD
-                </button>
-              </div>
+              <button className="rounded-xl border border-surface-border bg-surface px-6 py-2.5 text-sm font-bold text-foreground transition-all hover:bg-surface-border/20">
+                Download HD
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }
