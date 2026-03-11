@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { Video } from 'lucide-react';
 import { CurriculumPlan, Storyboard } from '@/lib/api/client';
 
 interface LessonArtifactsProps {
@@ -25,7 +26,7 @@ export function LessonArtifacts({
       layout
       className="overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] shadow-xl"
     >
-      <div className="flex items-center justify-between border-b border-[var(--surface-border)] bg-[var(--surface)]/50 px-6 py-4">
+      <div className="flex items-center justify-between border-b border-[var(--surface-border)] bg-[var(--surface)]/50 px-4 py-3">
         <div className="flex items-center gap-3">
           <motion.span
             animate={{ opacity: [0.4, 1, 0.4] }}
@@ -55,39 +56,49 @@ export function LessonArtifacts({
         )}
       </div>
 
-      <div className="custom-scrollbar overflow-y-auto p-6">
+      <div className="custom-scrollbar overflow-y-auto p-4">
         <AnimatePresence mode="wait">
           {hasStoryboard ? (
             <motion.div
               key="storyboard"
-              initial={{ opacity: 0, scale: 0.98 }}
+              initial={{ opacity: 0, scale: 0.99 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+              className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5"
             >
-              {storyboard.scenes.slice(0, 4).map((scene) => (
+              {storyboard.scenes.map((scene) => (
                 <div
                   key={scene.scene_id}
-                  className="group/scene rounded-xl border border-[var(--surface-border)] bg-[var(--background)] p-5 shadow-sm transition-all hover:border-indigo-500/50"
+                  className="flex flex-col rounded-xl border border-[var(--surface-border)] bg-[var(--background)] p-3 shadow-[var(--card-shadow)] transition-all hover:border-[var(--council-active)]/50"
                 >
-                  <div className="mb-2 text-[10px] font-bold tracking-widest text-[var(--text-muted)] uppercase">
-                    SCENE {scene.scene_id}
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[8px] font-bold tracking-widest text-[var(--text-muted)] uppercase">
+                      Scene {scene.scene_id}
+                    </span>
+                    <Video className="h-2.5 w-2.5 text-[var(--text-muted)] opacity-30" />
                   </div>
-                  <h4 className="mb-2 line-clamp-1 text-sm font-bold tracking-tight text-[var(--foreground)] uppercase transition-colors group-hover/scene:text-indigo-600 dark:group-hover/scene:text-indigo-400">
+                  <h4 className="mb-2 line-clamp-1 text-[10px] font-bold text-[var(--foreground)] uppercase tracking-tight">
                     {scene.title}
                   </h4>
-                  <p className="line-clamp-2 text-xs leading-relaxed text-[var(--text-muted)]">
-                    {scene.description}
-                  </p>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="mb-0.5 block text-[8px] font-bold text-[var(--council-completed)] uppercase tracking-tighter">
+                        Narration
+                      </span>
+                      <p className="line-clamp-3 text-[9px] leading-snug text-[var(--text-muted)]">
+                        {scene.description}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="mb-0.5 block text-[8px] font-bold text-[var(--council-active)] uppercase tracking-tighter">
+                        Visual Prompt
+                      </span>
+                      <p className="line-clamp-2 text-[8px] leading-tight text-[var(--text-muted)] italic opacity-70">
+                        {(scene as any).visual_prompt || scene.narration || 'Dynamic Manim visualization...'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ))}
-              {storyboard.scenes.length > 4 && (
-                <button
-                  onClick={onViewFull}
-                  className="col-span-full rounded-xl border-2 border-dashed border-[var(--surface-border)] py-4 text-xs font-bold tracking-widest text-[var(--text-muted)] uppercase transition-all hover:bg-[var(--surface)] hover:text-indigo-500 active:scale-[0.99]"
-                >
-                  + {storyboard.scenes.length - 4} more scenes. View Full Storyboard.
-                </button>
-              )}
             </motion.div>
           ) : hasPlan ? (
             <motion.div
