@@ -30,15 +30,29 @@
     --border: var(--surface-border);
     --input: var(--surface-border);
     --ring: #4f46e5;
-    --radius: 0.75rem;
+    /* Redesign Tokens */
+    --council-active: #3b82f6; /* Electric Blue */
+    --council-completed: #6366f1; /* Indigo */
+    --council-pending: #737373; /* Grey */
+    --terminal-bg: #171717;
+    --terminal-text: #e5e5e5;
+    --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   }
 
   :root.dark {
     --background: #000000;
     --foreground: #ffffff;
-    --surface: #171717;
+    --surface: #121212;
     --surface-border: #262626;
     --text-muted: #a3a3a3;
+
+    /* Redesign Tokens (Dark) */
+    --council-active: #60a5fa;
+    --council-completed: #818cf8;
+    --council-pending: #525252;
+    --terminal-bg: #0a0a0a;
+    --terminal-text: #d4d4d4;
+    --card-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.5);
 
     /* Shadcn Variables Dark */
     --card: var(--surface);

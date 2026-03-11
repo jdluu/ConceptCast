@@ -115,7 +115,7 @@ export function JobCreationForm() {
     const values = getValues();
     try {
       await createJob({
-        topic: values.topic || 'The Art of Modern Web Design',
+        topic: values.topic || 'Understanding Quantum Entanglement',
         target_audience: values.target_audience || 'General Audience',
         provider: 'mock',
         model_id: 'mock-llm',
