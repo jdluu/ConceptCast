@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, use, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'conceptcast_developer_mode';
 
@@ -57,7 +57,7 @@ export function DeveloperModeProvider({ children }: { children: React.ReactNode 
  * @throws {Error} If used outside of a DeveloperModeProvider.
  */
 export function useDeveloperMode(): DeveloperModeContextValue {
-  const ctx = useContext(DeveloperModeContext);
+  const ctx = use(DeveloperModeContext);
   if (!ctx) {
     throw new Error('useDeveloperMode must be used within DeveloperModeProvider');
   }

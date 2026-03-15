@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, use, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'conceptcast_app_settings';
 
@@ -89,7 +89,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
  * @throws {Error} If used outside of an AppSettingsProvider.
  */
 export function useAppSettings(): AppSettingsContextValue {
-  const ctx = useContext(AppSettingsContext);
+  const ctx = use(AppSettingsContext);
   if (!ctx) {
     throw new Error('useAppSettings must be used within AppSettingsProvider');
   }
