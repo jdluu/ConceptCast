@@ -55,6 +55,9 @@ clean: ## Remove build artifacts, node_modules, and virtual environments
 clean-reports: ## Remove E2E report files
 	rm -rf apps/backend/e2e_reports/*.txt
 
+test-agents: ## Run agent intelligence and streaming diagnostics
+	infisical run --path=/ai -- bash -c "cd apps/backend && uv run python src/scripts/test_agents.py"
+
 # --- Development ---
 
 wait-for-backend: ## Internal: Wait for backend to be ready

@@ -111,7 +111,7 @@ export function JobCreationForm() {
 
   const runMockDemo = () => {
     createJob({
-      topic: 'Understanding Quantum Entanglement',
+      topic: 'Quantum Entanglement',
       target_audience: 'High School Student',
       provider: 'mock',
       model_id: 'mock-gpt-4',

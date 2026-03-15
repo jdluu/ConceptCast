@@ -87,7 +87,7 @@ class Settings(BaseSettings):
     pricing_base_overhead: float = 0.02
 
     # Domain Constants
-    mock_topic: str = "Understanding Quantum Entanglement"
+    mock_topic: str = "Quantum Entanglement"
 
     @property
     def jobs_dir(self) -> Path:

@@ -4,12 +4,14 @@ Standardizes streamed thoughts across providers/models."""
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from pydantic_ai import (
-    Agent,
-    AgentRunResultEvent,
+from loguru import logger
+from pydantic_ai import Agent, AgentRunResultEvent
+from pydantic_ai.messages import (
     PartDeltaEvent,
     PartStartEvent,
+    TextPart,
     TextPartDelta,
+    ThinkingPart,
     ThinkingPartDelta,
     ToolCallPart,
     ToolCallPartDelta,
@@ -46,9 +48,22 @@ async def run_agent_streamed(
     tool_names: dict[int, str] = {}
 
     async for event in agent.run_stream_events(prompt, **run_kwargs):
+        logger.trace(f"Agent Event: {type(event).__name__}")
         if isinstance(event, PartStartEvent):
             if isinstance(event.part, ToolCallPart):
                 tool_names[event.index] = event.part.tool_name
+            elif (
+                isinstance(event.part, ThinkingPart)
+                and on_thought
+                and event.part.content
+            ):
+                await on_thought(agent_name, "thinking", event.part.content)
+            elif (
+                isinstance(event.part, TextPart)
+                and on_thought
+                and event.part.content
+            ):
+                await on_thought(agent_name, "output", event.part.content)
         elif isinstance(event, PartDeltaEvent):
             if (
                 isinstance(event.delta, ThinkingPartDelta)

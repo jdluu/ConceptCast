@@ -16,7 +16,7 @@ settings = get_settings()
 
 MOCK_PLANS = {
     "default": CurriculumPlan(
-        concept_title=settings.mock_topic,
+        concept_title=f"Understanding {settings.mock_topic}",
         target_audience="General Audience",
         teaching_steps=[
             TeachingStep(
@@ -98,7 +98,7 @@ MOCK_VALIDATIONS = {
 
 MOCK_STORYBOARDS = {
     "default": Storyboard(
-        concept_title=settings.mock_topic,
+        concept_title=f"Understanding {settings.mock_topic}",
         scenes=[
             Scene(
                 scene_id=1,
@@ -218,7 +218,6 @@ def inject_topic_recursively(obj: Any, topic: str) -> Any:
     settings = get_settings()
     replacements = {
         settings.mock_topic: topic,
-        "Quantum Entanglement": topic,
         "quantum": "core",
         "particles": "components",
         "particle": "component",

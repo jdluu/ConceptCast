@@ -260,22 +260,12 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
                 Pedagogical Blueprint
               </h3>
             </div>
-            <div className="flex items-center gap-4">
-              {job.plan && (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="text-micro font-bold text-council-active uppercase tracking-widest hover:underline"
-                >
-                  Expand View
-                </button>
-              )}
-              <button 
-                onClick={() => setCollapsed(prev => ({ ...prev, blueprint: !prev.blueprint }))}
-                className="text-micro font-bold text-text-muted uppercase tracking-widest hover:text-foreground"
-              >
-                {collapsed.blueprint ? '[+] Expand' : '[-] Condense'}
-              </button>
-            </div>
+            <button 
+              onClick={() => setCollapsed(prev => ({ ...prev, blueprint: !prev.blueprint }))}
+              className="text-micro font-bold text-text-muted uppercase tracking-widest hover:text-foreground transition-colors"
+            >
+              {collapsed.blueprint ? '[+] Expand' : '[-] Minimize'}
+            </button>
           </div>
           
           <div className={cn("transition-all duration-500", collapsed.blueprint ? "h-0 opacity-0 overflow-hidden" : "opacity-100")}>
@@ -300,9 +290,9 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
             </div>
             <button 
               onClick={() => setCollapsed(prev => ({ ...prev, storyboard: !prev.storyboard }))}
-              className="text-micro font-bold text-text-muted uppercase tracking-widest hover:text-foreground"
+              className="text-micro font-bold text-text-muted uppercase tracking-widest hover:text-foreground transition-colors"
             >
-              {collapsed.storyboard ? '[+] Expand' : '[-] Condense'}
+              {collapsed.storyboard ? '[+] Expand' : '[-] Minimize'}
             </button>
           </div>
           
@@ -333,9 +323,9 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
             </div>
             <button 
               onClick={() => setCollapsed(prev => ({ ...prev, terminal: !prev.terminal }))}
-              className="text-micro font-bold text-text-muted uppercase tracking-widest hover:text-foreground"
+              className="text-micro font-bold text-text-muted uppercase tracking-widest hover:text-foreground transition-colors"
             >
-              {collapsed.terminal ? '[+] Expand' : '[-] Condense'}
+              {collapsed.terminal ? '[+] Expand' : '[-] Minimize'}
             </button>
           </div>
           
