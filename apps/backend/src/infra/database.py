@@ -95,4 +95,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         An active SQLAlchemy AsyncSession instance.
     """
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()

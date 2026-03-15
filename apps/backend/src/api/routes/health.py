@@ -6,7 +6,7 @@ subsystems.
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +21,7 @@ router = APIRouter()
 @router.get("/", response_model=dict[str, Any])
 async def health_check(
     response: Response,
-    _db: AsyncSession = Depends(get_db),
+    _db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, Any]:
     """Retrieves the health status of the application and its core services.
 

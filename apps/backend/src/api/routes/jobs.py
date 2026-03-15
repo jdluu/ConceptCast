@@ -8,7 +8,7 @@ import json
 import shutil
 import uuid
 from collections.abc import AsyncGenerator, Callable
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import (
     APIRouter,
@@ -97,7 +97,7 @@ async def create_job(
     request: JobRequest,
     background_tasks: BackgroundTasks,
     req: Request,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> JobStatus:
     """Initializes a new asynchronous video generation job.
 
@@ -168,7 +168,7 @@ async def review_job(
     review: JobReviewRequest,
     background_tasks: BackgroundTasks,
     req: Request,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> JobStatus:
     """Handles human-in-the-loop review actions for a paused job."""
     result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
@@ -243,7 +243,7 @@ async def review_job(
 
 
 @router.get("/{job_id}/status", response_model=JobStatus)
-async def get_job_status(job_id: str, db: AsyncSession = Depends(get_db)) -> JobStatus:
+async def get_job_status(job_id: str, db: Annotated[AsyncSession, Depends(get_db)]) -> JobStatus:
     """Retrieves the current status and artifacts for a specific job.
 
     Args:
@@ -268,7 +268,7 @@ async def get_job_status(job_id: str, db: AsyncSession = Depends(get_db)) -> Job
 @router.get("/{job_id}/events")
 async def job_events(
     job_id: str,
-    db_session_factory: Callable[[], AsyncSession] = Depends(lambda: AsyncSessionLocal),
+    db_session_factory: Annotated[Callable[[], AsyncSession], Depends(lambda: AsyncSessionLocal)],
 ) -> StreamingResponse:
     """Provides a real-time stream of job updates via Server-Sent Events (SSE).
 
@@ -285,7 +285,7 @@ async def job_events(
 
 
 @router.get("/{job_id}/plan", response_model=CurriculumPlan)
-async def get_plan(job_id: str, db: AsyncSession = Depends(get_db)) -> CurriculumPlan:
+async def get_plan(job_id: str, db: Annotated[AsyncSession, Depends(get_db)]) -> CurriculumPlan:
     """Retrieves the generated curriculum plan for a specific job.
 
     Args:
@@ -309,8 +309,8 @@ async def get_plan(job_id: str, db: AsyncSession = Depends(get_db)) -> Curriculu
 
 @router.get("", response_model=JobListResponse)
 async def list_jobs(
+    db: Annotated[AsyncSession, Depends(get_db)],
     mode: Literal["live", "mock"] | None = None,
-    db: AsyncSession = Depends(get_db),
 ) -> JobListResponse:
     """Lists all jobs sorted by creation date (newest first).
 
@@ -347,7 +347,7 @@ async def retry_job(
     job_id: str,
     background_tasks: BackgroundTasks,
     req: Request,
-    _db: AsyncSession = Depends(get_db),
+    _db: Annotated[AsyncSession, Depends(get_db)],
 ) -> JobStatus:
     """Retries a failed or stuck job from the last successful checkpoint.
 
@@ -383,7 +383,7 @@ async def retry_job(
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_job(job_id: str, db: AsyncSession = Depends(get_db)) -> None:
+async def delete_job(job_id: str, db: Annotated[AsyncSession, Depends(get_db)]) -> None:
     """Deletes a job and its associated filesystem data.
 
     Args:
@@ -413,8 +413,8 @@ async def delete_job(job_id: str, db: AsyncSession = Depends(get_db)) -> None:
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_all_jobs(
+    db: Annotated[AsyncSession, Depends(get_db)],
     mode: Literal["live", "mock"] | None = None,
-    db: AsyncSession = Depends(get_db),
 ) -> None:
     """Deletes multiple jobs and clears their associated filesystem data.
 
