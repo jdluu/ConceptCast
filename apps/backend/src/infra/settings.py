@@ -42,13 +42,13 @@ class Settings(BaseSettings):
     Attributes:
         groq_api_key: Groq API key for Llama/Mixtral models.
         deepseek_api_key: DeepSeek API key for chat models.
-        synthetic_api_key: Synthetic provider API key for local/VLLM proxies.
+        nano_api_key: Nano GPT provider API key.
         context7_api_key: Context7 API key for high-quality package documentation.
         context7_cache_ttl_seconds: Seconds before cached documentation expires.
         context7_cache_max_entries: Max entries kept in the documentation cache.
         context7_max_retries: Retry limit for transient Context7 API errors.
         deepseek_model_name: Overridable model identifier for DeepSeek.
-        synthetic_model_name: Overridable model identifier for the synthetic provider.
+        nano_model_name: Overridable model identifier for the Nano GPT provider.
         render_quality: Default Manim render quality (low, medium, high).
         streamed_thoughts_max_entries: Max thought deltas stored per job execution.
         database_url: SQLAlchemy compatible database connection string.
@@ -63,17 +63,18 @@ class Settings(BaseSettings):
 
     groq_api_key: str | None = None
     deepseek_api_key: str | None = None
-    synthetic_api_key: str | None = None
+    nano_api_key: str | None = None
     context7_api_key: str | None = None
     context7_cache_ttl_seconds: int = 1800
     context7_cache_max_entries: int = 256
     context7_max_retries: int = 2
     deepseek_model_name: str = "deepseek-chat"
-    synthetic_model_name: str = "hf:deepseek-ai/DeepSeek-V3"
+    nano_model_name: str = "nvidia/nemotron-3-super-120b-a12b:thinking"
     render_quality: str = "ql"
     streamed_thoughts_max_entries: int = 500
     animation_review_max_iterations: int = 3
     animation_review_enabled: bool = True
+    hitl_enabled: bool = False
     database_url: str = "sqlite:///" + str(PROJECT_ROOT / "conceptcast.db")
     redis_url: str = "redis://localhost:6379"
     cors_origins: str = "http://localhost:5173"
@@ -84,6 +85,9 @@ class Settings(BaseSettings):
     pricing_output_rate: float = 0.015 / 1000
     pricing_render_rate_per_min: float = 0.10
     pricing_base_overhead: float = 0.02
+
+    # Domain Constants
+    mock_topic: str = "Understanding Quantum Entanglement"
 
     @property
     def jobs_dir(self) -> Path:
@@ -103,9 +107,7 @@ class Settings(BaseSettings):
         Returns:
             bool: True if at least one API key is detected.
         """
-        return bool(
-            self.groq_api_key or self.deepseek_api_key or self.synthetic_api_key
-        )
+        return bool(self.groq_api_key or self.deepseek_api_key or self.nano_api_key)
 
     def is_dummy_key(self) -> bool:
         """Checks if configured API keys are placeholders.
@@ -113,7 +115,7 @@ class Settings(BaseSettings):
         Returns:
             bool: True if keys match known dummy values (e.g., 'your-key-here').
         """
-        keys = [self.groq_api_key, self.deepseek_api_key, self.synthetic_api_key]
+        keys = [self.groq_api_key, self.deepseek_api_key, self.nano_api_key]
         return any(k and "your-key-here" in k.lower() for k in keys)
 
 

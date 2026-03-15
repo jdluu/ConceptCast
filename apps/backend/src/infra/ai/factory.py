@@ -9,12 +9,12 @@ from .base import BaseProvider
 from .deepseek import DeepSeekModelProvider
 from .groq import GroqModelProvider
 from .mock import MockModelProvider
-from .synthetic import SyntheticModelProvider
+from .nano import NanoModelProvider
 
 PROVIDER_CLASSES: dict[str, type[BaseProvider]] = {
     "groq": GroqModelProvider,
     "deepseek": DeepSeekModelProvider,
-    "synthetic": SyntheticModelProvider,
+    "nano": NanoModelProvider,
     "mock": MockModelProvider,
 }
 
@@ -58,16 +58,17 @@ PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
         display_name="DeepSeek",
     ),
     ProviderEntry(
-        id="synthetic",
-        settings_key="synthetic_api_key",
+        id="nano",
+        settings_key="nano_api_key",
         models=(
-            "hf:Qwen/Qwen3.5-397B-A17B",
-            "hf:moonshotai/Kimi-K2.5",
-            "hf:zai-org/GLM-4.7",
-            "hf:Qwen/Qwen3-Coder-480B-A35B-Instruct",
+            "nvidia/nemotron-3-super-120b-a12b:thinking",
+            "minimax/minimax-m2.5",
+            "qwen/qwen3.5-397b-a17b-thinking",
+            "zai-org/glm-5:thinking",
+            "moonshotai/kimi-k2.5:thinking",
         ),
-        default_model="hf:Qwen/Qwen3.5-397B-A17B",
-        display_name="Synthetic",
+        default_model="nvidia/nemotron-3-super-120b-a12b:thinking",
+        display_name="Nano GPT (Subscription)",
     ),
     ProviderEntry(
         id="mock",
