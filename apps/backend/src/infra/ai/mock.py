@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, cast
+from typing import Any
 
 from loguru import logger
 from pydantic_ai import RunContext
@@ -83,15 +83,12 @@ class MockStreamedResponse(StreamedResponse):
                     await asyncio.sleep(0.1)
             elif isinstance(part, ToolCallPart):
                 await asyncio.sleep(0.5)  # Simulate "thinking" before tool call
-                tool_events = self._parts_manager.handle_tool_call_part(
+                yield self._parts_manager.handle_tool_call_part(
                     vendor_part_id=i,
                     tool_name=part.tool_name,
                     args=part.args,
                     tool_call_id=part.tool_call_id,
                 )
-                from collections.abc import Iterable
-                for event in cast(Iterable[ModelResponseStreamEvent], tool_events):
-                    yield event
             else:
                 yield PartStartEvent(index=i, part=part)
 
