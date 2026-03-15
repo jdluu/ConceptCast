@@ -21,17 +21,11 @@ export function StoryboardView({ storyboard, status }: StoryboardViewProps) {
     );
   }
 
-  const totalScenes = storyboard.scenes.length;
-  const balancedCols = Math.min(6, Math.ceil(totalScenes / 2));
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.99 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="grid gap-2 grid-cols-2 sm:grid-cols-3"
-      style={{ 
-        gridTemplateColumns: `repeat(${balancedCols}, minmax(0, 1fr))` 
-      }}
+      className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
     >
       {storyboard.scenes.map((scene, idx) => (
         <ArtifactCard 

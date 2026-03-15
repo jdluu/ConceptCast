@@ -22,20 +22,23 @@ export function CouncilDeliberation({ thoughts }: { thoughts: Thought[] }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-surface-border bg-terminal-bg shadow-2xl transition-all duration-500">
       {/* macOS Style Bar */}
-      <div className="flex items-center justify-between border-b border-surface-border/30 bg-terminal-bg/80 px-4 py-2 backdrop-blur-md">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b border-surface-border/30 bg-terminal-bg/80 px-4 py-2.5 backdrop-blur-md">
+        <div className="flex items-center gap-4">
           <div className="flex gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-macos-red/80 shadow-sm" />
-            <div className="h-2.5 w-2.5 rounded-full bg-macos-yellow/80 shadow-sm" />
-            <div className="h-2.5 w-2.5 rounded-full bg-macos-green/80 shadow-sm" />
+            <div className="h-2.5 w-2.5 rounded-full bg-macos-red/80 shadow-[0_0_8px_rgba(255,95,87,0.4)]" />
+            <div className="h-2.5 w-2.5 rounded-full bg-macos-yellow/80 shadow-[0_0_8px_rgba(255,189,46,0.4)]" />
+            <div className="h-2.5 w-2.5 rounded-full bg-macos-green/80 shadow-[0_0_8px_rgba(40,200,64,0.4)]" />
           </div>
-          <span className="ml-2 font-mono text-micro font-bold tracking-widest text-terminal-text/50 uppercase">
-            Protocol Terminal
-          </span>
+          <div className="flex flex-col">
+            <span className="font-mono text-[10px] font-bold tracking-[0.2em] text-terminal-text/60 uppercase">
+              Protocol Terminal
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2 font-mono text-nano text-terminal-text/30">
-          <Activity className="h-2.5 w-2.5 animate-pulse" />
-          <span>council_stream.log</span>
+        <div className="flex items-center gap-2 font-mono text-[9px] font-medium tracking-wider text-terminal-text/30">
+          <Activity className="h-3 w-3 text-council-active/50" />
+          <span className="opacity-60">SESSION_LIVE:</span>
+          <span className="text-terminal-text/50">council_stream.log</span>
         </div>
       </div>
 

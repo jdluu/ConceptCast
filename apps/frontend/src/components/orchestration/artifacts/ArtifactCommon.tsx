@@ -45,18 +45,25 @@ export function ArtifactPlaceholder({
   
   return (
     <div className={cn(
-      "flex h-32 flex-col items-center justify-center space-y-3 py-12 text-text-muted",
-      isQueued && "rounded-xl border border-dashed border-surface-border opacity-40"
+      "flex h-40 flex-col items-center justify-center space-y-4 rounded-2xl border border-surface-border bg-surface/30 p-8 text-text-muted transition-all duration-700",
+      isQueued ? "border-dashed opacity-30 grayscale" : "animate-pulse"
     )}>
-      {!isQueued && (
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-surface-border border-t-council-active shadow-sm" />
+      {!isQueued ? (
+        <div className="relative">
+          <div className="absolute inset-0 blur-lg bg-council-active/20 rounded-full animate-pulse" />
+          <div className="relative h-10 w-10 rounded-full border-2 border-surface-border border-t-council-active shadow-glow-council animate-spin" />
+        </div>
+      ) : (
+        <div className="h-10 w-10 rounded-full border-2 border-dashed border-surface-border flex items-center justify-center">
+          <div className="h-4 w-4 rounded-full bg-surface-border opacity-50" />
+        </div>
       )}
-      <div className="text-center">
-        <p className="text-tiny font-bold tracking-widest uppercase">
-          {message || (isQueued ? 'Queued' : 'Processing')}
+      <div className="text-center space-y-1">
+        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-foreground/60">
+          {message || (isQueued ? 'Pipeline Queued' : 'Agent Deliberation')}
         </p>
-        <p className="text-micro italic opacity-60">
-          {submessage || (isQueued ? 'Awaiting prior stage completion...' : 'Deliberating...')}
+        <p className="text-[9px] font-medium italic opacity-50">
+          {submessage || (isQueued ? 'Awaiting council authorization...' : 'Synthesizing knowledge structures...')}
         </p>
       </div>
     </div>

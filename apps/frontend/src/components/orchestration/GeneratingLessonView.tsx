@@ -16,7 +16,6 @@ import {
   Layout,
   Play,
   Activity,
-  ArrowRight,
   Sparkles,
   Info,
   Terminal,
@@ -78,56 +77,41 @@ function PipelineStepCard({
   return (
     <div
       className={cn(
-        'relative flex min-w-xs flex-1 items-center gap-3 rounded-xl border-2 p-3 transition-all duration-500',
+        'relative flex min-w-[160px] flex-1 items-center gap-2.5 rounded-xl border p-2.5 transition-all duration-500 sm:min-w-[200px]',
         isCurrent
-          ? 'border-council-active bg-council-active/5 shadow-glow-council ring-1 ring-council-active/30'
+          ? 'border-council-active bg-council-active/5 shadow-glow-council ring-1 ring-council-active/20'
           : isPast
-            ? 'border-council-completed bg-council-completed/5 opacity-100'
+            ? 'border-success/30 bg-success/5 opacity-100'
             : 'border-surface-border bg-surface opacity-40',
       )}
     >
       <div
         className={cn(
-          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-500',
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors duration-500',
           isCurrent
             ? 'bg-council-active text-white'
             : isPast
-              ? 'bg-council-completed/20 text-council-completed'
+              ? 'bg-success text-white'
               : 'bg-surface-border text-text-muted',
         )}
       >
-        <Icon className="h-4 w-4" />
+        {isPast ? <CheckCircle className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <div className="flex items-center justify-between mb-0.5">
-          <h4
-            className={cn(
-              'text-mini font-bold tracking-tight',
-              isCurrent
-                ? 'text-foreground'
-                : isPast
-                  ? 'text-council-completed'
-                  : 'text-text-muted',
-            )}
-          >
-            {step.agent}
-          </h4>
-          {isPast && (
-            <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-council-completed text-white">
-              <CheckCircle className="h-2 w-2" />
-            </div>
+        <h4
+          className={cn(
+            'text-[10px] font-bold tracking-wider uppercase',
+            isCurrent
+              ? 'text-foreground'
+              : isPast
+                ? 'text-success'
+                : 'text-text-muted',
           )}
-          {isCurrent && (
-            <div className="bg-council-active h-3.5 w-3.5 rounded-full flex items-center justify-center">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-info/20 opacity-75"></span>
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white"></span>
-              </span>
-            </div>
-          )}
-        </div>
-        <p className="truncate text-micro font-medium text-text-muted opacity-70">
+        >
+          {step.agent}
+        </h4>
+        <p className="truncate text-[9px] font-medium text-text-muted opacity-70">
           {statusMessage}
         </p>
       </div>
@@ -204,7 +188,7 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
               </button>
             )}
           </div>
-          <div className="flex w-full items-center gap-4 overflow-x-auto pb-4">
+          <div className="flex w-full items-center gap-2 overflow-x-auto pb-4 custom-scrollbar sm:gap-3">
             {PIPELINE_STEPS.map((step, idx) => {
               const isCurrent = job.status === step.id || (step.id === 'planning' && job.status === 'awaiting_review');
               const isPast =
@@ -213,18 +197,18 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
 
               const statusMessage = (() => {
                 if (isPast) {
-                  if (step.id === 'planning') return 'Content structure finalized.';
-                  if (step.id === 'validating') return 'Validation successful.';
-                  if (step.id === 'architecting') return 'Blueprints generated.';
-                  if (step.id === 'animating') return 'Animation code ready.';
-                  return 'Processing complete.';
+                  if (step.id === 'planning') return 'Structure finalized';
+                  if (step.id === 'validating') return 'Quality verified';
+                  if (step.id === 'architecting') return 'Scenes mapped';
+                  if (step.id === 'animating') return 'Script ready';
+                  return 'Complete';
                 }
                 if (isCurrent) {
                   if (step.id === 'animating')
-                    return `Processing scene ${job.render_progress || 1} physics`;
-                  return 'Deliberating...';
+                    return `Scene ${job.render_progress || 1} physics`;
+                  return 'Working...';
                 }
-                return 'Waiting for output...';
+                return 'Queued';
               })();
 
               return (
@@ -239,8 +223,8 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
                   {idx < PIPELINE_STEPS.length - 1 && (
                     <div
                       className={cn(
-                        'h-0.5 w-6 shrink-0 transition-colors duration-500',
-                        isPast ? 'bg-council-completed' : 'bg-surface-border',
+                        'h-0.5 w-3 shrink-0 sm:w-6 transition-colors duration-500',
+                        isPast ? 'bg-success/30' : 'bg-surface-border',
                       )}
                     />
                   )}
@@ -377,26 +361,28 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
 
               {/* Thought Feed Mini-Overlay */}
               <div className="absolute bottom-6 left-6 right-6">
-                <div className="flex items-center gap-3 rounded-2xl border border-surface-border bg-surface/80 p-4 backdrop-blur-md shadow-lg">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background text-council-active border border-surface-border">
-                    <Terminal className="h-4 w-4" />
+                <div className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-black/40 p-4 backdrop-blur-md transition-all hover:bg-black/60 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-council-active/20 text-council-active border border-council-active/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                    <Terminal className="h-5 w-5" />
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-council-active/10 px-2 py-0.5 font-mono text-nano text-council-active">
-                        LATEST_THOUGHT
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="rounded bg-council-active/20 px-1.5 py-0.5 text-[9px] font-bold text-council-active uppercase tracking-widest ring-1 ring-council-active/30">
+                        INTELLIGENCE_STREAM
                       </span>
-                      <span className="text-tiny font-bold text-text-muted uppercase tracking-widest">
-                        {job.streamed_thoughts?.[job.streamed_thoughts.length - 1]?.agent ||
-                          'System'}
+                      <span className="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em]">
+                        {job.streamed_thoughts?.[job.streamed_thoughts.length - 1]?.agent || 'ORCHESTRATOR'}
                       </span>
                     </div>
-                    <p className="truncate font-mono text-mini text-foreground opacity-80">
-                      {job.streamed_thoughts?.[job.streamed_thoughts.length - 1]?.content ||
-                        'Initializing council synchronization protocol...'}
+                    <p className="truncate font-mono text-xs text-white/90 italic leading-none">
+                      {job.streamed_thoughts?.[job.streamed_thoughts.length - 1]?.content || 'Initializing council synchronization protocol...'}
                     </p>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-text-muted opacity-40" />
+                  <div className="flex items-center gap-1 px-2 text-white/20 group-hover:text-council-active/50 transition-colors">
+                    <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
+                    <div className="h-1 w-1 rounded-full bg-current animate-pulse delay-75" />
+                    <div className="h-1 w-1 rounded-full bg-current animate-pulse delay-150" />
+                  </div>
                 </div>
               </div>
             </div>
