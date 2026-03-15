@@ -1,4 +1,5 @@
 import { type JobSummary, type JobStatus } from '@/lib/api/client';
+import { type VideoMetadata } from '@/lib/api/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { JobDetailPanel } from '@/components/jobs/JobDetailPanel';
 import { ActionButton } from '@/components/ui/ActionButton';
@@ -48,7 +49,7 @@ export function JobRow({
   onRetry,
   onPlay,
 }: JobRowProps) {
-  const metadata = (job as any).video_metadata || {};
+  const metadata = (job.video_metadata as Partial<VideoMetadata>) || {};
 
   return (
     <>
@@ -89,10 +90,10 @@ export function JobRow({
             )}
           </div>
         </td>
-        <td className="max-w-xs px-4 py-5">
-          <span className="block truncate font-semibold text-foreground">{job.topic}</span>
-          <span className="mt-0.5 block font-mono text-tiny tracking-tighter text-text-muted uppercase">
-            {job.job_id.split('-')[0]}
+        <td className="px-4 py-5 min-w-[200px]">
+          <span className="block font-semibold text-foreground leading-snug">{job.topic}</span>
+          <span className="mt-1 block font-mono text-[10px] tracking-tight text-text-muted uppercase opacity-50">
+            ID_{job.job_id.split('-')[0]}
           </span>
         </td>
         <td className="px-4 py-5">

@@ -20,6 +20,7 @@ export function LessonArtifactModal({ isOpen, onClose, plan, storyboard }: Lesso
       isOpen={isOpen}
       onClose={onClose}
       title={hasStoryboard ? 'Full Visual Storyboard' : 'Complete Curriculum Plan'}
+      size="xl"
     >
       {hasStoryboard ? (
         <div className="space-y-10 py-2">

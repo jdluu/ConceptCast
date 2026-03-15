@@ -44,9 +44,9 @@ export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
 
   return (
     <div className="animate-in fade-in slide-in-from-top-4 border-t border-surface-border bg-surface p-8 duration-300">
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
         {/* Left Column: Preview & Metadata */}
-        <div className="space-y-6">
+        <div className="lg:col-span-5 space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold tracking-[0.2em] text-text-muted uppercase">
               Video Preview
@@ -116,7 +116,7 @@ export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
         </div>
 
         {/* Right Column: Prompt, Code, Artifacts */}
-        <div className="space-y-6">
+        <div className="lg:col-span-7 space-y-6">
           <TabsSection
             tabs={[
               {
@@ -182,7 +182,7 @@ function NoArtifact({ title }: { title: string }) {
 
 function StoryboardView({ storyboard }: { storyboard: Storyboard }) {
   return (
-    <div className="scrollbar-thin scrollbar-thumb-surface-border max-h-md space-y-4 overflow-y-auto pr-2">
+    <div className="scrollbar-thin scrollbar-thumb-surface-border max-h-[600px] space-y-4 overflow-y-auto pr-2">
       {storyboard.scenes.map((scene) => (
         <ArtifactCard
           key={scene.scene_id}
@@ -250,7 +250,7 @@ function PromptView({ topic, audience }: { topic: string; audience: string | nul
 function CodeView({ code }: { code: string | null | undefined }) {
   return (
     <div className="group relative">
-      <pre className="scrollbar-thin scrollbar-thumb-surface-border scrollbar-track-transparent max-h-md overflow-x-auto rounded-2xl border border-surface-border bg-background p-6 font-mono text-xs leading-relaxed text-council-active dark:opacity-90">
+      <pre className="scrollbar-thin scrollbar-thumb-surface-border scrollbar-track-transparent max-h-[600px] overflow-x-auto rounded-2xl border border-surface-border bg-background p-6 font-mono text-xs leading-relaxed text-council-active dark:opacity-90">
         <code>{code || '# No code generated yet'}</code>
       </pre>
       {code && (
@@ -266,14 +266,31 @@ function CodeView({ code }: { code: string | null | undefined }) {
 }
 
 function ThoughtsView({ thoughts }: { thoughts: ThoughtLog[] | undefined }) {
+  const groupedThoughts = React.useMemo(() => {
+    if (!thoughts || thoughts.length === 0) return [];
+    
+    const blocks: { agent: string; phase: string; content: string }[] = [];
+    let currentBlock: { agent: string; phase: string; content: string } | null = null;
+
+    thoughts.forEach((t) => {
+      if (!currentBlock || currentBlock.agent !== t.agent || currentBlock.phase !== t.phase) {
+        currentBlock = { agent: t.agent, phase: t.phase, content: t.content };
+        blocks.push(currentBlock);
+      } else {
+        currentBlock.content += t.content;
+      }
+    });
+    return blocks;
+  }, [thoughts]);
+
   return (
-    <div className="scrollbar-thin scrollbar-thumb-surface-border max-h-md space-y-3 overflow-y-auto rounded-2xl border border-surface-border bg-background p-4">
-      {!thoughts || thoughts.length === 0 ? (
+    <div className="scrollbar-thin scrollbar-thumb-surface-border max-h-[600px] space-y-3 overflow-y-auto rounded-2xl border border-surface-border bg-background p-4">
+      {groupedThoughts.length === 0 ? (
         <p className="py-8 text-center text-sm text-text-muted italic">
           No thoughts recorded
         </p>
       ) : (
-        thoughts.map((t, i) => (
+        groupedThoughts.map((t, i) => (
           <div key={i} className="border-l-2 border-council-active/30 py-1 pl-4">
             <div className="mb-1 flex items-center gap-2">
               <span className="rounded bg-council-active/10 px-2 py-0.5 text-tiny font-bold tracking-tighter text-council-active uppercase">
@@ -283,7 +300,9 @@ function ThoughtsView({ thoughts }: { thoughts: ThoughtLog[] | undefined }) {
                 {t.phase}
               </span>
             </div>
-            <p className="text-sm-plus leading-snug text-text-muted">{t.content}</p>
+            <p className="text-sm-plus leading-relaxed text-text-muted whitespace-pre-wrap">
+              {t.content}
+            </p>
           </div>
         ))
       )}
@@ -298,23 +317,23 @@ function TabsSection({
 }) {
   const [activeTab, setActiveTab] = React.useState(tabs[0].id);
   return (
-    <div>
-      <div className="mb-6 flex overflow-x-auto border-b border-surface-border scrollbar-none">
+    <div className="flex flex-col h-full">
+      <div className="mb-6 flex overflow-x-auto border-b border-surface-border scrollbar-none gap-1">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`-mb-px shrink-0 border-b-2 px-4 py-3 text-tiny font-bold tracking-[0.2em] uppercase transition-all ${
+            className={`-mb-px shrink-0 border-b-2 px-3 py-3 text-[10px] font-bold tracking-widest uppercase transition-all ${
               activeTab === tab.id
                 ? 'border-council-active bg-council-active/5 text-council-active'
-                : 'border-transparent text-text-muted hover:text-foreground hover:bg-surface-border/20'
+                : 'border-transparent text-text-muted hover:text-foreground hover:bg-surface-border/10'
             }`}
           >
             {tab.label}
           </button>
         ))}
       </div>
-      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="flex-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
         {tabs.find((t) => t.id === activeTab)?.content}
       </div>
     </div>

@@ -149,8 +149,8 @@ export function JobsPage() {
         </div>
       </header>
 
-      <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-xl">
-        <table className="w-full border-collapse text-left">
+      <div className="overflow-x-auto rounded-2xl border border-surface-border bg-surface shadow-xl custom-scrollbar">
+        <table className="w-full border-collapse text-left min-w-[1000px]">
           <thead>
             <tr className="border-b border-surface-border bg-surface/50 text-tiny font-bold tracking-widest text-text-muted uppercase">
               <th className="py-4 pr-4 pl-6">

@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 import { Button as BaseButton } from '@/components/ui/Button';
 import { Card as BaseCard } from '@/components/ui/Card';
 import {
@@ -66,15 +67,26 @@ export function Modal({
   onClose,
   title,
   children,
+  size = 'md',
 }: {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  size?: 'md' | 'lg' | 'xl';
 }) {
+  const sizeClasses = {
+    md: 'max-w-2xl',
+    lg: 'max-w-4xl',
+    xl: 'max-w-6xl',
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
-      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden border-surface-border bg-surface p-0">
+      <DialogContent className={cn(
+        "flex max-h-[90vh] flex-col overflow-hidden border-surface-border bg-surface p-0",
+        sizeClasses[size]
+      )}>
         <DialogHeader className="border-b border-surface-border p-4">
           <DialogTitle className="text-lg font-bold text-foreground">{title}</DialogTitle>
           <DialogDescription className="sr-only">Modal dialog for {title}</DialogDescription>
