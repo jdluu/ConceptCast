@@ -14,7 +14,7 @@ async def step_validating(
     plan: CurriculumPlan,
     request: JobRequest,
     job: JobRecord,
-    _update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> tuple[ValidationResult, RunUsage | None]:
     """Executes the curriculum validation phase of the generation workflow.
@@ -40,5 +40,8 @@ async def step_validating(
     validation, usage = await validate_curriculum(
         plan, validator_model, on_thought=on_thought
     )
+
+    await update_job({"validation": validation.model_dump()})
+    logger.success("Step 2: Validating - Complete")
 
     return validation, usage

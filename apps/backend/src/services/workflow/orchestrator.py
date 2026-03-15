@@ -158,6 +158,14 @@ async def _handle_architecting_steps(
     validation, v_usage = val_task.result()
     storyboard, a_usage = arch_task.result()
 
+    # Final sync for this block
+    await update_job(
+        {
+            "validation": validation.model_dump(),
+            "storyboard": storyboard.model_dump(),
+        }
+    )
+
     return validation, storyboard, merge_usage(v_usage, a_usage)
 
 
@@ -259,7 +267,7 @@ async def execute_workflow(
                 return
             # ---------------------------------------
 
-            _val, storyboard, usage_23 = await _handle_architecting_steps(
+            validation, storyboard, usage_23 = await _handle_architecting_steps(
                 job_id, job_state, request, plan, provider, update_job, on_thought
             )
             add_usage(usage_23)

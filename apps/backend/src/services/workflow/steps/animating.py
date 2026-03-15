@@ -17,7 +17,7 @@ async def step_animating(
     storyboard: Storyboard,
     request: JobRequest,
     job: JobRecord,
-    _update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> tuple[str, RunUsage]:
     """Executes the AI-driven animation phase with iterative self-correction.
@@ -94,6 +94,7 @@ async def step_animating(
 
         if review.approved:
             logger.success("Animation approved by Reviewer")
+            await update_job({"manim_code": current_code})
             break
 
         logger.info(f"Revision requested: {review.issues}")
