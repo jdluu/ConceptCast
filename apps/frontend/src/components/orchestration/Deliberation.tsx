@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -8,16 +8,47 @@ interface Thought {
   content: string;
 }
 
+interface ThoughtBlock {
+  agent: string;
+  phase: string;
+  content: string;
+  startIndex: number;
+}
 
 export function CouncilDeliberation({ thoughts }: { thoughts: Thought[] }) {
   const logRef = useRef<HTMLDivElement>(null);
+
+  // Group consecutive thoughts from the same agent and phase into "Blocks"
+  // This prevents word-by-word flickering and makes it readable.
+  const thoughtBlocks = useMemo(() => {
+    if (thoughts.length === 0) return [];
+
+    const blocks: ThoughtBlock[] = [];
+    let currentBlock: ThoughtBlock | null = null;
+
+    thoughts.forEach((t, i) => {
+      if (!currentBlock || currentBlock.agent !== t.agent || currentBlock.phase !== t.phase) {
+        currentBlock = {
+          agent: t.agent,
+          phase: t.phase,
+          content: t.content,
+          startIndex: i
+        };
+        blocks.push(currentBlock);
+      } else {
+        currentBlock.content += t.content;
+      }
+    });
+
+    return blocks;
+  }, [thoughts]);
 
   // Auto-scroll logs to bottom
   useEffect(() => {
     if (logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
-  }, [thoughts.length]);
+  }, [thoughtBlocks.length]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-surface-border bg-terminal-bg shadow-2xl transition-all duration-500">
@@ -44,40 +75,44 @@ export function CouncilDeliberation({ thoughts }: { thoughts: Thought[] }) {
 
       <div
         ref={logRef}
-        className="custom-scrollbar max-h-md min-h-sm space-y-1.5 overflow-y-auto p-4 font-mono text-tiny leading-relaxed text-terminal-text"
+        className="custom-scrollbar max-h-[500px] min-h-[300px] space-y-2 overflow-y-auto p-6 font-mono text-xs leading-relaxed text-terminal-text"
         role="log"
       >
-        {thoughts.length === 0 ? (
-          <div className="flex h-full items-center justify-center opacity-20 italic">
+        {thoughtBlocks.length === 0 ? (
+          <div className="flex h-full items-center justify-center opacity-20 italic py-20">
             Waiting for council transmission...
           </div>
         ) : (
-          thoughts.map((t, i) => (
-            <div key={i} className="group flex items-start gap-3 border-l border-white/5 pl-2 transition-colors hover:border-white/20">
-              <span className="shrink-0 text-terminal-text/20">[{i}]</span>
-              <div className="flex flex-wrap gap-1.5">
-                <span
-                  className={cn(
-                    'font-bold',
-                    t.agent.toLowerCase().includes('pedagogue') ||
-                      t.agent.toLowerCase().includes('analyst')
-                      ? 'text-agent-planning'
-                      : t.agent.toLowerCase().includes('critic') ||
-                          t.agent.toLowerCase().includes('validator')
-                        ? 'text-success'
-                        : t.agent.toLowerCase().includes('architect')
-                          ? 'text-agent-architecting'
-                          : t.agent.toLowerCase().includes('animator')
-                            ? 'text-agent-animating'
-                            : 'text-agent-reviewing',
-                  )}
-                >
-                  [{t.agent.toUpperCase()}]
-                </span>
-                <span className="text-terminal-text/40">{'->'}</span>
-                <span className="break-words opacity-90 transition-opacity group-hover:opacity-100">
-                  {t.content}
-                </span>
+          thoughtBlocks.map((block, i) => (
+            <div key={i} className="group flex items-start gap-4 border-l-2 border-white/5 pl-4 transition-colors hover:border-council-active/30 py-1">
+              <span className="shrink-0 text-terminal-text/20 text-[10px] mt-0.5">[{block.startIndex}]</span>
+              <div className="flex flex-col gap-1 w-full">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'font-bold tracking-wider text-[10px]',
+                      block.agent.toLowerCase().includes('pedagogue') ||
+                        block.agent.toLowerCase().includes('analyst')
+                        ? 'text-agent-planning'
+                        : block.agent.toLowerCase().includes('critic') ||
+                            block.agent.toLowerCase().includes('validator')
+                          ? 'text-success'
+                          : block.agent.toLowerCase().includes('architect')
+                            ? 'text-agent-architecting'
+                            : block.agent.toLowerCase().includes('animator')
+                              ? 'text-agent-animating'
+                              : 'text-agent-reviewing',
+                    )}
+                  >
+                    [{block.agent.toUpperCase()}]
+                  </span>
+                  <span className="text-terminal-text/20 text-[9px] font-bold uppercase tracking-widest">
+                    {block.phase}
+                  </span>
+                </div>
+                <div className="text-terminal-text/90 break-words whitespace-pre-wrap">
+                  {block.content}
+                </div>
               </div>
             </div>
           ))

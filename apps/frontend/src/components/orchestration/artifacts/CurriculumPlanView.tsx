@@ -23,33 +23,41 @@ export function CurriculumPlanView({ plan, status, onViewFull }: CurriculumPlanV
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
     >
       {plan.teaching_steps.slice(0, 12).map((step, idx) => (
         <ArtifactCard 
           key={step.step_id} 
           delay={idx * 0.05}
-          className="flex-row items-center gap-4 group hover:border-council-active/40"
+          className="group relative flex-row items-start gap-5 p-5 hover:border-council-active/40"
         >
-          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-council-active/20 bg-council-active/10 text-xs font-bold text-council-active transition-colors group-hover:bg-council-active group-hover:text-white">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-council-active/20 bg-council-active/10 text-sm font-bold text-council-active transition-all group-hover:bg-council-active group-hover:text-white shadow-sm ring-1 ring-council-active/10 group-hover:scale-110">
             {step.step_id}
-          </span>
-          <div className="flex-1 overflow-hidden">
-            <h3 className="text-[11px] font-bold tracking-tight text-foreground truncate uppercase opacity-90 group-hover:opacity-100">
+          </div>
+          <div className="flex-1 space-y-2 overflow-hidden">
+            <h3 className="text-sm font-bold tracking-tight text-foreground uppercase opacity-90 group-hover:opacity-100">
               {step.concept}
             </h3>
-            <p className="line-clamp-1 text-tiny text-text-muted italic opacity-60 mt-0.5">
-              {step.visual_metaphor}
-            </p>
+            <div className="space-y-1.5">
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] font-bold text-council-active/60 uppercase tracking-widest mt-0.5">Visual:</span>
+                <p className="text-xs text-text-muted italic leading-relaxed">
+                  {step.visual_metaphor}
+                </p>
+              </div>
+              <p className="text-tiny text-text-muted/70 line-clamp-2 leading-relaxed">
+                {step.narration}
+              </p>
+            </div>
           </div>
         </ArtifactCard>
       ))}
       {plan.teaching_steps.length > 12 && (
-        <div className="sm:col-span-2 lg:col-span-3 mt-2">
+        <div className="sm:col-span-2 xl:col-span-3 mt-4">
           <ArtifactAction onClick={onViewFull}>
-            Explore All {plan.teaching_steps.length} Steps
+            Explore All {plan.teaching_steps.length} Pedagogical Steps
           </ArtifactAction>
         </div>
       )}

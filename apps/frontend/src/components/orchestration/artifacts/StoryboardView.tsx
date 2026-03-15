@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Video } from 'lucide-react';
+import { Video, Film } from 'lucide-react';
 import { Storyboard } from '@/lib/api/client';
 import { ArtifactCard, ArtifactPlaceholder, ArtifactBadge } from './ArtifactCommon';
 
@@ -15,44 +15,52 @@ export function StoryboardView({ storyboard, status }: StoryboardViewProps) {
     return (
       <ArtifactPlaceholder 
         status={isQueued ? 'queued' : 'loading'} 
-        message={isQueued ? 'Queued' : 'Visual Deliberation'}
-        submessage={isQueued ? 'Awaiting curriculum finalization...' : 'Architecting scenes...'}
+        message={isQueued ? 'Visual Sequence Pending' : 'Visual Deliberation'}
+        submessage={isQueued ? 'Waiting for pedagogical structure...' : 'Designing cinematic sequences...'}
       />
     );
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.99 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
     >
       {storyboard.scenes.map((scene, idx) => (
         <ArtifactCard 
           key={scene.scene_id} 
           delay={idx * 0.05}
-          className="hover:border-council-active/50"
+          className="group hover:border-council-active/50 p-5 gap-4"
         >
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-micro font-bold tracking-[0.1em] text-text-muted opacity-50 uppercase">
-              S{scene.scene_id}
-            </span>
-            <Video className="h-2.5 w-2.5 text-text-muted opacity-20" />
+          <div className="flex items-center justify-between border-b border-surface-border pb-3 mb-1">
+            <div className="flex items-center gap-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-council-active/10 text-council-active ring-1 ring-council-active/20">
+                <Film className="h-3 w-3" />
+              </div>
+              <span className="text-[10px] font-bold tracking-[0.2em] text-text-muted uppercase">
+                SCENE_{scene.scene_id}
+              </span>
+            </div>
+            <Video className="h-3 w-3 text-text-muted opacity-30" />
           </div>
-          <h4 className="mb-2 line-clamp-1 text-mini font-bold text-foreground uppercase tracking-tight">
+          
+          <h4 className="line-clamp-1 text-sm font-bold text-foreground uppercase tracking-tight group-hover:text-council-active transition-colors">
             {scene.title}
           </h4>
-          <div className="space-y-2">
-            <div>
+          
+          <div className="space-y-4">
+            <div className="space-y-1.5">
               <ArtifactBadge variant="completed">Script</ArtifactBadge>
-              <p className="line-clamp-2 text-tiny leading-tight text-text-muted">
-                {scene.description}
+              <p className="line-clamp-3 text-xs leading-relaxed text-text-muted font-medium italic">
+                "{scene.narration}"
               </p>
             </div>
-            <div>
-              <ArtifactBadge variant="active">Visual</ArtifactBadge>
-              <p className="line-clamp-2 text-tiny leading-tight text-text-muted italic opacity-60">
-                {(scene as any).visual_prompt || scene.narration || 'Dynamic generation...'}
+            
+            <div className="space-y-1.5 pt-2 border-t border-surface-border/50">
+              <ArtifactBadge variant="active">Visual Composition</ArtifactBadge>
+              <p className="line-clamp-3 text-xs leading-relaxed text-text-muted">
+                {scene.description}
               </p>
             </div>
           </div>
