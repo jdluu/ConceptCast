@@ -12,7 +12,13 @@ import {
   type Scene,
 } from '@/lib/api/types';
 
-export const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '';
+export interface JobReviewRequest {
+  feedback?: string;
+  edited_plan?: CurriculumPlan;
+  action: 'approve' | 'regenerate';
+}
+
+export const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || '';
 
 const apiClient = createClient<paths>({ baseUrl: API_BASE_URL });
 
@@ -52,10 +58,10 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
 
 export async function createJob(request: JobRequest): Promise<JobStatus> {
   const { data, error } = await apiClient.POST('/jobs/create', {
-    body: request as any,
+    body: request as components['schemas']['JobRequest'],
   });
   if (error) throw new Error('Failed to create job');
-  return data as any as JobStatus;
+  return data as unknown as JobStatus;
 }
 
 export async function retryJob(jobId: string): Promise<JobStatus> {
@@ -64,7 +70,7 @@ export async function retryJob(jobId: string): Promise<JobStatus> {
     params: { path: { job_id: jobId } as any },
   });
   if (error) throw new Error('Failed to retry job');
-  return data as any as JobStatus;
+  return data as unknown as JobStatus;
 }
 
 export async function deleteJob(jobId: string): Promise<void> {
@@ -72,6 +78,20 @@ export async function deleteJob(jobId: string): Promise<void> {
     params: { path: { job_id: jobId } },
   });
   if (error) throw new Error('Failed to delete job');
+}
+
+export async function deleteAllJobs(): Promise<void> {
+  const { error } = await apiClient.DELETE('/jobs');
+  if (error) throw new Error('Failed to clear job history');
+}
+
+export async function reviewJob(jobId: string, review: JobReviewRequest): Promise<JobStatus> {
+  const { data, error } = await apiClient.POST('/jobs/{job_id}/review' as any, {
+    params: { path: { job_id: jobId } as any },
+    body: review as any,
+  });
+  if (error) throw new Error('Failed to submit review');
+  return data as unknown as JobStatus;
 }
 
 export async function getAvailableModels(): Promise<

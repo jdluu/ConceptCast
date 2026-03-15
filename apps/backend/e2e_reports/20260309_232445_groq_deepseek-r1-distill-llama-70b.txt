@@ -1,0 +1,11 @@
+ConceptCast E2E CLI Report
+==============================
+Timestamp: 20260309_232445
+Topic: Quick Test
+Provider: groq
+Model: deepseek-r1-distill-llama-70b
+==============================
+
+[2026-03-09T23:24:45.857418+00:00] STATUS UPDATE: {'status': 'planning', 'current_step': 'planning_start', 'started_at': datetime.datetime(2026, 3, 9, 23, 24, 45, 857359, tzinfo=datetime.timezone.utc)}
+
+CRITICAL FAILURE: status_code: 400, model_name: deepseek-r1-distill-llama-70b, body: {'error': {'message': 'The model `deepseek-r1-distill-llama-70b` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.', 'type': 'invalid_request_error', 'code': 'model_decommissioned'}}

@@ -1,7 +1,7 @@
 # ConceptCast Monorepo Makefile
 # Provides a unified interface for infrastructure, development, and maintenance.
 
-.PHONY: help setup update dev dev-backend dev-frontend dev-worker db-migrate db-generate db-status db-rollback lint format build clean redis-up redis-down
+.PHONY: help setup update dev dev-backend dev-frontend dev-worker db-migrate db-generate db-status db-rollback lint format build clean redis-up redis-down clean-reports
 
 # --- Help ---
 
@@ -50,6 +50,10 @@ clean: ## Remove build artifacts, node_modules, and virtual environments
 	rm -rf apps/backend/.venv
 	rm -rf .turbo
 	rm -rf apps/frontend/dist
+	@make clean-reports
+
+clean-reports: ## Remove E2E report files
+	rm -rf apps/backend/e2e_reports/*.txt
 
 # --- Development ---
 

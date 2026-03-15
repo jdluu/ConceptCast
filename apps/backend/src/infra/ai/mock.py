@@ -62,11 +62,11 @@ class MockStreamedResponse(StreamedResponse):
                 # Split content into parts, preserving the delimiters (newlines or sentence-ending spaces)
                 # This ensures Python code blocks (Manim) preserve their syntax.
                 content = part.content
-                parts_list = re.split(r'((?<=[.!?])\s+|\n)', content)
+                parts_list = re.split(r"((?<=[.!?])\s+|\n)", content)
                 for part_chunk in parts_list:
                     if not part_chunk:
                         continue
-                    
+
                     if isinstance(part, TextPart):
                         events = self._parts_manager.handle_text_delta(
                             vendor_part_id=i, content=part_chunk
@@ -78,7 +78,7 @@ class MockStreamedResponse(StreamedResponse):
 
                     for event in events:
                         yield event
-                    
+
                     # Small delay between chunks for realism
                     await asyncio.sleep(0.1)
             elif isinstance(part, ToolCallPart):
@@ -175,7 +175,7 @@ class RealisticMockModel(Model):
                     elif isinstance(part, UserPromptPart) and isinstance(
                         part.content, str
                     ):
-                        match = re.search(r"'(.*?)'", part.content)
+                        match = re.search(r"['\"](.*?)['\"]", part.content)
                         if match:
                             user_topic = match.group(1)
             elif isinstance(msg, ModelResponse):
