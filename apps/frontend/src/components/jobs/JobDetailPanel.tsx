@@ -90,8 +90,8 @@ export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
             />
             <DataCard
               label="Format"
-              value={job.resolution || 'N/A'}
-              subValue={`${job.frame_rate} FPS`}
+              value="1080p (Full HD)"
+              subValue="60 FPS Premium"
             />
             <DataCard
               label="Timeline"

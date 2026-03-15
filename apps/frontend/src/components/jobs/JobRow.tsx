@@ -119,14 +119,10 @@ export function JobRow({
         <td className="px-4 py-5">
           <div className="flex flex-col">
             <span className="text-xs font-medium text-foreground">
-              {job.resolution
-                ? metadata.resolution && metadata.resolution !== job.resolution
-                  ? `${job.resolution} (${metadata.resolution})`
-                  : job.resolution
-                : metadata.resolution || '\u2014'}
+              {metadata.resolution || '1080p'}
             </span>
             <span className="text-tiny text-text-muted">
-              {metadata.file_size || (job.frame_rate ? `${job.frame_rate} FPS` : '')}
+              {metadata.file_size || '60 FPS'}
             </span>
           </div>
         </td>

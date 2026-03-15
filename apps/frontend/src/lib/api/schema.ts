@@ -94,6 +94,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jobs/{job_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Job
+         * @description Handles human-in-the-loop review actions for a paused job.
+         */
+        post: operations["review_job_jobs__job_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/{job_id}/status": {
         parameters: {
             query?: never;
@@ -348,17 +368,37 @@ export interface components {
             /** Model Id */
             model_id?: string | null;
             /**
-             * Resolution
-             * @default 720p
+             * Hitl Enabled
+             * @default false
+             */
+            hitl_enabled: boolean;
+            /** Analyst Model */
+            analyst_model?: string | null;
+            /** Validator Model */
+            validator_model?: string | null;
+            /** Architect Model */
+            architect_model?: string | null;
+            /** Animator Model */
+            animator_model?: string | null;
+        };
+        /**
+         * JobReviewRequest
+         * @description Payload for human-in-the-loop review actions.
+         */
+        JobReviewRequest: {
+            /**
+             * Feedback
+             * @description Steering instructions for the agent
+             */
+            feedback?: string | null;
+            /** @description Directly modified curriculum */
+            edited_plan?: components["schemas"]["CurriculumPlan"] | null;
+            /**
+             * Action
+             * @default approve
              * @enum {string}
              */
-            resolution: "720p" | "1080p";
-            /**
-             * Frame Rate
-             * @default 30
-             * @enum {integer}
-             */
-            frame_rate: 30 | 60;
+            action: "approve" | "regenerate";
         };
         /**
          * JobStatus
@@ -375,7 +415,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "planning" | "validating" | "architecting" | "animating" | "rendering" | "reviewing" | "completed" | "failed" | "pending_retry";
+            status: "planning" | "validating" | "architecting" | "animating" | "rendering" | "reviewing" | "awaiting_review" | "completed" | "failed" | "pending_retry";
             /** Current Step */
             current_step?: string | null;
             plan?: components["schemas"]["CurriculumPlan"] | null;
@@ -386,17 +426,30 @@ export interface components {
             /** Video Url */
             video_url?: string | null;
             /** Error */
-            error?: string | null;
+            error: string | null;
             /**
              * Mode
              * @default live
              * @enum {string}
              */
             mode: "live" | "mock";
+            /**
+             * Hitl Enabled
+             * @default false
+             */
+            hitl_enabled: boolean;
             /** Provider */
             provider?: string | null;
             /** Model Id */
             model_id?: string | null;
+            /** Analyst Model */
+            analyst_model?: string | null;
+            /** Validator Model */
+            validator_model?: string | null;
+            /** Architect Model */
+            architect_model?: string | null;
+            /** Animator Model */
+            animator_model?: string | null;
             /** Target Audience */
             target_audience?: string | null;
             /** Started At */
@@ -422,16 +475,6 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /**
-             * Resolution
-             * @default 720p
-             */
-            resolution: string;
-            /**
-             * Frame Rate
-             * @default 30
-             */
-            frame_rate: number;
-            /**
              * Render Progress
              * @default 0
              */
@@ -454,12 +497,25 @@ export interface components {
             created_at: string;
             /** Retry Count */
             retry_count: number;
+            /**
+             * Hitl Enabled
+             * @default false
+             */
+            hitl_enabled: boolean;
             /** Error */
             error: string | null;
             /** Provider */
             provider?: string | null;
             /** Model Id */
             model_id?: string | null;
+            /** Analyst Model */
+            analyst_model?: string | null;
+            /** Validator Model */
+            validator_model?: string | null;
+            /** Architect Model */
+            architect_model?: string | null;
+            /** Animator Model */
+            animator_model?: string | null;
             /** Target Audience */
             target_audience?: string | null;
             /** Started At */
@@ -481,16 +537,6 @@ export interface components {
             video_metadata?: {
                 [key: string]: unknown;
             } | null;
-            /**
-             * Resolution
-             * @default 720p
-             */
-            resolution: string;
-            /**
-             * Frame Rate
-             * @default 30
-             */
-            frame_rate: number;
             /**
              * Render Progress
              * @default 0
@@ -763,6 +809,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["JobRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_job_jobs__job_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobReviewRequest"];
             };
         };
         responses: {

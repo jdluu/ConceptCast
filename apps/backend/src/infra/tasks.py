@@ -27,8 +27,6 @@ async def render_video_task(
     code: str,
     storyboard_dict: dict[str, Any],
     request_dict: dict[str, Any],
-    resolution: str,  # noqa: ARG001
-    frame_rate: int,  # noqa: ARG001
 ) -> None:
     """Asynchronous background task to perform Manim rendering for a specific job.
 
@@ -37,8 +35,6 @@ async def render_video_task(
         code: The generated Manim Python code to render.
         storyboard_dict: Dictionary representation of the visual storyboard.
         request_dict: Dictionary representation of the original job request.
-        resolution: Target video resolution.
-        frame_rate: Target frame rate for the video.
     """
     storyboard = Storyboard(**storyboard_dict)
     request = JobRequest(**request_dict)

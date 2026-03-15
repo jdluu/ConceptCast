@@ -5,7 +5,7 @@ from loguru import logger
 
 from api.schemas import JobRequest, Storyboard
 from domain.agents.animator import generate_manim_code
-from infra.engines.video import mock_render_storyboard, render_storyboard
+from infra.engines.video import render_storyboard
 from infra.models.job import JobRecord
 from infra.security.sanitizer import sanitize_manim_code
 from services.workflow.base import get_step_model
@@ -51,8 +51,8 @@ async def step_rendering(
             code,
             job_id,
             update_job=update_job,
-            resolution=job.resolution,
-            frame_rate=job.frame_rate,
+            resolution="1080p",
+            frame_rate=60,
         )
 
         total_cost = calculate_job_cost(
@@ -105,8 +105,8 @@ async def step_rendering(
                     retry_code,
                     job_id,
                     update_job=update_job,
-                    resolution=job.resolution,
-                    frame_rate=job.frame_rate,
+                    resolution="1080p",
+                    frame_rate=60,
                 )
 
                 duration = (

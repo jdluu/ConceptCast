@@ -17,8 +17,6 @@ export type JobStatus = Omit<components['schemas']['JobStatus'], 'status'> & {
   cost?: number;
   thumbnail_url?: string | null;
   video_metadata?: VideoMetadata | null;
-  resolution?: string;
-  frame_rate?: number;
   render_progress?: number;
 };
 export type JobSummary = components['schemas']['JobSummary'] & {
@@ -26,14 +24,9 @@ export type JobSummary = components['schemas']['JobSummary'] & {
   thumbnail_url?: string | null;
   video_url?: string | null;
   video_metadata?: VideoMetadata | null;
-  resolution?: string;
-  frame_rate?: number;
   render_progress?: number;
 };
-export type JobRequest = components['schemas']['JobRequest'] & {
-  resolution: '720p' | '1080p';
-  frame_rate: 30 | 60;
-};
+export type JobRequest = components['schemas']['JobRequest'];
 export type ThoughtLog = components['schemas']['ThoughtLog'];
 export type CurriculumPlan = components['schemas']['CurriculumPlan'];
 export type Storyboard = components['schemas']['Storyboard'];
