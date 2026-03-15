@@ -183,30 +183,6 @@ async def render_storyboard(
     )
 
 
-async def mock_render_storyboard(job_id: str) -> VideoResult:
-    """Simulates a video rendering process for testing.
-
-    Args:
-        job_id: The job ID to simulate.
-
-    Returns:
-        A VideoResult pointing to static sample assets.
-    """
-    logger.info(f"Simulating rapid render for mock job {job_id}")
-    await asyncio.sleep(2)  # Short artificial delay for realism
-    return VideoResult(
-        video_url="/static/sample_video.mp4",
-        thumbnail_url="/static/sample_thumbnail.jpg",
-        metadata={
-            "width": 1280,
-            "height": 720,
-            "fps": 30,
-            "duration": 5.0,
-            "file_size": 1024 * 1024,
-        },
-    )
-
-
 async def render_preview(code: str, job_id: str) -> PreviewResult:
     """Performs a fast, low-quality render to validate code integrity.
 
@@ -260,13 +236,3 @@ async def render_preview(code: str, job_id: str) -> PreviewResult:
 
     except RuntimeError as e:
         return PreviewResult(success=False, logs=str(e), frame_path=None, error=str(e))
-
-
-async def mock_render_preview() -> PreviewResult:
-    """Simulates a preview render process for testing."""
-    return PreviewResult(
-        success=True,
-        logs="[MOCK] Rapid preview successful",
-        frame_path=None,
-        error=None,
-    )

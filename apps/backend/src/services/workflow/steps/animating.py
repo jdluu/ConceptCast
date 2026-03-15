@@ -7,7 +7,7 @@ from pydantic_ai.usage import RunUsage
 from api.schemas import JobRequest, Storyboard
 from domain.agents.animator import generate_manim_code
 from domain.agents.reviewer import review_animation
-from infra.engines.video import mock_render_preview, render_preview
+from infra.engines.video import render_preview
 from infra.exceptions import AnimationGenerationError
 from infra.models.job import JobRecord
 from infra.security.sanitizer import sanitize_manim_code
@@ -74,10 +74,7 @@ async def step_animating(
             continue
 
         # Preview and Review
-        if job.mode == "mock":
-            preview_result = await mock_render_preview()
-        else:
-            preview_result = await render_preview(current_code, str(job.job_id))
+        preview_result = await render_preview(current_code, str(job.job_id))
         if not preview_result.success:
             logger.warning(f"Preview failed: {preview_result.error}")
             hint = f"Animation failed to render: {preview_result.error}"
