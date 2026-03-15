@@ -8,8 +8,10 @@ from pydantic_ai import (
     Agent,
     AgentRunResultEvent,
     PartDeltaEvent,
+    PartStartEvent,
     TextPartDelta,
     ThinkingPartDelta,
+    ToolCallPart,
     ToolCallPartDelta,
 )
 from pydantic_ai.usage import RunUsage
@@ -41,8 +43,13 @@ async def run_agent_streamed(
     """
     usage = RunUsage()
     final = None
+    tool_names: dict[int, str] = {}
+
     async for event in agent.run_stream_events(prompt, **run_kwargs):
-        if isinstance(event, PartDeltaEvent):
+        if isinstance(event, PartStartEvent):
+            if isinstance(event.part, ToolCallPart):
+                tool_names[event.index] = event.part.tool_name
+        elif isinstance(event, PartDeltaEvent):
             if (
                 isinstance(event.delta, ThinkingPartDelta)
                 and on_thought
@@ -55,14 +62,19 @@ async def run_agent_streamed(
                 and event.delta.content_delta
             ):
                 await on_thought(agent_name, "output", event.delta.content_delta)
-            elif (
-                isinstance(event.delta, ToolCallPartDelta)
-                and on_thought
-                and event.delta.tool_name
-            ):
-                await on_thought(
-                    agent_name, "tool_call", f"Invoking tool: {event.delta.tool_name}..."
-                )
+            elif isinstance(event.delta, ToolCallPartDelta) and on_thought:
+                tool_name = tool_names.get(event.index, "unknown_tool")
+                # Only notify once per tool call start if possible,
+                # but since this is a delta, we might want to only notify on the first delta.
+                # For simplicity, we'll notify that the tool is being invoked.
+                # To avoid spamming, we can check if we already notified for this index.
+                if tool_name != "notified":
+                    await on_thought(
+                        agent_name,
+                        "tool_call",
+                        f"Invoking tool: {tool_name}...",
+                    )
+                    tool_names[event.index] = "notified"
         elif isinstance(event, AgentRunResultEvent):
             final = event.result.output
             usage = event.result.usage()

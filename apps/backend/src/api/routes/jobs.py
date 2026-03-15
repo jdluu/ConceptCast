@@ -8,7 +8,7 @@ import json
 import shutil
 import uuid
 from collections.abc import AsyncGenerator, Callable
-from typing import Literal, cast
+from typing import Literal
 
 from fastapi import (
     APIRouter,
@@ -27,14 +27,18 @@ from api.schemas import (
     CurriculumPlan,
     JobListResponse,
     JobRequest,
+    JobReviewRequest,
     JobStatus,
-    JobSummary,
 )
 from infra.database import AsyncSessionLocal, get_db
 from infra.models.job import JobRecord
 from infra.settings import get_settings
 from services.jobs.events import job_event_manager
 from services.jobs.manager import determine_execution_mode
+from services.jobs.serialization import (
+    map_job_record_to_status,
+    map_job_record_to_summary,
+)
 from services.workflow.orchestrator import prepare_job_for_retry, process_job_logic
 
 router = APIRouter()
@@ -76,7 +80,7 @@ async def _stream_job_events(
                 or job.updated_at != last_updated
                 or len(thoughts) != last_thought_count
             ):
-                yield f"data: {job.to_status_schema().model_dump_json()}\n\n"
+                yield f"data: {map_job_record_to_status(job).model_dump_json()}\n\n"
                 last_status = job.status
                 last_updated = job.updated_at
                 last_thought_count = len(thoughts)
@@ -113,15 +117,14 @@ async def create_job(
     """
     try:
         job_id = str(uuid.uuid4())
+        settings = get_settings()
 
         is_mock = determine_execution_mode(request)
         mode = "mock" if is_mock else "live"
-        
+
         # If in mock mode, we always use the canonical mock topic to ensure
         # alignment between the UI, agents, and the Manim renderer.
-        effective_topic = (
-            "Understanding Quantum Entanglement" if is_mock else request.topic
-        )
+        effective_topic = settings.mock_topic if is_mock else request.topic
 
         new_job = JobRecord(
             job_id=job_id,
@@ -129,10 +132,13 @@ async def create_job(
             target_audience=request.target_audience,
             status="planning",
             mode=mode,
+            hitl_enabled=request.hitl_enabled,
             provider=request.provider,
             model_id=request.model_id,
-            resolution=request.resolution,
-            frame_rate=request.frame_rate,
+            analyst_model=request.analyst_model,
+            validator_model=request.validator_model,
+            architect_model=request.architect_model,
+            animator_model=request.animator_model,
         )
 
         db.add(new_job)
@@ -142,26 +148,98 @@ async def create_job(
         session_factory = getattr(
             req.app.state, "db_session_factory", AsyncSessionLocal
         )
-        
+
         # Ensure the orchestrator also uses the effective topic
         background_tasks.add_task(
-            process_job_logic, job_id, request.model_copy(update={"topic": effective_topic}), session_factory
+            process_job_logic,
+            job_id,
+            request.model_copy(update={"topic": effective_topic}),
+            session_factory,
         )
 
-        return JobStatus(
-            job_id=job_id,
-            topic=effective_topic,
-            status="planning",
-            mode=cast(Literal["live", "mock"], mode),
-            provider=request.provider,
-            model_id=request.model_id,
-            target_audience=request.target_audience,
-            resolution=request.resolution,
-            frame_rate=request.frame_rate,
-            retry_count=0,
-        )
+        return map_job_record_to_status(new_job)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/{job_id}/review", response_model=JobStatus)
+async def review_job(
+    job_id: str,
+    review: JobReviewRequest,
+    background_tasks: BackgroundTasks,
+    req: Request,
+    db: AsyncSession = Depends(get_db),
+) -> JobStatus:
+    """Handles human-in-the-loop review actions for a paused job."""
+    result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
+    job = result.scalar_one_or_none()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status != "awaiting_review":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job is in state '{job.status}', not awaiting review.",
+        )
+
+    session_factory = getattr(req.app.state, "db_session_factory", AsyncSessionLocal)
+
+    if review.action == "approve":
+        # Apply edits if provided
+        if review.edited_plan:
+            job.plan = review.edited_plan.model_dump()
+
+        job.status = "validating"  # Transition to next step
+        await db.commit()
+        await db.refresh(job)
+
+        # Resume workflow from Step 2
+        background_tasks.add_task(
+            process_job_logic,
+            job_id,
+            JobRequest(
+                topic=job.topic,
+                target_audience=job.target_audience or "General",
+                provider=job.provider,
+                model_id=job.model_id,
+                hitl_enabled=job.hitl_enabled,
+                analyst_model=job.analyst_model,
+                validator_model=job.validator_model,
+                architect_model=job.architect_model,
+                animator_model=job.animator_model,
+            ),
+            session_factory,
+        )
+
+    elif review.action == "regenerate":
+        # Reset plan and status to trigger regeneration with feedback
+        job.plan = None
+        job.status = "planning"
+
+        await db.commit()
+        await db.refresh(job)
+
+        background_tasks.add_task(
+            process_job_logic,
+            job_id,
+            JobRequest(
+                topic=f"{job.topic} (Feedback: {review.feedback})"
+                if review.feedback
+                else job.topic,
+                target_audience=job.target_audience or "General",
+                provider=job.provider,
+                model_id=job.model_id,
+                hitl_enabled=job.hitl_enabled,
+                analyst_model=job.analyst_model,
+                validator_model=job.validator_model,
+                architect_model=job.architect_model,
+                animator_model=job.animator_model,
+            ),
+            session_factory,
+        )
+
+    return map_job_record_to_status(job)
 
 
 @router.get("/{job_id}/status", response_model=JobStatus)
@@ -184,7 +262,7 @@ async def get_job_status(job_id: str, db: AsyncSession = Depends(get_db)) -> Job
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    return job.to_status_schema()
+    return map_job_record_to_status(job)
 
 
 @router.get("/{job_id}/events")
@@ -256,37 +334,7 @@ async def list_jobs(
     summary_list = []
     try:
         for job in jobs:
-            retry_count_val = job.retry_count if job.retry_count is not None else 0
-
-            summary_list.append(
-                JobSummary(
-                    job_id=job.job_id,
-                    topic=job.topic,
-                    status=job.status,
-                    mode=job.mode,
-                    created_at=job.created_at.isoformat(),
-                    retry_count=retry_count_val,
-                    error=job.error,
-                    provider=job.provider,
-                    model_id=job.model_id,
-                    target_audience=job.target_audience,
-                    resolution=job.resolution,
-                    frame_rate=job.frame_rate,
-                    started_at=(job.started_at.isoformat() if job.started_at else None),
-                    finished_at=(
-                        job.finished_at.isoformat() if job.finished_at else None
-                    ),
-                    duration_seconds=(
-                        (job.finished_at - job.started_at).total_seconds()
-                        if job.started_at and job.finished_at
-                        else None
-                    ),
-                    cost=job.cost,
-                    thumbnail_url=job.thumbnail_url,
-                    video_url=job.video_url,
-                    video_metadata=job.video_metadata,
-                )
-            )
+            summary_list.append(map_job_record_to_summary(job))
     except Exception as e:
         logger.error(f"Error serializing job: {e}")
         raise HTTPException(status_code=500, detail=f"Serialization error: {e}") from e
@@ -322,13 +370,16 @@ async def retry_job(
         target_audience=job.target_audience or "General Audience",
         provider=job.provider,
         model_id=job.model_id,
-        resolution=cast(Literal["720p", "1080p"], job.resolution),
-        frame_rate=cast(Literal[30, 60], job.frame_rate),
+        hitl_enabled=job.hitl_enabled,
+        analyst_model=job.analyst_model,
+        validator_model=job.validator_model,
+        architect_model=job.architect_model,
+        animator_model=job.animator_model,
     )
 
     background_tasks.add_task(process_job_logic, job_id, request, session_factory)
 
-    return job.to_status_schema()
+    return map_job_record_to_status(job)
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)

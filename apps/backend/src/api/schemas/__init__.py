@@ -41,6 +41,9 @@ from .jobs import (
     JobRequest as JobRequest,
 )
 from .jobs import (
+    JobReviewRequest as JobReviewRequest,
+)
+from .jobs import (
     JobStatus as JobStatus,
 )
 from .jobs import (

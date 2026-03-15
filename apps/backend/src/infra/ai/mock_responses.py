@@ -1,3 +1,7 @@
+from typing import Any
+
+from pydantic import BaseModel
+
 from api.schemas import (
     AnimationReview,
     CurriculumPlan,
@@ -5,13 +9,14 @@ from api.schemas import (
     Storyboard,
     TeachingStep,
     ValidationResult,
-    VisualObject,
 )
-from pydantic import BaseModel
+from infra.settings import get_settings
+
+settings = get_settings()
 
 MOCK_PLANS = {
     "default": CurriculumPlan(
-        concept_title="Understanding Quantum Entanglement",
+        concept_title=settings.mock_topic,
         target_audience="General Audience",
         teaching_steps=[
             TeachingStep(
@@ -93,7 +98,7 @@ MOCK_VALIDATIONS = {
 
 MOCK_STORYBOARDS = {
     "default": Storyboard(
-        concept_title="Understanding Quantum Entanglement",
+        concept_title=settings.mock_topic,
         scenes=[
             Scene(
                 scene_id=1,
@@ -210,33 +215,34 @@ def inject_topic_recursively(obj: Any, topic: str) -> Any:
     Returns:
         The object with all topic placeholders replaced.
     """
+    settings = get_settings()
     replacements = {
-        "Understanding Quantum Entanglement": topic,
+        settings.mock_topic: topic,
         "Quantum Entanglement": topic,
         "quantum": "core",
         "particles": "components",
         "particle": "component",
     }
-    
+
     if isinstance(obj, str):
         res = obj
         for target, replacement in replacements.items():
             res = res.replace(target, replacement)
         return res
-    
+
     if isinstance(obj, list):
         return [inject_topic_recursively(item, topic) for item in obj]
-    
+
     if isinstance(obj, dict):
         return {k: inject_topic_recursively(v, topic) for k, v in obj.items()}
-    
+
     if hasattr(obj, "__dict__") or isinstance(obj, BaseModel):
         # Handle Pydantic models and simple objects
         fields = obj.__dict__ if not isinstance(obj, BaseModel) else obj.model_fields
         for field_name in fields:
             val = getattr(obj, field_name)
             setattr(obj, field_name, inject_topic_recursively(val, topic))
-    
+
     return obj
 
 
@@ -277,8 +283,8 @@ def get_realistic_response(
         # Replacement for the template placeholder
         manim_template = manim_template.replace("{{concept_title}}", topic)
         # Also handle any lingering default strings
-        manim_template = manim_template.replace("Understanding Quantum Entanglement", topic)
+        manim_template = manim_template.replace(settings.mock_topic, topic)
     else:
         manim_template = manim_template.replace("{{concept_title}}", "ConceptCast")
-    
+
     return manim_template
