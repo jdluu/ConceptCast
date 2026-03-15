@@ -216,13 +216,22 @@ class RealisticMockModel(Model):
 
         target_type: type | None = None
         if output_object:
-            if output_object.name == "CurriculumPlan":
+            name = output_object.name
+            if name in ("CurriculumPlan", "final_result") and is_analyst:
                 target_type = CurriculumPlan
-            elif output_object.name == "Storyboard":
+            elif name in ("Storyboard", "final_result") and "Architect" in system_text:
                 target_type = Storyboard
-            elif output_object.name == "ValidationResult":
+            elif name in ("ValidationResult", "final_result") and "Validator" in system_text:
                 target_type = ValidationResult
-            elif output_object.name == "AnimationReview":
+            elif name in ("AnimationReview", "final_result") and "Reviewer" in system_text:
+                target_type = AnimationReview
+            elif name == "CurriculumPlan":
+                target_type = CurriculumPlan
+            elif name == "Storyboard":
+                target_type = Storyboard
+            elif name == "ValidationResult":
+                target_type = ValidationResult
+            elif name == "AnimationReview":
                 target_type = AnimationReview
 
         response_text = get_realistic_response(
