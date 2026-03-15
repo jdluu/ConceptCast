@@ -3,21 +3,33 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 const STORAGE_KEY = 'conceptcast_app_settings';
 
 export interface AppSettings {
-  resolution: '720p' | '1080p';
-  frameRate: 30 | 60;
   defaultAudience: string;
   enableNotifications: boolean;
   enableSound: boolean;
   reducedMotion: boolean;
+  hitlEnabled: boolean;
+  showAdvancedModelSettings: boolean;
+  agentModels: {
+    analyst: string;
+    validator: string;
+    architect: string;
+    animator: string;
+  };
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  resolution: '720p',
-  frameRate: 30,
   defaultAudience: 'Undergraduate CS',
   enableNotifications: true,
   enableSound: true,
   reducedMotion: false,
+  hitlEnabled: false,
+  showAdvancedModelSettings: false,
+  agentModels: {
+    analyst: 'nvidia/nemotron-3-super-120b-a12b:thinking',
+    validator: 'meta/llama-3.3-70b-versatile',
+    architect: 'minimax/minimax-m2.5',
+    animator: 'nvidia/nemotron-3-super-120b-a12b:thinking',
+  },
 };
 
 function readStored(): AppSettings {

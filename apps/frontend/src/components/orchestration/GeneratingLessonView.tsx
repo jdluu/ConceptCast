@@ -9,6 +9,7 @@ import { CurriculumPlanView } from '@/components/orchestration/artifacts/Curricu
 import { StoryboardView } from '@/components/orchestration/artifacts/StoryboardView';
 import { AnalystVerdict } from '@/components/orchestration/AnalystVerdict';
 import { LessonArtifactModal } from '@/components/orchestration/LessonModal';
+import { HitlReviewPanel } from '@/components/orchestration/HitlReviewPanel';
 import {
   Search,
   CheckCircle,
@@ -205,9 +206,9 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
           </div>
           <div className="flex w-full items-center gap-4 overflow-x-auto pb-4">
             {PIPELINE_STEPS.map((step, idx) => {
-              const isCurrent = job.status === step.id;
+              const isCurrent = job.status === step.id || (step.id === 'planning' && job.status === 'awaiting_review');
               const isPast =
-                PIPELINE_STEPS.findIndex((s) => s.id === job.status) > idx ||
+                (PIPELINE_STEPS.findIndex((s) => s.id === job.status) > idx && job.status !== 'awaiting_review') ||
                 job.status === 'completed';
 
               const statusMessage = (() => {
@@ -287,8 +288,19 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
                 )}
               </div>
 
-              <div className="aspect-video bg-background p-8">
-                {job.status === 'rendering' ? (
+              <div className={cn(
+                "bg-background",
+                job.status === 'awaiting_review' ? "overflow-y-auto max-h-[600px] p-0" : "aspect-video p-8"
+              )}>
+                {job.status === 'awaiting_review' ? (
+                  <HitlReviewPanel 
+                    jobId={job.job_id} 
+                    plan={job.plan as any} 
+                    onActionComplete={() => {
+                      // Optional: any extra logic on completion
+                    }} 
+                  />
+                ) : job.status === 'rendering' ? (
                   <div className="flex h-full flex-col items-center justify-center space-y-8">
                     <div className="relative h-48 w-48">
                       <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 100 100">

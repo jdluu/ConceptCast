@@ -3,6 +3,7 @@ import { useTheme } from '@/lib/contexts/theme';
 import { useAppSettings } from '@/lib/contexts/appSettings';
 import { Moon, Sun, Laptop, Zap, Trash2, Bell, Volume2, Move } from 'lucide-react';
 import { useState } from 'react';
+import { deleteAllJobs } from '@/lib/api/client';
 
 export function SettingsPage() {
   const { developerMode, setDeveloperMode } = useDeveloperMode();
@@ -196,7 +197,59 @@ export function SettingsPage() {
           </header>
 
           <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface backdrop-blur-sm">
-            {/* Agent Transparency removed - managed via UI dropdowns */}
+            <div className="flex items-center justify-between gap-8 p-6">
+              <div className="flex-1">
+                <div className="mb-1 flex items-center gap-2">
+                  <Move className="h-4 w-4 text-council-active" />
+                  <h3 className="text-sm font-semibold text-foreground">Human in the Loop</h3>
+                </div>
+                <p className="text-xs text-text-muted">
+                  Pause after curriculum planning to review, edit, or steer the plan.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.hitlEnabled}
+                onClick={() => updateSettings({ hitlEnabled: !settings.hitlEnabled })}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-council-active/50 focus:outline-none ${
+                  settings.hitlEnabled ? 'bg-council-active' : 'bg-surface-border'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    settings.hitlEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-8 p-6 border-t border-surface-border">
+              <div className="flex-1">
+                <div className="mb-1 flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-council-active" />
+                  <h3 className="text-sm font-semibold text-foreground">Advanced Model Configuration</h3>
+                </div>
+                <p className="text-xs text-text-muted">
+                  Enable granular model selection for each agent in the Council.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.showAdvancedModelSettings}
+                onClick={() => updateSettings({ showAdvancedModelSettings: !settings.showAdvancedModelSettings })}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-council-active/50 focus:outline-none ${
+                  settings.showAdvancedModelSettings ? 'bg-council-active' : 'bg-surface-border'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    settings.showAdvancedModelSettings ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
         </section>
 
@@ -232,7 +285,7 @@ function ClearHistoryButton() {
 
   const clearHistory = async () => {
     try {
-      await fetch('http://localhost:8000/jobs', { method: 'DELETE' });
+      await deleteAllJobs();
       window.location.reload();
     } catch (e) {
       console.error('Failed to clear history:', e);

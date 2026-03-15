@@ -40,7 +40,7 @@ async def step_planning(
     if not job.plan:
         logger.info(f"Generating curriculum for: {request.topic} (Mode: {job.mode})")
 
-        plan_model = get_step_model(request, job)
+        plan_model = get_step_model(request, job, agent_id="analyst")
 
         if not plan_model:
             raise PlanGenerationError(
@@ -58,9 +58,11 @@ async def step_planning(
             # Simulate incremental "filling in" of the plan for realism
             logger.info("Simulating incremental plan population...")
             for i in range(1, len(plan.teaching_steps) + 1):
-                partial_plan = plan.model_copy(update={"teaching_steps": plan.teaching_steps[:i]})
+                partial_plan = plan.model_copy(
+                    update={"teaching_steps": plan.teaching_steps[:i]}
+                )
                 await update_job({"plan": partial_plan.model_dump()})
-                await asyncio.sleep(0.4) # Brief pause between steps
+                await asyncio.sleep(0.4)  # Brief pause between steps
 
         job.plan = plan.model_dump()
         job.current_step = "planning_complete"

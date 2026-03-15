@@ -42,7 +42,7 @@ async def step_architecting(
     if not job.storyboard:
         logger.info(f"Generating storyboard (Mode: {job.mode})")
 
-        architect_model = get_step_model(request, job)
+        architect_model = get_step_model(request, job, agent_id="architect")
 
         if not architect_model:
             raise StoryboardGenerationError(
@@ -57,9 +57,11 @@ async def step_architecting(
             # Simulate incremental "filling in" of the storyboard
             logger.info("Simulating incremental storyboard population...")
             for i in range(1, len(storyboard.scenes) + 1):
-                partial_storyboard = storyboard.model_copy(update={"scenes": storyboard.scenes[:i]})
+                partial_storyboard = storyboard.model_copy(
+                    update={"scenes": storyboard.scenes[:i]}
+                )
                 await update_job({"storyboard": partial_storyboard.model_dump()})
-                await asyncio.sleep(0.3) # Brief pause between scenes
+                await asyncio.sleep(0.3)  # Brief pause between scenes
 
         job.storyboard = storyboard.model_dump()
         job.current_step = "architecting_complete"

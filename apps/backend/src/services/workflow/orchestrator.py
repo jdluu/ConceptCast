@@ -7,7 +7,7 @@ into a structured curriculum and eventually a rendered Manim animation.
 import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any
 
 from loguru import logger
 from pydantic_ai.usage import RunUsage
@@ -95,7 +95,7 @@ async def _handle_planning_step(
     job_id: str,
     job_state: JobRecord,
     request: JobRequest,
-    provider: str,
+    _provider: str,
     update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> tuple[CurriculumPlan, RunUsage | None]:
@@ -123,7 +123,7 @@ async def _handle_architecting_steps(
     job_state: JobRecord,
     request: JobRequest,
     plan: CurriculumPlan,
-    provider: str,
+    _provider: str,
     update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> tuple[ValidationResult, Storyboard, RunUsage | None]:
@@ -166,7 +166,7 @@ async def _handle_animating_step(
     job_state: JobRecord,
     request: JobRequest,
     storyboard: Storyboard,
-    provider: str,
+    _provider: str,
     update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> tuple[str, RunUsage | None]:
@@ -206,7 +206,7 @@ async def execute_workflow(
         topic: The complex technical topic to explain.
         audience: The target knowledge level.
         provider: The selected AI provider (e.g., 'openai', 'groq').
-        model_id: The specific model to use (e.g., 'gpt-4o').
+        model_id: The specific model to use (e.g., 'nvidia/nemotron-3-super-120b-a12b:thinking').
         update_job: Async callback for persisting job state changes.
         on_thought: Async callback for streaming agent thoughts to the UI.
 
@@ -237,8 +237,11 @@ async def execute_workflow(
             target_audience=audience,
             provider=provider,
             model_id=model_id,
-            resolution=cast(Any, job_state.resolution),
-            frame_rate=cast(Any, job_state.frame_rate),
+            hitl_enabled=job_state.hitl_enabled,
+            analyst_model=job_state.analyst_model,
+            validator_model=job_state.validator_model,
+            architect_model=job_state.architect_model,
+            animator_model=job_state.animator_model,
         )
 
         try:
@@ -246,6 +249,15 @@ async def execute_workflow(
                 job_id, job_state, request, provider, update_job, on_thought
             )
             add_usage(usage_1)
+
+            # --- Human in the Loop (HITL) Check ---
+            if request.hitl_enabled and job_state.status == "planning":
+                logger.info(f"Job {job_id}: HITL enabled. Pausing for review.")
+                await update_job(
+                    {"status": "awaiting_review", "current_step": "planning_complete"}
+                )
+                return
+            # ---------------------------------------
 
             _val, storyboard, usage_23 = await _handle_architecting_steps(
                 job_id, job_state, request, plan, provider, update_job, on_thought
@@ -265,8 +277,6 @@ async def execute_workflow(
                 code=code,
                 storyboard_dict=storyboard.model_dump(),
                 request_dict=request.model_dump(),
-                resolution=cast(str, job_state.resolution),
-                frame_rate=cast(int, job_state.frame_rate),
             )
 
             logger.info(f"Job {job_id}: Rendering dispatched to Taskiq worker.")
@@ -276,9 +286,7 @@ async def execute_workflow(
                 started_at = job_state.started_at
                 if started_at.tzinfo is None:
                     started_at = started_at.replace(tzinfo=UTC)
-                session_duration = (
-                    datetime.now(UTC) - started_at
-                ).total_seconds()
+                session_duration = (datetime.now(UTC) - started_at).total_seconds()
                 await update_job(
                     {
                         "total_execution_time": job_state.total_execution_time
@@ -294,9 +302,7 @@ async def execute_workflow(
                 started_at = job_state.started_at
                 if started_at.tzinfo is None:
                     started_at = started_at.replace(tzinfo=UTC)
-                session_duration = (
-                    datetime.now(UTC) - started_at
-                ).total_seconds()
+                session_duration = (datetime.now(UTC) - started_at).total_seconds()
 
             await update_job_record(
                 db_session_factory=AsyncSessionLocal,

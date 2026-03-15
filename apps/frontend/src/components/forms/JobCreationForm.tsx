@@ -7,13 +7,14 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { getAvailableModels, type JobRequest } from '@/lib/api/client';
 import { useDeveloperMode } from '@/lib/contexts/developerMode';
+import { useAppSettings } from '@/lib/contexts/appSettings';
 import { useJobStore } from '@/lib/store/useJobStore';
 import { Button } from '@/components/ui/Common';
 import { Card } from '@/components/ui/Card';
 import {
   AudienceField,
-  QualityFields,
   ModelSelectionFields,
+  AgentModelSelectionFields,
 } from '@/components/forms/JobFormFields';
 import { LoadingOverlay, NoKeysAlert } from '@/components/forms/JobFormFeedback';
 import { JobFormData, jobSchema } from '@/components/forms/JobFormTypes';
@@ -46,6 +47,7 @@ function FormSection({
 
 export function JobCreationForm() {
   const { developerMode } = useDeveloperMode();
+  const { settings } = useAppSettings();
   const { createJob, isSubmitting: isLoading } = useJobStore();
 
   const [showNoKeysToast, setShowNoKeysToast] = useState(true);
@@ -61,8 +63,6 @@ export function JobCreationForm() {
     resolver: zodResolver(jobSchema),
     defaultValues: {
       target_audience: 'University Student',
-      resolution: '720p',
-      frame_rate: 30,
       provider: 'mock',
       model_id: 'mock-gpt-4',
     },
@@ -94,10 +94,13 @@ export function JobCreationForm() {
       const request: JobRequest = {
         topic: data.topic,
         target_audience: data.target_audience || 'General',
-        resolution: data.resolution,
-        frame_rate: data.frame_rate as 30 | 60,
         provider: data.provider,
         model_id: data.model_id,
+        hitl_enabled: settings.hitlEnabled,
+        analyst_model: data.analyst_model || undefined,
+        validator_model: data.validator_model || undefined,
+        architect_model: data.architect_model || undefined,
+        animator_model: data.animator_model || undefined,
       };
       await createJob(request);
     } catch (error) {
@@ -108,12 +111,11 @@ export function JobCreationForm() {
 
   const runMockDemo = () => {
     createJob({
-      topic: 'The double-slit experiment and quantum wave-particle duality',
+      topic: 'Understanding Quantum Entanglement',
       target_audience: 'High School Student',
-      resolution: '720p',
-      frame_rate: 30,
       provider: 'mock',
       model_id: 'mock-gpt-4',
+      hitl_enabled: settings.hitlEnabled,
     });
   };
 
@@ -154,7 +156,7 @@ export function JobCreationForm() {
                   {...topicRegister}
                   ref={(e) => {
                     topicRef(e);
-                    (topicInputRef as any).current = e;
+                    topicInputRef.current = e;
                   }}
                   type="text"
                   id="topic"
@@ -178,30 +180,30 @@ export function JobCreationForm() {
                     {errors.target_audience.message as string}
                   </p>
                 )}
-
-                <QualityFields register={register} />
-                {errors.resolution && (
-                  <p className="mt-1 text-xs text-destructive">{errors.resolution.message as string}</p>
-                )}
-                {errors.frame_rate && (
-                  <p className="mt-1 text-xs text-destructive">{errors.frame_rate.message as string}</p>
-                )}
               </div>
             </FormSection>
 
             {hasRealProviders && (
-              <FormSection number={3} title="Intelligence">
-                <div className="space-y-6">
+              <FormSection number={3} title="Intelligence" className="md:col-span-2">
+                <div className="space-y-8">
                   <ModelSelectionFields
                     register={register}
                     selectedProvider={selectedProvider}
                     realProvidersOnly={realProvidersOnly}
                   />
-                  {errors.provider && (
-                    <p className="mt-1 text-xs text-destructive">{errors.provider.message as string}</p>
-                  )}
-                  {errors.model_id && (
-                    <p className="mt-1 text-xs text-destructive">{errors.model_id.message as string}</p>
+
+                  {settings.showAdvancedModelSettings && (
+                    <div className="mt-6 border-t border-surface-border pt-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="mb-4">
+                        <h4 className="text-xs font-bold tracking-widest text-council-active uppercase">
+                          Manual Model Overrides
+                        </h4>
+                        <p className="text-micro text-text-muted mt-1">
+                          Configure specific models for each stage of the orchestration.
+                        </p>
+                      </div>
+                      <AgentModelSelectionFields register={register} providers={realProvidersOnly} />
+                    </div>
                   )}
                 </div>
               </FormSection>

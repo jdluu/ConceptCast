@@ -44,7 +44,7 @@ async def step_animating(
 
     from services.workflow.base import get_step_model
 
-    model = get_step_model(request, job)
+    model = get_step_model(request, job, agent_id="animator")
     if not model:
         raise AnimationGenerationError("Could not initialize animation model")
 

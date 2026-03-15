@@ -5,8 +5,10 @@ export const jobSchema = z.object({
   target_audience: z.string().optional(),
   provider: z.string().optional(),
   model_id: z.string().optional(),
-  resolution: z.enum(['720p', '1080p']),
-  frame_rate: z.union([z.literal(30), z.literal(60)]),
+  analyst_model: z.string().optional(),
+  validator_model: z.string().optional(),
+  architect_model: z.string().optional(),
+  animator_model: z.string().optional(),
 });
 
 export type JobFormData = z.infer<typeof jobSchema>;

@@ -23,9 +23,14 @@ class JobSummary(BaseModel):
     mode: str
     created_at: str
     retry_count: int
+    hitl_enabled: bool = False
     error: str | None
     provider: str | None = None
     model_id: str | None = None
+    analyst_model: str | None = None
+    validator_model: str | None = None
+    architect_model: str | None = None
+    animator_model: str | None = None
     target_audience: str | None = None
     started_at: str | None = None
     finished_at: str | None = None
@@ -34,8 +39,6 @@ class JobSummary(BaseModel):
     thumbnail_url: str | None = None
     video_url: str | None = None
     video_metadata: dict[str, Any] | None = None
-    resolution: str = "720p"
-    frame_rate: int = 30
     render_progress: int = 0
 
 
@@ -58,6 +61,7 @@ class JobStatus(BaseModel):
         "animating",
         "rendering",
         "reviewing",
+        "awaiting_review",
         "completed",
         "failed",
         "pending_retry",
@@ -68,10 +72,16 @@ class JobStatus(BaseModel):
     storyboard: Storyboard | None = None
     manim_code: str | None = None
     video_url: str | None = None
-    error: str | None = None
+    error: str | None
     mode: Literal["live", "mock"] = "live"
+    hitl_enabled: bool = False
     provider: str | None = None
+
     model_id: str | None = None
+    analyst_model: str | None = None
+    validator_model: str | None = None
+    architect_model: str | None = None
+    animator_model: str | None = None
     target_audience: str | None = None
     started_at: str | None = None
     finished_at: str | None = None
@@ -80,8 +90,6 @@ class JobStatus(BaseModel):
     retry_count: int = 0
     thumbnail_url: str | None = None
     video_metadata: dict[str, Any] | None = None
-    resolution: str = "720p"
-    frame_rate: int = 30
     render_progress: int = 0
 
 
@@ -92,5 +100,20 @@ class JobRequest(BaseModel):
     target_audience: str = "Undergraduate CS"
     provider: str | None = None
     model_id: str | None = None
-    resolution: Literal["720p", "1080p"] = "720p"
-    frame_rate: Literal[30, 60] = 30
+    hitl_enabled: bool = False
+    analyst_model: str | None = None
+    validator_model: str | None = None
+    architect_model: str | None = None
+    animator_model: str | None = None
+
+
+class JobReviewRequest(BaseModel):
+    """Payload for human-in-the-loop review actions."""
+
+    feedback: str | None = Field(
+        None, description="Steering instructions for the agent"
+    )
+    edited_plan: CurriculumPlan | None = Field(
+        None, description="Directly modified curriculum"
+    )
+    action: Literal["approve", "regenerate"] = "approve"

@@ -84,34 +84,39 @@ export const ModelSelectionFields = ({
 };
 
 /**
- * Form fields for video quality settings (resolution and frame rate).
+ * Advanced form fields for selecting specific models for each council agent.
  */
-export const QualityFields = ({ register }: { register: UseFormRegister<JobFormData> }) => (
-  <div className="space-y-6">
-    <div className="space-y-2">
-      <Label htmlFor="resolution">
-        Resolution
-      </Label>
+export const AgentModelSelectionFields = ({
+  register,
+  providers,
+}: {
+  register: UseFormRegister<JobFormData>;
+  providers: ProviderGroup[];
+}) => {
+  // Flatten all models from all providers for the selection
+  const allModels = providers.flatMap((p) => p.models);
+  const uniqueModels = Array.from(new Set(allModels)).toSorted();
 
-      <select {...register('resolution')} id="resolution" className={selectStyles}>
-        <option value="720p">720p (HD)</option>
-        <option value="1080p">1080p (Full HD)</option>
+  const AgentSelect = ({ id, label }: { id: keyof JobFormData; label: string }) => (
+    <div className="space-y-2">
+      <Label htmlFor={id as string}>{label}</Label>
+      <select {...register(id as any)} id={id as string} className={selectStyles}>
+        <option value="">Default (Global Model)</option>
+        {uniqueModels.map((model) => (
+          <option key={model} value={model}>
+            {model}
+          </option>
+        ))}
       </select>
     </div>
+  );
 
-    <div className="space-y-2">
-      <Label htmlFor="frame_rate">
-        Temporal Smoothness
-      </Label>
-
-      <select
-        {...register('frame_rate', { valueAsNumber: true })}
-        id="frame_rate"
-        className={selectStyles}
-      >
-        <option value={30}>30 FPS Standard</option>
-        <option value={60}>60 FPS Premium</option>
-      </select>
+  return (
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <AgentSelect id="analyst_model" label="Analyst Agent" />
+      <AgentSelect id="validator_model" label="Validator Agent" />
+      <AgentSelect id="architect_model" label="Architect Agent" />
+      <AgentSelect id="animator_model" label="Animator Agent" />
     </div>
-  </div>
-);
+  );
+};

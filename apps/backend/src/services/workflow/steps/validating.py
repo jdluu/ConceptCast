@@ -35,7 +35,7 @@ async def step_validating(
     usage: RunUsage | None = None
     logger.info(f"Validating curriculum plan (Mode: {job.mode})")
 
-    validator_model = get_step_model(request, job)
+    validator_model = get_step_model(request, job, agent_id="validator")
 
     validation, usage = await validate_curriculum(
         plan, validator_model, on_thought=on_thought
