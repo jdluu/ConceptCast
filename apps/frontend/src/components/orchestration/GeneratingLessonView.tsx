@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { CouncilDeliberation } from '@/components/orchestration/Deliberation';
 import { CurriculumPlanView } from '@/components/orchestration/artifacts/CurriculumPlanView';
 import { StoryboardView } from '@/components/orchestration/artifacts/StoryboardView';
+import { AnalystVerdict } from '@/components/orchestration/AnalystVerdict';
 import { LessonArtifactModal } from '@/components/orchestration/LessonModal';
 import { HitlReviewPanel } from '@/components/orchestration/HitlReviewPanel';
 import {
@@ -15,6 +16,7 @@ import {
   Activity,
   Sparkles,
   Terminal,
+  ShieldCheck,
 } from 'lucide-react';
 
 const PIPELINE_STEPS = [
@@ -106,7 +108,6 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
   const [collapsed, setCollapsed] = useState({
     blueprint: false,
     storyboard: false,
-    validation: true,
     terminal: false
   });
 
@@ -274,6 +275,17 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
               status={job.status}
               onViewFull={() => setIsModalOpen(true)}
             />
+            
+            {/* Embedded Verdict when available */}
+            {job.validation && (
+              <div className="mt-8 animate-in fade-in slide-in-from-top-2 duration-500">
+                <div className="mb-4 flex items-center gap-3 px-2">
+                  <ShieldCheck className="h-4 w-4 text-success" />
+                  <span className="text-tiny font-bold tracking-widest text-success uppercase">Pedagogical Audit Verdict</span>
+                </div>
+                <AnalystVerdict validation={job.validation} />
+              </div>
+            )}
           </div>
         </section>
 
