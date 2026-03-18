@@ -1,64 +1,55 @@
-from pydantic_ai.models import Model
+import httpx
 from pydantic_ai.models.groq import GroqModel, GroqModelSettings
 from pydantic_ai.providers.groq import GroqProvider as PydanticGroqProvider
 from pydantic_ai.settings import ModelSettings
 
 from infra.settings import Settings
 
-from .base import BaseProvider
+from .base import BaseConceptModel, BaseProvider
 
 
-class ConceptGroqModel(GroqModel):
-    """Custom GroqModel for specialized ConceptCast behaviors.
+class GroqConceptModel(BaseConceptModel):
+    """Groq model wrapper for ConceptCast."""
 
-    Provides a hook for potential future overrides of Groq-specific
-    request/response handling.
-    """
-
-    pass
+    @property
+    def is_thinking(self) -> bool:
+        """Returns True if the model is a reasoning model."""
+        mid = self._model_id.lower()
+        return "deepseek-r1" in mid or "reasoning" in mid or "gpt-oss" in mid
 
 
 class GroqModelProvider(BaseProvider):
-    """Provider adapter for Groq-hosted models.
-
-    Handles instantiation of Llama and DeepSeek models hosted on Groq,
-    applying necessary reasoning format settings.
-    """
+    """Provider adapter for Groq-hosted models."""
 
     def __init__(self, settings: Settings):
-        """Initializes the Groq provider.
-
-        Args:
-            settings: Global application settings containing API keys.
-        """
         self.settings = settings
 
-    def create_model(self, model_id: str) -> Model:
-        """Creates and configures a ConceptGroqModel.
-
-        Args:
-            model_id: The Groq model identifier (e.g., 'llama-3.3-70b-versatile').
-
-        Returns:
-            A configured ConceptGroqModel instance.
-        """
-        return ConceptGroqModel(
+    def create_model(self, model_id: str) -> GroqConceptModel:
+        """Creates and configures a Groq model."""
+        client = httpx.AsyncClient(timeout=60.0)
+        pydantic_model = GroqModel(
             model_id,
-            provider=PydanticGroqProvider(api_key=self.settings.groq_api_key),
-            settings=self.get_settings(model_id),
+            provider=PydanticGroqProvider(
+                api_key=self.settings.groq_api_key,
+                http_client=client,
+            ),
         )
+        return GroqConceptModel(pydantic_model, model_id, self.get_settings(model_id))
 
     def get_settings(self, model_id: str) -> ModelSettings | None:
-        """Retrieves Groq-specific model configurations.
+        """Retrieves Groq-specific settings.
 
-        Enables 'parsed' reasoning format for DeepSeek-R1 models.
-
-        Args:
-            model_id: The Groq model identifier.
-
-        Returns:
-            GroqModelSettings or None if no specialization is required.
+        Increases max_tokens to ensure complex tool calls and artifacts
+        are not truncated.
         """
-        if "deepseek-r1" in model_id.lower() or "reasoning" in model_id.lower():
-            return GroqModelSettings(groq_reasoning_format="parsed")
-        return None
+        is_thinking = self.create_model_proxy_thinking(model_id)
+
+        settings = GroqModelSettings(max_tokens=4096)
+        if is_thinking:
+            settings["groq_reasoning_format"] = "parsed"
+        return settings
+
+    def create_model_proxy_thinking(self, model_id: str) -> bool:
+        """Helper to check if model should use reasoning format."""
+        mid = model_id.lower()
+        return "deepseek-r1" in mid or "reasoning" in mid or "gpt-oss" in mid

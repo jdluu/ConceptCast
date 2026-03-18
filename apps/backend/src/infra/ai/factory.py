@@ -1,11 +1,12 @@
 from dataclasses import dataclass
+from typing import Any
 
 from pydantic_ai.models import Model
 
 from api.schemas import ProviderModels
 from infra.settings import Settings, get_settings
 
-from .base import BaseProvider
+from .base import BaseConceptModel, BaseProvider
 from .deepseek import DeepSeekModelProvider
 from .groq import GroqModelProvider
 from .mock import MockModelProvider
@@ -43,9 +44,10 @@ PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
         id="groq",
         settings_key="groq_api_key",
         models=(
-            "llama-3.3-70b-versatile",
             "llama-3.1-8b-instant",
-            "deepseek-r1-distill-llama-70b",
+            "llama-3.3-70b-versatile",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
         ),
         default_model="llama-3.3-70b-versatile",
         display_name="Groq",
@@ -73,8 +75,8 @@ PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
     ProviderEntry(
         id="mock",
         settings_key=None,
-        models=("mock-llm", "mock-analyst", "mock-critic"),
-        default_model="mock-llm",
+        models=("mock-model",),
+        default_model="mock-model",
         display_name="Mock Demo",
     ),
 )
@@ -163,17 +165,17 @@ def get_provider(provider_name: str) -> BaseProvider | None:
         return provider_cls()
 
 
-def get_model(
+def get_concept_model(
     provider_name: str | None = None, model_id: str | None = None
-) -> Model | None:
-    """Creates a configured PydanticAI model instance.
+) -> BaseConceptModel | None:
+    """Creates a ConceptCast model wrapper.
 
     Args:
         provider_name: The identifier of the provider.
-        model_id: Specific model identifier. Defaults to the provider's default.
+        model_id: Specific model identifier.
 
     Returns:
-        A configured Model instance or None if missing keys or invalid provider.
+        A BaseConceptModel instance or None.
     """
     if not provider_name:
         return None
@@ -196,3 +198,21 @@ def get_model(
         return provider.create_model(resolved_model_id)
     except Exception:
         return None
+
+
+def get_model(
+    provider_name: str | None = None, model_id: str | None = None
+) -> Model | Any:
+    """Creates a configured PydanticAI model instance.
+
+    Args:
+        provider_name: The identifier of the provider.
+        model_id: Specific model identifier.
+
+    Returns:
+        A configured Model instance or None.
+    """
+    concept_model = get_concept_model(provider_name, model_id)
+    if concept_model:
+        return concept_model.model
+    return None

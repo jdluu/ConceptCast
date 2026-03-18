@@ -19,7 +19,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.usage import RunUsage
 
 
-async def run_agent_streamed(
+async def run_agent_streamed(  # noqa: C901, PLR0912
     agent_name: str,
     agent: Agent[Any, Any],
     prompt: Any,
@@ -51,18 +51,21 @@ async def run_agent_streamed(
         logger.trace(f"Agent Event: {type(event).__name__}")
         if isinstance(event, PartStartEvent):
             if isinstance(event.part, ToolCallPart):
-                tool_names[event.index] = event.part.tool_name
+                tool_name = event.part.tool_name
+                tool_names[event.index] = tool_name
+                if on_thought:
+                    await on_thought(
+                        agent_name, "tool_call", f"Invoking tool: {tool_name}..."
+                    )
+                    # Mark as notified immediately to avoid duplicate from Delta
+                    tool_names[event.index] = "notified"
             elif (
                 isinstance(event.part, ThinkingPart)
                 and on_thought
                 and event.part.content
             ):
                 await on_thought(agent_name, "thinking", event.part.content)
-            elif (
-                isinstance(event.part, TextPart)
-                and on_thought
-                and event.part.content
-            ):
+            elif isinstance(event.part, TextPart) and on_thought and event.part.content:
                 await on_thought(agent_name, "output", event.part.content)
         elif isinstance(event, PartDeltaEvent):
             if (
@@ -79,10 +82,6 @@ async def run_agent_streamed(
                 await on_thought(agent_name, "output", event.delta.content_delta)
             elif isinstance(event.delta, ToolCallPartDelta) and on_thought:
                 tool_name = tool_names.get(event.index, "unknown_tool")
-                # Only notify once per tool call start if possible,
-                # but since this is a delta, we might want to only notify on the first delta.
-                # For simplicity, we'll notify that the tool is being invoked.
-                # To avoid spamming, we can check if we already notified for this index.
                 if tool_name != "notified":
                     await on_thought(
                         agent_name,
@@ -95,6 +94,12 @@ async def run_agent_streamed(
             usage = event.result.usage()
 
     if accumulated_usage:
-        usage.incr(accumulated_usage)
+        usage = RunUsage(
+            input_tokens=(usage.input_tokens or 0)
+            + (accumulated_usage.input_tokens or 0),
+            output_tokens=(usage.output_tokens or 0)
+            + (accumulated_usage.output_tokens or 0),
+            requests=(usage.requests or 0) + (accumulated_usage.requests or 0),
+        )
 
     return final, usage

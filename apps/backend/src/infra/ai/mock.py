@@ -35,7 +35,7 @@ from api.schemas import (
     ValidationResult,
 )
 
-from .base import BaseProvider
+from .base import BaseConceptModel, BaseProvider
 from .mock_responses import get_realistic_response
 
 
@@ -221,9 +221,15 @@ class RealisticMockModel(Model):
                 target_type = CurriculumPlan
             elif name in ("Storyboard", "final_result") and "Architect" in system_text:
                 target_type = Storyboard
-            elif name in ("ValidationResult", "final_result") and "Validator" in system_text:
+            elif (
+                name in ("ValidationResult", "final_result")
+                and "Validator" in system_text
+            ):
                 target_type = ValidationResult
-            elif name in ("AnimationReview", "final_result") and "Reviewer" in system_text:
+            elif (
+                name in ("AnimationReview", "final_result")
+                and "Reviewer" in system_text
+            ):
                 target_type = AnimationReview
             elif name == "CurriculumPlan":
                 target_type = CurriculumPlan
@@ -276,19 +282,29 @@ class RealisticMockModel(Model):
         return "realistic-mock"
 
 
+class MockConceptModel(BaseConceptModel):
+    """Mock model wrapper for ConceptCast."""
+
+    @property
+    def is_thinking(self) -> bool:
+        """Mock models are designed to emit thoughts for diagnostic purposes."""
+        return True
+
+
 class MockModelProvider(BaseProvider):
     """Provider adapter for local testing and demonstration.
 
     Returns the RealisticMockModel which provides canned outputs.
     """
 
-    def create_model(self, _model_id: str) -> Model:
+    def create_model(self, model_id: str) -> MockConceptModel:
         """Creates a RealisticMockModel instance.
 
         Args:
             model_id: The mock model identifier.
 
         Returns:
-            A RealisticMockModel instance.
+            A MockConceptModel instance.
         """
-        return RealisticMockModel()
+        pydantic_model = RealisticMockModel()
+        return MockConceptModel(pydantic_model, model_id, self.get_settings(model_id))
