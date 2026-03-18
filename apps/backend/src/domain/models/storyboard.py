@@ -4,7 +4,7 @@ Defines the abstract visual representation of scenes and objects that the
 Manim engine eventually renders.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class VisualObject(BaseModel):
@@ -55,3 +55,11 @@ class Storyboard(BaseModel):
 
     concept_title: str = Field(..., description="Title of the concept")
     scenes: list[Scene] = Field(..., description="Ordered animation sequences")
+
+    @field_validator("scenes")
+    @classmethod
+    def validate_scenes(cls, v: list[Scene]) -> list[Scene]:
+        """Ensures that at least one scene is defined."""
+        if not v:
+            raise ValueError("Storyboard must contain at least one scene.")
+        return v

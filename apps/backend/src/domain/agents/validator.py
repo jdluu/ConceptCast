@@ -7,54 +7,51 @@ visual metaphor effectiveness.
 from collections.abc import Awaitable, Callable
 
 from pydantic_ai import Agent
-from pydantic_ai.models import Model
 from pydantic_ai.usage import RunUsage
 
 from api.schemas import CurriculumPlan, ValidationResult
+from domain.models.workflow import GlobalContext
+from infra.ai.base import BaseConceptModel, load_prompt
 from infra.ai.streaming import run_agent_streamed
+from services.workflow.context_injectors import extract_validator_context
 
-system_prompt = """
-You are the **Validator Agent** (The Critic) for ConceptCast.
-Your goal is to perform a pedagogical audit of a `CurriculumPlan`.
-
-**Audit Criteria:**
-1. **Logical Progression:** Do the steps follow a clear prerequisite order?
-2. **Concept Clarity:** Is the sub-concept in each step well-defined?
-3. **Visual Metaphor Alignment:** Is the visual metaphor effective for the concept?
-4. **Narration Flow:** Does the narration sound natural and instructional?
-
-**Responsibility:**
-- Analyze the provided `CurriculumPlan`.
-- Return a `ValidationResult` with `is_valid` set to True/False.
-- Provide detailed `feedback` and actionable `suggestions`.
-
-**Philosophy:**
-Be strict but constructive. If a plan is confusing or skips steps, fail it.
-"""
+system_prompt = load_prompt("validator")
 
 
 async def validate_curriculum(
     plan: CurriculumPlan,
-    model: Model,
+    model: BaseConceptModel,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
+    ctx: GlobalContext | None = None,
 ) -> tuple[ValidationResult, RunUsage]:
     """Audits a curriculum plan for pedagogical and visual alignment.
 
     Args:
         plan: The curriculum plan to validate.
-        model: The PydanticAI model instance for generation.
+        model: The ConceptCast model instance for generation.
         on_thought: Optional callback for streaming agent thoughts.
+        ctx: The Global Context Object (GCO) for the workflow.
 
     Returns:
         tuple: (The structured ValidationResult, RunUsage data).
     """
     agent = Agent(
-        model,
+        model.model,
         system_prompt=system_prompt,
         output_type=ValidationResult,
+        deps_type=GlobalContext,
+        retries=3,
     )
-    prompt = f"Perform a pedagogical audit on this plan:\n{plan.model_dump_json()}"
+
+    if ctx:
+        # Ensure the plan is in the context if not already there
+        if not ctx.plan:
+            ctx.plan = plan
+        prompt = extract_validator_context(ctx)
+    else:
+        prompt = f"Perform a pedagogical audit on this plan:\n{plan.model_dump_json()}"
+
     result, usage = await run_agent_streamed(
-        "validator", agent, prompt, on_thought=on_thought
+        "validator", agent, prompt, on_thought=on_thought, deps=ctx
     )
     return result, usage
