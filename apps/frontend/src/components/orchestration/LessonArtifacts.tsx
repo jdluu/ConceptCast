@@ -1,11 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Video } from 'lucide-react';
 import { CurriculumPlan, Storyboard } from '@/lib/api/client';
-import { 
-  ArtifactCard, 
-  ArtifactPlaceholder, 
-  ArtifactBadge, 
-  ArtifactAction 
+import {
+  ArtifactCard,
+  ArtifactPlaceholder,
+  ArtifactBadge,
+  ArtifactAction,
 } from './artifacts/ArtifactCommon';
 
 interface LessonArtifactsProps {
@@ -30,16 +30,16 @@ export function LessonArtifacts({
   return (
     <motion.div
       layout
-      className="overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-xl"
+      className="border-surface-border bg-surface overflow-hidden rounded-2xl border shadow-xl"
     >
-      <div className="flex items-center justify-between border-b border-surface-border bg-surface/50 px-4 py-3">
+      <div className="border-surface-border bg-surface/50 flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-3">
           <motion.span
             animate={{ opacity: [0.4, 1, 0.4] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="h-2 w-2 rounded-full bg-council-active"
+            className="bg-council-active h-2 w-2 rounded-full"
           />
-          <span className="text-sm font-bold tracking-wider text-foreground uppercase">
+          <span className="text-foreground text-sm font-bold tracking-wider uppercase">
             {isRendering
               ? 'Rendering Preview'
               : hasStoryboard
@@ -50,13 +50,13 @@ export function LessonArtifacts({
         {(hasPlan || hasStoryboard) && (
           <button
             onClick={onViewFull}
-            className="rounded px-2 py-1 text-tiny font-bold tracking-widest text-council-active uppercase transition-colors hover:bg-council-active/10"
+            className="text-tiny text-council-active hover:bg-council-active/10 rounded px-2 py-1 font-bold tracking-widest uppercase transition-colors"
           >
             View Full
           </button>
         )}
         {isRendering && (
-          <span className="font-mono text-xs text-council-active">
+          <span className="text-council-active font-mono text-xs">
             {Math.round(renderProgress)}% COMPLETE
           </span>
         )}
@@ -72,31 +72,33 @@ export function LessonArtifacts({
               className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5"
             >
               {storyboard.scenes.map((scene, idx) => (
-                <ArtifactCard 
-                  key={scene.scene_id} 
+                <ArtifactCard
+                  key={scene.scene_id}
                   delay={idx * 0.05}
                   className="hover:border-council-active/50"
                 >
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-nano font-bold tracking-widest text-text-muted uppercase">
+                    <span className="text-nano text-text-muted font-bold tracking-widest uppercase">
                       Scene {scene.scene_id}
                     </span>
-                    <Video className="h-2.5 w-2.5 text-text-muted opacity-30" />
+                    <Video className="text-text-muted h-2.5 w-2.5 opacity-30" />
                   </div>
-                  <h4 className="mb-2 line-clamp-1 text-tiny font-bold text-foreground uppercase tracking-tight">
+                  <h4 className="text-tiny text-foreground mb-2 line-clamp-1 font-bold tracking-tight uppercase">
                     {scene.title}
                   </h4>
                   <div className="space-y-2">
                     <div>
                       <ArtifactBadge variant="completed">Narration</ArtifactBadge>
-                      <p className="line-clamp-3 text-micro leading-snug text-text-muted">
+                      <p className="text-micro text-text-muted line-clamp-3 leading-snug">
                         {scene.description}
                       </p>
                     </div>
                     <div>
                       <ArtifactBadge variant="active">Visual Prompt</ArtifactBadge>
-                      <p className="line-clamp-2 text-nano leading-tight text-text-muted italic opacity-70">
-                        {(scene as any).visual_prompt || scene.narration || 'Dynamic Manim visualization...'}
+                      <p className="text-nano text-text-muted line-clamp-2 leading-tight italic opacity-70">
+                        {(scene as any).visual_prompt ||
+                          scene.narration ||
+                          'Dynamic Manim visualization...'}
                       </p>
                     </div>
                   </div>
@@ -111,19 +113,19 @@ export function LessonArtifacts({
               className="space-y-4"
             >
               {plan!.teaching_steps.slice(0, 5).map((step, idx) => (
-                <ArtifactCard 
-                  key={step.step_id} 
+                <ArtifactCard
+                  key={step.step_id}
                   delay={idx * 0.05}
-                  className="flex-row items-center gap-5 hover:border-council-active/30"
+                  className="hover:border-council-active/30 flex-row items-center gap-5"
                 >
-                  <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-council-active/20 bg-council-active/10 text-sm font-bold text-council-active">
+                  <span className="border-council-active/20 bg-council-active/10 text-council-active flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border text-sm font-bold">
                     {step.step_id}
                   </span>
                   <div>
-                    <h3 className="text-sm font-bold tracking-tight text-foreground">
+                    <h3 className="text-foreground text-sm font-bold tracking-tight">
                       {step.concept}
                     </h3>
-                    <p className="mt-1.5 line-clamp-1 text-xs text-text-muted italic opacity-80">
+                    <p className="text-text-muted mt-1.5 line-clamp-1 text-xs italic opacity-80">
                       {step.visual_metaphor}
                     </p>
                   </div>
@@ -136,10 +138,10 @@ export function LessonArtifacts({
               )}
             </motion.div>
           ) : (
-            <ArtifactPlaceholder 
-              status="loading" 
-              message="Connecting to Council" 
-              submessage="Awaiting deliberation artifacts..." 
+            <ArtifactPlaceholder
+              status="loading"
+              message="Connecting to Council"
+              submessage="Awaiting deliberation artifacts..."
             />
           )}
         </AnimatePresence>

@@ -29,21 +29,21 @@ export function CollapsiblePanel({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <Card className="overflow-hidden border-surface-border bg-surface shadow-sm transition-all duration-300">
+    <Card className="border-surface-border bg-surface overflow-hidden shadow-sm transition-all duration-300">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="group flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-background/50"
+        className="group hover:bg-background/50 flex w-full items-center justify-between px-6 py-4 text-left transition-colors"
         aria-expanded={open}
       >
         <div className="flex items-center gap-3">
-          {Icon && <Icon className="h-4 w-4 text-council-active" />}
-          <span className="text-xs font-bold tracking-wider text-foreground uppercase">
+          {Icon && <Icon className="text-council-active h-4 w-4" />}
+          <span className="text-foreground text-xs font-bold tracking-wider uppercase">
             {title}
           </span>
         </div>
         <ChevronDown
-          className={`h-4 w-4 text-text-muted transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
+          className={`text-text-muted h-4 w-4 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
           aria-hidden
         />
       </button>

@@ -26,15 +26,15 @@ export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
     queryKey: ['job', jobId],
     queryFn: () => getJobStatus(jobId),
     initialData,
-    refetchInterval: (query) => 
+    refetchInterval: (query) =>
       query.state.data && isJobInProgress(query.state.data) ? 3000 : false,
   });
 
   if (isLoading || !job) {
     return (
-      <div className="flex flex-col items-center justify-center bg-surface/50 p-12 text-center">
-        <Loader2 className="mb-2 h-6 w-6 animate-spin text-council-active" />
-        <span className="text-sm text-text-muted">Fetching job details...</span>
+      <div className="bg-surface/50 flex flex-col items-center justify-center p-12 text-center">
+        <Loader2 className="text-council-active mb-2 h-6 w-6 animate-spin" />
+        <span className="text-text-muted text-sm">Fetching job details...</span>
       </div>
     );
   }
@@ -43,42 +43,44 @@ export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
   const audience = job.target_audience || 'General';
 
   return (
-    <div className="animate-in fade-in slide-in-from-top-4 border-t border-surface-border bg-surface p-8 duration-300">
+    <div className="animate-in fade-in slide-in-from-top-4 border-surface-border bg-surface border-t p-8 duration-300">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
         {/* Left Column: Preview & Metadata */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className="space-y-6 lg:col-span-5">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold tracking-[0.2em] text-text-muted uppercase">
+            <h3 className="text-text-muted text-xs font-bold tracking-[0.2em] uppercase">
               Video Preview
             </h3>
             <div className="flex items-center gap-2">
               {job.status === 'rendering' && (
-                <div className="flex items-center gap-2 mr-2">
-                  <div className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-border">
-                    <motion.div 
+                <div className="mr-2 flex items-center gap-2">
+                  <div className="bg-surface-border h-1.5 w-24 overflow-hidden rounded-full">
+                    <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${job.render_progress}%` }}
-                      className="h-full bg-council-active" 
+                      className="bg-council-active h-full"
                     />
                   </div>
-                  <span className="font-mono text-[10px] font-bold text-council-active">
+                  <span className="text-council-active font-mono text-[10px] font-bold">
                     {Math.round(job.render_progress)}%
                   </span>
                 </div>
               )}
-              <span className={`rounded-md px-2 py-0.5 text-nano font-bold uppercase tracking-widest ${job.mode === 'mock' ? 'bg-warning/10 text-warning' : 'bg-info/10 text-info'}`}>
+              <span
+                className={`text-nano rounded-md px-2 py-0.5 font-bold tracking-widest uppercase ${job.mode === 'mock' ? 'bg-warning/10 text-warning' : 'bg-info/10 text-info'}`}
+              >
                 {job.mode}
               </span>
               <StatusBadge status={job.status} />
             </div>
           </div>
           {job.video_url ? (
-            <div className="overflow-hidden rounded-2xl border border-surface-border shadow-2xl shadow-council-active/10">
+            <div className="border-surface-border shadow-council-active/10 overflow-hidden rounded-2xl border shadow-2xl">
               <VideoPlayer src={job.video_url} />
             </div>
           ) : (
-            <div className="flex aspect-video items-center justify-center rounded-2xl border border-dashed border-surface-border bg-background/50">
-              <span className="text-sm text-text-muted italic">Video not yet rendered</span>
+            <div className="border-surface-border bg-background/50 flex aspect-video items-center justify-center rounded-2xl border border-dashed">
+              <span className="text-text-muted text-sm italic">Video not yet rendered</span>
             </div>
           )}
 
@@ -88,35 +90,33 @@ export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
               value={job.model_id || 'Unknown'}
               subValue={job.provider || ''}
             />
-            <DataCard
-              label="Format"
-              value="1080p (Full HD)"
-              subValue="60 FPS Premium"
-            />
+            <DataCard label="Format" value="1080p (Full HD)" subValue="60 FPS Premium" />
             <DataCard
               label="Timeline"
               value={job.started_at ? format(new Date(job.started_at), 'PPP') : 'Pending'}
               subValue={
                 job.status !== 'completed' && job.status !== 'failed' && job.current_step
                   ? `Active: ${job.current_step}`
-                  : job.started_at ? format(new Date(job.started_at), 'p') : ''
+                  : job.started_at
+                    ? format(new Date(job.started_at), 'p')
+                    : ''
               }
             />
-            <DataCard 
-              label="Execution" 
-              value={formatDuration(job.duration_seconds)} 
+            <DataCard
+              label="Execution"
+              value={formatDuration(job.duration_seconds)}
               subValue={job.retry_count > 0 ? `${job.retry_count} retries` : 'First attempt'}
             />
-            <DataCard 
-              label="Resource Cost" 
-              value={`$${job.cost.toFixed(4)}`} 
+            <DataCard
+              label="Resource Cost"
+              value={`$${job.cost.toFixed(4)}`}
               subValue="Estimated credits"
             />
           </div>
         </div>
 
         {/* Right Column: Prompt, Code, Artifacts */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="space-y-6 lg:col-span-7">
           <TabsSection
             tabs={[
               {
@@ -163,9 +163,13 @@ export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
       </div>
 
       {job.error && (
-        <div className="mt-8 rounded-xl border border-destructive/20 bg-destructive/5 p-4 shadow-sm shadow-destructive/10">
-          <h4 className="mb-1 text-xs font-bold text-destructive uppercase tracking-widest">Execution Error</h4>
-          <p className="font-mono text-sm whitespace-pre-wrap text-destructive dark:text-destructive">{job.error}</p>
+        <div className="border-destructive/20 bg-destructive/5 shadow-destructive/10 mt-8 rounded-xl border p-4 shadow-sm">
+          <h4 className="text-destructive mb-1 text-xs font-bold tracking-widest uppercase">
+            Execution Error
+          </h4>
+          <p className="text-destructive dark:text-destructive font-mono text-sm whitespace-pre-wrap">
+            {job.error}
+          </p>
         </div>
       )}
     </div>
@@ -174,8 +178,8 @@ export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
 
 function NoArtifact({ title }: { title: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-surface-border bg-background/30 p-12 text-center">
-      <p className="text-sm text-text-muted italic">{title} not available yet</p>
+    <div className="border-surface-border bg-background/30 rounded-2xl border border-dashed p-12 text-center">
+      <p className="text-text-muted text-sm italic">{title} not available yet</p>
     </div>
   );
 }
@@ -184,23 +188,20 @@ function StoryboardView({ storyboard }: { storyboard: Storyboard }) {
   return (
     <div className="scrollbar-thin scrollbar-thumb-surface-border max-h-[600px] space-y-4 overflow-y-auto pr-2">
       {storyboard.scenes.map((scene) => (
-        <ArtifactCard
-          key={scene.scene_id}
-          className="hover:border-council-active/30"
-        >
+        <ArtifactCard key={scene.scene_id} className="hover:border-council-active/30">
           <ArtifactBadge>SCENE {scene.scene_id}</ArtifactBadge>
-          <h4 className="mb-2 text-sm-plus font-bold tracking-tight text-foreground uppercase">
+          <h4 className="text-sm-plus text-foreground mb-2 font-bold tracking-tight uppercase">
             {scene.title}
           </h4>
-          <p className="text-xs leading-relaxed text-text-muted">{scene.description}</p>
+          <p className="text-text-muted text-xs leading-relaxed">{scene.description}</p>
           {scene.objects && (
-            <div className="mt-3 border-t border-surface-border/50 pt-2">
+            <div className="border-surface-border/50 mt-3 border-t pt-2">
               <ArtifactBadge variant="active">Visual Elements</ArtifactBadge>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {scene.objects.map((v, i) => (
                   <span
                     key={i}
-                    className="rounded-md border border-council-active/10 bg-council-active/5 px-2 py-0.5 text-tiny font-medium text-council-active"
+                    className="border-council-active/10 bg-council-active/5 text-tiny text-council-active rounded-md border px-2 py-0.5 font-medium"
                   >
                     {v.name}
                   </span>
@@ -216,15 +217,13 @@ function StoryboardView({ storyboard }: { storyboard: Storyboard }) {
 
 function DataCard({ label, value, subValue }: { label: string; value: string; subValue?: string }) {
   return (
-    <div className="rounded-xl border border-surface-border bg-background/30 p-4 shadow-sm">
+    <div className="border-surface-border bg-background/30 rounded-xl border p-4 shadow-sm">
       <ArtifactBadge>{label}</ArtifactBadge>
-      <span className="block truncate text-sm font-bold text-foreground" title={value}>
+      <span className="text-foreground block truncate text-sm font-bold" title={value}>
         {value}
       </span>
       {subValue && (
-        <span className="block truncate text-tiny text-text-muted opacity-60">
-          {subValue}
-        </span>
+        <span className="text-tiny text-text-muted block truncate opacity-60">{subValue}</span>
       )}
     </div>
   );
@@ -232,16 +231,14 @@ function DataCard({ label, value, subValue }: { label: string; value: string; su
 
 function PromptView({ topic, audience }: { topic: string; audience: string | null | undefined }) {
   return (
-    <div className="min-h-xs rounded-2xl border border-surface-border bg-background/30 p-6 space-y-6">
+    <div className="min-h-xs border-surface-border bg-background/30 space-y-6 rounded-2xl border p-6">
       <div>
         <ArtifactBadge variant="active">Topic</ArtifactBadge>
-        <p className="mt-1 text-sm font-bold text-foreground">{topic}</p>
+        <p className="text-foreground mt-1 text-sm font-bold">{topic}</p>
       </div>
       <div>
-        <ArtifactBadge variant="active">
-          Target Audience
-        </ArtifactBadge>
-        <p className="mt-1 text-sm font-bold text-foreground">{audience || 'General'}</p>
+        <ArtifactBadge variant="active">Target Audience</ArtifactBadge>
+        <p className="text-foreground mt-1 text-sm font-bold">{audience || 'General'}</p>
       </div>
     </div>
   );
@@ -250,13 +247,13 @@ function PromptView({ topic, audience }: { topic: string; audience: string | nul
 function CodeView({ code }: { code: string | null | undefined }) {
   return (
     <div className="group relative">
-      <pre className="scrollbar-thin scrollbar-thumb-surface-border scrollbar-track-transparent max-h-[600px] overflow-x-auto rounded-2xl border border-surface-border bg-background p-6 font-mono text-xs leading-relaxed text-council-active dark:opacity-90">
+      <pre className="scrollbar-thin scrollbar-thumb-surface-border scrollbar-track-transparent border-surface-border bg-background text-council-active max-h-[600px] overflow-x-auto rounded-2xl border p-6 font-mono text-xs leading-relaxed dark:opacity-90">
         <code>{code || '# No code generated yet'}</code>
       </pre>
       {code && (
         <button
           onClick={() => navigator.clipboard.writeText(code)}
-          className="absolute top-4 right-4 rounded-xl border border-surface-border bg-surface px-3 py-1.5 text-tiny font-bold uppercase text-text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+          className="border-surface-border bg-surface text-tiny text-text-muted hover:text-foreground absolute top-4 right-4 rounded-xl border px-3 py-1.5 font-bold uppercase opacity-0 transition-opacity group-hover:opacity-100"
         >
           Copy Code
         </button>
@@ -268,7 +265,7 @@ function CodeView({ code }: { code: string | null | undefined }) {
 function ThoughtsView({ thoughts }: { thoughts: ThoughtLog[] | undefined }) {
   const groupedThoughts = React.useMemo(() => {
     if (!thoughts || thoughts.length === 0) return [];
-    
+
     const blocks: { agent: string; phase: string; content: string }[] = [];
     let currentBlock: { agent: string; phase: string; content: string } | null = null;
 
@@ -284,23 +281,19 @@ function ThoughtsView({ thoughts }: { thoughts: ThoughtLog[] | undefined }) {
   }, [thoughts]);
 
   return (
-    <div className="scrollbar-thin scrollbar-thumb-surface-border max-h-[600px] space-y-3 overflow-y-auto rounded-2xl border border-surface-border bg-background p-4">
+    <div className="scrollbar-thin scrollbar-thumb-surface-border border-surface-border bg-background max-h-[600px] space-y-3 overflow-y-auto rounded-2xl border p-4">
       {groupedThoughts.length === 0 ? (
-        <p className="py-8 text-center text-sm text-text-muted italic">
-          No thoughts recorded
-        </p>
+        <p className="text-text-muted py-8 text-center text-sm italic">No thoughts recorded</p>
       ) : (
         groupedThoughts.map((t, i) => (
-          <div key={i} className="border-l-2 border-council-active/30 py-1 pl-4">
+          <div key={i} className="border-council-active/30 border-l-2 py-1 pl-4">
             <div className="mb-1 flex items-center gap-2">
-              <span className="rounded bg-council-active/10 px-2 py-0.5 text-tiny font-bold tracking-tighter text-council-active uppercase">
+              <span className="bg-council-active/10 text-tiny text-council-active rounded px-2 py-0.5 font-bold tracking-tighter uppercase">
                 {t.agent}
               </span>
-              <span className="font-mono text-tiny text-text-muted opacity-60">
-                {t.phase}
-              </span>
+              <span className="text-tiny text-text-muted font-mono opacity-60">{t.phase}</span>
             </div>
-            <p className="text-sm-plus leading-relaxed text-text-muted whitespace-pre-wrap">
+            <p className="text-sm-plus text-text-muted leading-relaxed whitespace-pre-wrap">
               {t.content}
             </p>
           </div>
@@ -317,8 +310,8 @@ function TabsSection({
 }) {
   const [activeTab, setActiveTab] = React.useState(tabs[0].id);
   return (
-    <div className="flex flex-col h-full">
-      <div className="mb-6 flex overflow-x-auto border-b border-surface-border scrollbar-none gap-1">
+    <div className="flex h-full flex-col">
+      <div className="border-surface-border scrollbar-none mb-6 flex gap-1 overflow-x-auto border-b">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -326,14 +319,14 @@ function TabsSection({
             className={`-mb-px shrink-0 border-b-2 px-3 py-3 text-[10px] font-bold tracking-widest uppercase transition-all ${
               activeTab === tab.id
                 ? 'border-council-active bg-council-active/5 text-council-active'
-                : 'border-transparent text-text-muted hover:text-foreground hover:bg-surface-border/10'
+                : 'text-text-muted hover:text-foreground hover:bg-surface-border/10 border-transparent'
             }`}
           >
             {tab.label}
           </button>
         ))}
       </div>
-      <div className="flex-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="animate-in fade-in slide-in-from-bottom-2 flex-1 duration-300">
         {tabs.find((t) => t.id === activeTab)?.content}
       </div>
     </div>

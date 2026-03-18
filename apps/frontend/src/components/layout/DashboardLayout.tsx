@@ -108,11 +108,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background font-sans text-foreground transition-colors duration-300 selection:bg-council-active/30">
+    <div className="bg-background text-foreground selection:bg-council-active/30 min-h-screen font-sans transition-colors duration-300">
       {/* Skip-to-content link for keyboard accessibility */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-1/2 focus:z-[100] focus:-translate-x-1/2 focus:rounded-xl focus:bg-council-active focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white focus:shadow-lg"
+        className="focus:bg-council-active sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-1/2 focus:z-[100] focus:-translate-x-1/2 focus:rounded-xl focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white focus:shadow-lg"
       >
         Skip to content
       </a>
@@ -123,7 +123,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         aria-label="Toggle navigation menu"
         aria-expanded={sidebarOpen}
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed top-4 left-4 z-50 rounded-md border border-surface-border bg-surface p-2 text-text-muted transition-colors hover:text-foreground lg:hidden"
+        className="border-surface-border bg-surface text-text-muted hover:text-foreground fixed top-4 left-4 z-50 rounded-md border p-2 transition-colors lg:hidden"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -153,7 +153,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-background/60 backdrop-blur-sm lg:hidden"
+          className="bg-background/60 fixed inset-0 z-30 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
@@ -162,17 +162,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar */}
       <nav
         aria-label="Main navigation"
-        className={`fixed top-0 left-0 z-40 h-full w-64 border-r border-surface-border bg-surface p-6 transition-transform duration-200 ${
+        className={`border-surface-border bg-surface fixed top-0 left-0 z-40 h-full w-64 border-r p-6 transition-transform duration-200 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
       >
         <div className="mb-10 flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-council-active text-lg font-bold text-white shadow-lg shadow-council-active/20">
+          <div className="bg-council-active shadow-council-active/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white shadow-lg">
             C
           </div>
-          <span className="text-xl font-bold tracking-tight text-foreground">
-            ConceptCast
-          </span>
+          <span className="text-foreground text-xl font-bold tracking-tight">ConceptCast</span>
         </div>
 
         <div className="space-y-1" role="list">
@@ -233,8 +231,7 @@ function NavItem({
         className: 'bg-council-active/10 text-council-active',
       }}
       inactiveProps={{
-        className:
-          'text-text-muted hover:text-foreground hover:bg-surface-border',
+        className: 'text-text-muted hover:text-foreground hover:bg-surface-border',
       }}
       className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left font-medium transition-all"
     >

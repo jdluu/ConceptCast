@@ -32,7 +32,7 @@ export function CouncilDeliberation({ thoughts }: { thoughts: Thought[] }) {
           agent: t.agent,
           phase: t.phase,
           content: t.content,
-          startIndex: i
+          startIndex: i,
         };
         blocks.push(currentBlock);
       } else {
@@ -51,23 +51,23 @@ export function CouncilDeliberation({ thoughts }: { thoughts: Thought[] }) {
   }, [thoughtBlocks.length]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-surface-border bg-terminal-bg shadow-2xl transition-all duration-500">
+    <div className="border-surface-border bg-terminal-bg overflow-hidden rounded-2xl border shadow-2xl transition-all duration-500">
       {/* macOS Style Bar */}
-      <div className="flex items-center justify-between border-b border-surface-border/30 bg-terminal-bg/80 px-4 py-2.5 backdrop-blur-md">
+      <div className="border-surface-border/30 bg-terminal-bg/80 flex items-center justify-between border-b px-4 py-2.5 backdrop-blur-md">
         <div className="flex items-center gap-4">
           <div className="flex gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-macos-red/80 shadow-[0_0_8px_rgba(255,95,87,0.4)]" />
-            <div className="h-2.5 w-2.5 rounded-full bg-macos-yellow/80 shadow-[0_0_8px_rgba(255,189,46,0.4)]" />
-            <div className="h-2.5 w-2.5 rounded-full bg-macos-green/80 shadow-[0_0_8px_rgba(40,200,64,0.4)]" />
+            <div className="bg-macos-red/80 h-2.5 w-2.5 rounded-full shadow-[0_0_8px_rgba(255,95,87,0.4)]" />
+            <div className="bg-macos-yellow/80 h-2.5 w-2.5 rounded-full shadow-[0_0_8px_rgba(255,189,46,0.4)]" />
+            <div className="bg-macos-green/80 h-2.5 w-2.5 rounded-full shadow-[0_0_8px_rgba(40,200,64,0.4)]" />
           </div>
           <div className="flex flex-col">
-            <span className="font-mono text-[10px] font-bold tracking-[0.2em] text-terminal-text/60 uppercase">
+            <span className="text-terminal-text/60 font-mono text-[10px] font-bold tracking-[0.2em] uppercase">
               Protocol Terminal
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2 font-mono text-[9px] font-medium tracking-wider text-terminal-text/30">
-          <Activity className="h-3 w-3 text-council-active/50" />
+        <div className="text-terminal-text/30 flex items-center gap-2 font-mono text-[9px] font-medium tracking-wider">
+          <Activity className="text-council-active/50 h-3 w-3" />
           <span className="opacity-60">SESSION_LIVE:</span>
           <span className="text-terminal-text/50">council_stream.log</span>
         </div>
@@ -75,22 +75,27 @@ export function CouncilDeliberation({ thoughts }: { thoughts: Thought[] }) {
 
       <div
         ref={logRef}
-        className="custom-scrollbar max-h-[500px] min-h-[300px] space-y-2 overflow-y-auto p-6 font-mono text-xs leading-relaxed text-terminal-text"
+        className="custom-scrollbar text-terminal-text max-h-[500px] min-h-[300px] space-y-2 overflow-y-auto p-6 font-mono text-xs leading-relaxed"
         role="log"
       >
         {thoughtBlocks.length === 0 ? (
-          <div className="flex h-full items-center justify-center opacity-20 italic py-20">
+          <div className="flex h-full items-center justify-center py-20 italic opacity-20">
             Waiting for council transmission...
           </div>
         ) : (
           thoughtBlocks.map((block, i) => (
-            <div key={i} className="group flex items-start gap-4 border-l-2 border-white/5 pl-4 transition-colors hover:border-council-active/30 py-1">
-              <span className="shrink-0 text-terminal-text/20 text-[10px] mt-0.5">[{block.startIndex}]</span>
-              <div className="flex flex-col gap-1 w-full">
+            <div
+              key={i}
+              className="group hover:border-council-active/30 flex items-start gap-4 border-l-2 border-white/5 py-1 pl-4 transition-colors"
+            >
+              <span className="text-terminal-text/20 mt-0.5 shrink-0 text-[10px]">
+                [{block.startIndex}]
+              </span>
+              <div className="flex w-full flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <span
                     className={cn(
-                      'font-bold tracking-wider text-[10px]',
+                      'text-[10px] font-bold tracking-wider',
                       block.agent.toLowerCase().includes('pedagogue') ||
                         block.agent.toLowerCase().includes('analyst')
                         ? 'text-agent-planning'
@@ -106,7 +111,7 @@ export function CouncilDeliberation({ thoughts }: { thoughts: Thought[] }) {
                   >
                     [{block.agent.toUpperCase()}]
                   </span>
-                  <span className="text-terminal-text/20 text-[9px] font-bold uppercase tracking-widest">
+                  <span className="text-terminal-text/20 text-[9px] font-bold tracking-widest uppercase">
                     {block.phase}
                   </span>
                 </div>

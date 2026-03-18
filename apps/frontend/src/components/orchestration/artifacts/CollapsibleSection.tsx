@@ -20,10 +20,10 @@ export function CollapsibleSection({
   badge,
 }: CollapsibleSectionProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-lg transition-all duration-300">
+    <div className="border-surface-border bg-surface overflow-hidden rounded-2xl border shadow-lg transition-all duration-300">
       <button
         onClick={onToggle}
-        className="flex w-full items-center justify-between border-b border-surface-border bg-surface/50 px-4 py-3 hover:bg-surface-border/20 transition-colors"
+        className="border-surface-border bg-surface/50 hover:bg-surface-border/20 flex w-full items-center justify-between border-b px-4 py-3 transition-colors"
       >
         <div className="flex items-center gap-3">
           {icon && (
@@ -35,16 +35,16 @@ export function CollapsibleSection({
               {icon}
             </motion.span>
           )}
-          <span className="text-mini font-bold tracking-widest text-foreground uppercase">
+          <span className="text-mini text-foreground font-bold tracking-widest uppercase">
             {title}
           </span>
           {badge && <div className="ml-2">{badge}</div>}
         </div>
         <div className="flex items-center gap-3">
           {isCollapsed ? (
-            <ChevronDown className="h-3.5 w-3.5 text-text-muted" />
+            <ChevronDown className="text-text-muted h-3.5 w-3.5" />
           ) : (
-            <ChevronUp className="h-3.5 w-3.5 text-text-muted" />
+            <ChevronUp className="text-text-muted h-3.5 w-3.5" />
           )}
         </div>
       </button>

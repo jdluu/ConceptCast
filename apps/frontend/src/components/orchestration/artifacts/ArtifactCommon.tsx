@@ -5,12 +5,12 @@ import { cn } from '@/lib/utils';
 /**
  * Base card for artifact items (Scenes, Teaching Steps).
  */
-export function ArtifactCard({ 
-  children, 
+export function ArtifactCard({
+  children,
   className,
-  delay = 0 
-}: { 
-  children: ReactNode; 
+  delay = 0,
+}: {
+  children: ReactNode;
   className?: string;
   delay?: number;
 }) {
@@ -20,8 +20,8 @@ export function ArtifactCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
       className={cn(
-        "flex flex-col rounded-xl border border-surface-border bg-background p-3 shadow-sm transition-all hover:border-council-active/30",
-        className
+        'border-surface-border bg-background hover:border-council-active/30 flex flex-col rounded-xl border p-3 shadow-sm transition-all',
+        className,
       )}
     >
       {children}
@@ -35,35 +35,40 @@ export function ArtifactCard({
 export function ArtifactPlaceholder({
   status = 'loading',
   message,
-  submessage
+  submessage,
 }: {
   status?: 'queued' | 'loading';
   message?: string;
   submessage?: string;
 }) {
   const isQueued = status === 'queued';
-  
+
   return (
-    <div className={cn(
-      "flex h-40 flex-col items-center justify-center space-y-4 rounded-2xl border border-surface-border bg-surface/30 p-8 text-text-muted transition-all duration-700",
-      isQueued ? "border-dashed opacity-30 grayscale" : "animate-pulse"
-    )}>
+    <div
+      className={cn(
+        'border-surface-border bg-surface/30 text-text-muted flex h-40 flex-col items-center justify-center space-y-4 rounded-2xl border p-8 transition-all duration-700',
+        isQueued ? 'border-dashed opacity-30 grayscale' : 'animate-pulse',
+      )}
+    >
       {!isQueued ? (
         <div className="relative">
-          <div className="absolute inset-0 blur-lg bg-council-active/20 rounded-full animate-pulse" />
-          <div className="relative h-10 w-10 rounded-full border-2 border-surface-border border-t-council-active shadow-glow-council animate-spin" />
+          <div className="bg-council-active/20 absolute inset-0 animate-pulse rounded-full blur-lg" />
+          <div className="border-surface-border border-t-council-active shadow-glow-council relative h-10 w-10 animate-spin rounded-full border-2" />
         </div>
       ) : (
-        <div className="h-10 w-10 rounded-full border-2 border-dashed border-surface-border flex items-center justify-center">
-          <div className="h-4 w-4 rounded-full bg-surface-border opacity-50" />
+        <div className="border-surface-border flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed">
+          <div className="bg-surface-border h-4 w-4 rounded-full opacity-50" />
         </div>
       )}
-      <div className="text-center space-y-1">
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-foreground/60">
+      <div className="space-y-1 text-center">
+        <p className="text-foreground/60 text-[10px] font-bold tracking-[0.2em] uppercase">
           {message || (isQueued ? 'Pipeline Queued' : 'Agent Deliberation')}
         </p>
         <p className="text-[9px] font-medium italic opacity-50">
-          {submessage || (isQueued ? 'Awaiting council authorization...' : 'Synthesizing knowledge structures...')}
+          {submessage ||
+            (isQueued
+              ? 'Awaiting council authorization...'
+              : 'Synthesizing knowledge structures...')}
         </p>
       </div>
     </div>
@@ -73,11 +78,11 @@ export function ArtifactPlaceholder({
 /**
  * Small labeled badge for artifact metadata.
  */
-export function ArtifactBadge({ 
-  children, 
-  variant = 'default' 
-}: { 
-  children: ReactNode; 
+export function ArtifactBadge({
+  children,
+  variant = 'default',
+}: {
+  children: ReactNode;
   variant?: 'default' | 'active' | 'completed';
 }) {
   const variants = {
@@ -85,12 +90,14 @@ export function ArtifactBadge({
     active: 'text-council-active',
     completed: 'text-council-completed',
   };
-  
+
   return (
-    <span className={cn(
-      "mb-0.5 block text-nano font-bold uppercase tracking-widest opacity-70",
-      variants[variant]
-    )}>
+    <span
+      className={cn(
+        'text-nano mb-0.5 block font-bold tracking-widest uppercase opacity-70',
+        variants[variant],
+      )}
+    >
       {children}
     </span>
   );
@@ -99,17 +106,17 @@ export function ArtifactBadge({
 /**
  * Standard action button for artifact views.
  */
-export function ArtifactAction({ 
-  onClick, 
-  children 
-}: { 
-  onClick: () => void; 
+export function ArtifactAction({
+  onClick,
+  children,
+}: {
+  onClick: () => void;
   children: ReactNode;
 }) {
   return (
     <button
       onClick={onClick}
-      className="w-full py-2 text-micro font-bold tracking-[0.2em] text-text-muted uppercase transition-colors hover:text-council-active"
+      className="text-micro text-text-muted hover:text-council-active w-full py-2 font-bold tracking-[0.2em] uppercase transition-colors"
     >
       {children}
     </button>

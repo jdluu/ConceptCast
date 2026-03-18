@@ -54,7 +54,7 @@ type AppSettingsContextValue = {
 const AppSettingsContext = createContext<AppSettingsContextValue | null>(null);
 
 /**
- * Provider for application-wide settings such as resolution, framerate, and transparency.
+ * Provider for application-wide settings such as notifications, sound, and agent preferences.
  * Persists settings to localStorage.
  *
  * @param {Object} props - Component props.

@@ -71,28 +71,26 @@ export function JobRow({
           <button
             className={cn(
               'p-1 transition-colors',
-              isSelected
-                ? 'text-council-active'
-                : 'text-text-muted group-hover:text-foreground',
+              isSelected ? 'text-council-active' : 'text-text-muted group-hover:text-foreground',
             )}
           >
             {isSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
           </button>
         </td>
         <td className="px-4 py-5">
-          <div className="relative aspect-video w-20 overflow-hidden rounded-md border border-surface-border bg-background shadow-inner">
+          <div className="border-surface-border bg-background relative aspect-video w-20 overflow-hidden rounded-md border shadow-inner">
             {job.thumbnail_url ? (
               <img src={job.thumbnail_url} alt="" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
-                <Play className="h-4 w-4 text-text-muted opacity-30" />
+                <Play className="text-text-muted h-4 w-4 opacity-30" />
               </div>
             )}
           </div>
         </td>
-        <td className="px-4 py-5 min-w-[200px]">
-          <span className="block font-semibold text-foreground leading-snug">{job.topic}</span>
-          <span className="mt-1 block font-mono text-[10px] tracking-tight text-text-muted uppercase opacity-50">
+        <td className="min-w-[200px] px-4 py-5">
+          <span className="text-foreground block leading-snug font-semibold">{job.topic}</span>
+          <span className="text-text-muted mt-1 block font-mono text-[10px] tracking-tight uppercase opacity-50">
             ID_{job.job_id.split('-')[0]}
           </span>
         </td>
@@ -102,15 +100,17 @@ export function JobRow({
         <td className="px-4 py-5 font-medium whitespace-nowrap">
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <PlayCircle className="h-3 w-3 text-council-active/50" />
-              <span className="text-tiny font-semibold text-council-active/70 uppercase">Video</span>
-              <span className="text-xs text-foreground">
+              <PlayCircle className="text-council-active/50 h-3 w-3" />
+              <span className="text-tiny text-council-active/70 font-semibold uppercase">
+                Video
+              </span>
+              <span className="text-foreground text-xs">
                 {formatDuration(Number(metadata.duration))}
               </span>
             </div>
             <div className="mt-0.5 flex items-center gap-1.5">
-              <Clock className="h-2.5 w-2.5 text-text-muted" />
-              <span className="text-micro font-semibold text-text-muted uppercase">AI</span>
+              <Clock className="text-text-muted h-2.5 w-2.5" />
+              <span className="text-micro text-text-muted font-semibold uppercase">AI</span>
               <span className="text-tiny text-text-muted">
                 {formatGenerationTime(job.duration_seconds)}
               </span>
@@ -119,26 +119,22 @@ export function JobRow({
         </td>
         <td className="px-4 py-5">
           <div className="flex flex-col">
-            <span className="text-xs font-medium text-foreground">
+            <span className="text-foreground text-xs font-medium">
               {metadata.resolution || '1080p'}
             </span>
-            <span className="text-tiny text-text-muted">
-              {metadata.file_size || '60 FPS'}
-            </span>
+            <span className="text-tiny text-text-muted">{metadata.file_size || '60 FPS'}</span>
           </div>
         </td>
         <td className="px-4 py-5 text-right">
-          <span className="block font-bold text-council-active dark:text-council-active">
+          <span className="text-council-active dark:text-council-active block font-bold">
             {job.model_id || '\u2014'}
           </span>
         </td>
         <td className="px-4 py-5 text-right whitespace-nowrap">
-          <span className="block text-foreground opacity-80">
+          <span className="text-foreground block opacity-80">
             {new Date(job.created_at).toLocaleDateString()}
           </span>
-          <span className="block text-tiny text-text-muted">
-            {formatTime(job.created_at)}
-          </span>
+          <span className="text-tiny text-text-muted block">{formatTime(job.created_at)}</span>
         </td>
         <td className="py-5 pr-6 pl-4 text-right" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-end gap-1 px-1">
@@ -170,12 +166,12 @@ export function JobRow({
                 e.stopPropagation();
                 onToggleExpand();
               }}
-              className="ml-2 border-l border-surface-border pl-2 transition-colors hover:text-foreground"
+              className="border-surface-border hover:text-foreground ml-2 border-l pl-2 transition-colors"
             >
               {isExpanded ? (
-                <ChevronUp className="h-4 w-4 text-text-muted" />
+                <ChevronUp className="text-text-muted h-4 w-4" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-text-muted" />
+                <ChevronDown className="text-text-muted h-4 w-4" />
               )}
             </button>
           </div>
@@ -183,7 +179,7 @@ export function JobRow({
       </tr>
       {isExpanded && (
         <tr>
-          <td colSpan={9} className="border-b border-surface-border p-0">
+          <td colSpan={9} className="border-surface-border border-b p-0">
             <JobDetailPanel jobId={job.job_id} initialData={detail} />
           </td>
         </tr>

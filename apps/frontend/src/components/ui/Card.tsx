@@ -8,13 +8,14 @@ const cardVariants = cva(
     variants: {
       variant: {
         default: '',
-        premium: 'relative overflow-hidden rounded-2xl border-surface-border bg-surface/50 p-6 shadow-2xl backdrop-blur-xl before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/5 before:to-transparent',
-      }
+        premium:
+          'relative overflow-hidden rounded-2xl border-surface-border bg-surface/50 p-6 shadow-2xl backdrop-blur-xl before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/5 before:to-transparent',
+      },
     },
     defaultVariants: {
-      variant: 'default'
-    }
-  }
+      variant: 'default',
+    },
+  },
 );
 
 interface CardProps extends React.ComponentProps<'div'>, VariantProps<typeof cardVariants> {}

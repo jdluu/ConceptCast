@@ -45,9 +45,7 @@ export function VideoResultPage({
     <div className="animate-in fade-in mx-auto max-w-5xl space-y-8 duration-500">
       {/* Header with Back Button */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          {conceptTitle}
-        </h1>
+        <h1 className="text-foreground text-3xl font-bold tracking-tight">{conceptTitle}</h1>
         <Button onClick={onReset} className="h-11 px-6">
           <Plus className="h-4 w-4" strokeWidth={3} />
           Create New Video
@@ -56,29 +54,29 @@ export function VideoResultPage({
 
       {/* Video metadata overview */}
       <div className="flex flex-wrap items-center gap-4 px-2">
-        <div className="flex items-center gap-2 rounded-full border border-council-active/20 bg-council-active/10 px-3 py-1.5">
-          <Clock className="h-3.5 w-3.5 text-council-active" />
-          <span className="text-mini leading-none font-bold tracking-widest text-council-active uppercase">
+        <div className="border-council-active/20 bg-council-active/10 flex items-center gap-2 rounded-full border px-3 py-1.5">
+          <Clock className="text-council-active h-3.5 w-3.5" />
+          <span className="text-mini text-council-active leading-none font-bold tracking-widest uppercase">
             Gen Time: {formatGenerationTime(durationSeconds)}
           </span>
         </div>
         {videoMetadata?.duration && (
-          <div className="flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-1.5">
-            <PlayCircle className="h-3.5 w-3.5 text-success" />
-            <span className="text-mini leading-none font-bold tracking-widest text-success uppercase">
+          <div className="border-success/20 bg-success/10 flex items-center gap-2 rounded-full border px-3 py-1.5">
+            <PlayCircle className="text-success h-3.5 w-3.5" />
+            <span className="text-mini text-success leading-none font-bold tracking-widest uppercase">
               Duration: {formatDuration(Number(videoMetadata.duration))}
             </span>
           </div>
         )}
         {videoMetadata?.resolution && (
-          <div className="px-1 text-tiny font-bold tracking-[0.2em] text-text-muted uppercase">
+          <div className="text-tiny text-text-muted px-1 font-bold tracking-[0.2em] uppercase">
             {videoMetadata.resolution} {'\u2022'} {videoMetadata.file_size || 'N/A'}
           </div>
         )}
       </div>
 
       {/* Video player or placeholder at top */}
-      <div className="overflow-hidden rounded-3xl border border-surface-border bg-surface shadow-2xl transition-all">
+      <div className="border-surface-border bg-surface overflow-hidden rounded-3xl border shadow-2xl transition-all">
         <div className="relative aspect-video bg-black shadow-inner">
           {videoUrl ? (
             <video
@@ -94,11 +92,12 @@ export function VideoResultPage({
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="px-6 text-center">
-                <Video className="mx-auto mb-4 h-16 w-16 text-text-muted opacity-20" strokeWidth={1} />
-                <p className="text-lg font-bold text-text-muted opacity-60">
-                  Video not available
-                </p>
-                <p className="mx-auto mt-2 max-w-xs text-sm text-text-muted opacity-40">
+                <Video
+                  className="text-text-muted mx-auto mb-4 h-16 w-16 opacity-20"
+                  strokeWidth={1}
+                />
+                <p className="text-text-muted text-lg font-bold opacity-60">Video not available</p>
+                <p className="text-text-muted mx-auto mt-2 max-w-xs text-sm opacity-40">
                   Mock runs skip rendering. Use a live provider to generate a video.
                 </p>
               </div>

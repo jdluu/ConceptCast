@@ -26,7 +26,7 @@ export function PipelineSteps({ status }: PipelineStepsProps) {
     <div className="w-full pt-6 pb-14">
       <div className="relative flex w-full items-center justify-between">
         {/* Background Line */}
-        <div className="absolute top-1/2 left-0 -z-10 h-1 w-full -translate-y-1/2 rounded-full bg-surface-border" />
+        <div className="bg-surface-border absolute top-1/2 left-0 -z-10 h-1 w-full -translate-y-1/2 rounded-full" />
 
         {/* Active Line (Progress) */}
         <motion.div
@@ -35,7 +35,7 @@ export function PipelineSteps({ status }: PipelineStepsProps) {
             width: `${Math.min(100, (Math.max(0, currentStepIndex) / (STEPS.length - 1)) * 100)}%`,
           }}
           transition={{ type: 'spring', stiffness: 50, damping: 20 }}
-          className="absolute top-1/2 left-0 -z-10 h-1 -translate-y-1/2 rounded-full bg-council-active"
+          className="bg-council-active absolute top-1/2 left-0 -z-10 h-1 -translate-y-1/2 rounded-full"
         />
 
         {STEPS.map((step, index) => {
@@ -51,7 +51,8 @@ export function PipelineSteps({ status }: PipelineStepsProps) {
                 animate={{
                   scale: isCurrent ? 1.15 : 1,
                   backgroundColor: isCompleted ? 'var(--council-completed)' : 'var(--background)',
-                  borderColor: isCompleted || isCurrent ? 'var(--council-active)' : 'var(--surface-border)',
+                  borderColor:
+                    isCompleted || isCurrent ? 'var(--council-active)' : 'var(--surface-border)',
                   boxShadow: isCurrent ? '0 0 20px rgba(59,130,246,0.4)' : 'none',
                 }}
                 className={`z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${isCompleted ? 'text-white' : ''} ${isCurrent ? 'text-council-active' : ''} ${isPending ? 'text-text-muted' : ''} `}
@@ -98,7 +99,7 @@ export function PipelineSteps({ status }: PipelineStepsProps) {
                         : 'var(--text-muted)',
                     opacity: isCurrent ? 1 : 0.6,
                   }}
-                  className="mb-0.5 px-1 text-tiny font-bold tracking-wider whitespace-nowrap uppercase sm:text-mini"
+                  className="text-tiny sm:text-mini mb-0.5 px-1 font-bold tracking-wider whitespace-nowrap uppercase"
                 >
                   {isCurrent ? step.label : window.innerWidth > 640 ? step.label : index + 1}
                 </motion.span>
@@ -108,7 +109,7 @@ export function PipelineSteps({ status }: PipelineStepsProps) {
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -5 }}
-                      className="w-max max-w-3xs px-2 text-center text-micro leading-tight text-council-active italic sm:text-tiny"
+                      className="text-micro text-council-active sm:text-tiny w-max max-w-3xs px-2 text-center leading-tight italic"
                     >
                       {step.description}
                     </motion.div>

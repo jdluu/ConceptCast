@@ -10,7 +10,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        premium: 'bg-gradient-to-r from-council-completed to-council-active text-white shadow-xl shadow-council-active/25 hover:shadow-council-active/40 hover:-translate-y-0.5 active:scale-[0.97]',
+        premium:
+          'bg-gradient-to-r from-council-completed to-council-active text-white shadow-xl shadow-council-active/25 hover:shadow-council-active/40 hover:-translate-y-0.5 active:scale-[0.97]',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
         outline:
@@ -34,7 +35,7 @@ const buttonVariants = cva(
         default: 'rounded-md',
         xl: 'rounded-xl',
         full: 'rounded-full',
-      }
+      },
     },
     defaultVariants: {
       variant: 'default',

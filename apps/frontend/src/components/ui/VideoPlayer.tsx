@@ -61,7 +61,7 @@ export function VideoPlayer({
   return (
     <div
       className={cn(
-        'group relative overflow-hidden rounded-xl border border-surface-border bg-background shadow-2xl',
+        'group border-surface-border bg-background relative overflow-hidden rounded-xl border shadow-2xl',
         className,
       )}
     >
@@ -85,8 +85,8 @@ export function VideoPlayer({
           Your browser does not support the video tag.
         </video>
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-surface/50">
-          <p className="text-sm font-medium text-text-muted">No video source available</p>
+        <div className="bg-surface/50 absolute inset-0 flex items-center justify-center">
+          <p className="text-text-muted text-sm font-medium">No video source available</p>
         </div>
       )}
 
@@ -97,10 +97,10 @@ export function VideoPlayer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-surface/80 backdrop-blur-sm"
+            className="bg-surface/80 absolute inset-0 z-10 flex flex-col items-center justify-center backdrop-blur-sm"
           >
-            <Loader2 className="mb-3 h-10 w-10 animate-spin text-council-active" />
-            <p className="animate-pulse text-tiny font-bold tracking-[0.2em] text-text-muted uppercase">
+            <Loader2 className="text-council-active mb-3 h-10 w-10 animate-spin" />
+            <p className="text-tiny text-text-muted animate-pulse font-bold tracking-[0.2em] uppercase">
               Loading Stream...
             </p>
           </motion.div>
@@ -114,18 +114,18 @@ export function VideoPlayer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-surface/95 p-6 text-center"
+            className="bg-surface/95 absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center"
           >
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-destructive/20 bg-destructive/10">
-              <AlertCircle className="h-6 w-6 text-destructive" />
+            <div className="border-destructive/20 bg-destructive/10 mb-4 flex h-12 w-12 items-center justify-center rounded-full border">
+              <AlertCircle className="text-destructive h-6 w-6" />
             </div>
-            <h3 className="mb-2 font-bold tracking-tight text-foreground uppercase">
+            <h3 className="text-foreground mb-2 font-bold tracking-tight uppercase">
               Stream Error
             </h3>
-            <p className="mb-6 max-w-xs text-sm text-text-muted">{error}</p>
+            <p className="text-text-muted mb-6 max-w-xs text-sm">{error}</p>
             <button
               onClick={handleRetry}
-              className="flex items-center gap-2 rounded-lg border border-surface-border bg-surface px-4 py-2 text-sm font-bold text-foreground transition-colors hover:bg-surface-border"
+              className="border-surface-border bg-surface text-foreground hover:bg-surface-border flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-bold transition-colors"
             >
               <RefreshCw className="h-4 w-4" />
               Retry Connection
@@ -136,8 +136,8 @@ export function VideoPlayer({
 
       {/* Overlay: Description / Caption */}
       {description && !isLoading && !error && (
-        <div className="pointer-events-none absolute right-0 bottom-0 left-0 bg-gradient-to-t from-background via-background/40 to-transparent p-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-          <p className="font-bold text-foreground text-shadow-sm">{description}</p>
+        <div className="from-background via-background/40 pointer-events-none absolute right-0 bottom-0 left-0 bg-gradient-to-t to-transparent p-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          <p className="text-foreground font-bold text-shadow-sm">{description}</p>
         </div>
       )}
     </div>

@@ -69,13 +69,13 @@ export function LibraryPage() {
   };
 
   if (isPending) {
-    return <div className="p-8 text-text-muted">Loading library...</div>;
+    return <div className="text-text-muted p-8">Loading library...</div>;
   }
 
   return (
     <div className="mx-auto max-w-7xl px-6 transition-colors duration-300">
       <header className="mb-12">
-        <h1 className="mb-2 text-4xl font-bold tracking-tight text-foreground">Library</h1>
+        <h1 className="text-foreground mb-2 text-4xl font-bold tracking-tight">Library</h1>
         <p className="text-text-muted">
           Your collection of high-quality generated educational content.
         </p>
@@ -83,13 +83,13 @@ export function LibraryPage() {
 
       <div className="mb-10 flex flex-col items-center gap-4 md:flex-row">
         <div className="group relative w-full flex-1">
-          <Search className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-muted transition-colors group-focus-within:text-council-active" />
+          <Search className="text-text-muted group-focus-within:text-council-active absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 transition-colors" />
           <input
             type="search"
             placeholder="Search your library..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-2xl border border-surface-border bg-surface py-3 pr-4 pl-12 text-sm text-foreground shadow-sm transition-all outline-none placeholder:text-text-muted focus:border-council-active/50 focus:ring-2 focus:ring-council-active/50"
+            className="border-surface-border bg-surface text-foreground placeholder:text-text-muted focus:border-council-active/50 focus:ring-council-active/50 w-full rounded-2xl border py-3 pr-4 pl-12 text-sm shadow-sm transition-all outline-none focus:ring-2"
           />
         </div>
         <div className="flex w-full gap-3 md:w-auto">
@@ -117,24 +117,19 @@ export function LibraryPage() {
       </div>
 
       {filteredJobs.length === 0 ? (
-        <div className="rounded-3xl border-2 border-dashed border-surface-border bg-surface/20 py-32 text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-surface shadow-sm">
-            <Play className="h-8 w-8 text-council-active" />
+        <div className="border-surface-border bg-surface/20 rounded-3xl border-2 border-dashed py-32 text-center">
+          <div className="bg-surface mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full shadow-sm">
+            <Play className="text-council-active h-8 w-8" />
           </div>
-          <h3 className="mb-2 text-xl font-bold text-foreground">No videos found</h3>
-          <p className="mx-auto max-w-xs text-text-muted">
+          <h3 className="text-foreground mb-2 text-xl font-bold">No videos found</h3>
+          <p className="text-text-muted mx-auto max-w-xs">
             Once you complete a generation job, it will appear here in your permanent library.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
           {filteredJobs.map((job) => (
-            <VideoCard 
-              key={job.job_id} 
-              job={job} 
-              onPlay={handlePlay} 
-              onDelete={handleDelete} 
-            />
+            <VideoCard key={job.job_id} job={job} onPlay={handlePlay} onDelete={handleDelete} />
           ))}
         </div>
       )}
@@ -147,16 +142,16 @@ export function LibraryPage() {
       >
         {selectedJob && (
           <div className="space-y-6">
-            <div className="overflow-hidden rounded-xl border border-surface-border bg-black shadow-2xl">
+            <div className="border-surface-border overflow-hidden rounded-xl border bg-black shadow-2xl">
               <VideoPlayer src={selectedJob.video_url!} />
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-text-muted">
+                <p className="text-text-muted text-sm">
                   {selectedJob.model_id || 'ConceptCast Engine v1'}
                 </p>
               </div>
-              <button className="rounded-xl border border-surface-border bg-surface px-6 py-2.5 text-sm font-bold text-foreground transition-all hover:bg-surface-border/20">
+              <button className="border-surface-border bg-surface text-foreground hover:bg-surface-border/20 rounded-xl border px-6 py-2.5 text-sm font-bold transition-all">
                 Download HD
               </button>
             </div>

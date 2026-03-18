@@ -83,12 +83,14 @@ export function Modal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
-      <DialogContent className={cn(
-        "flex max-h-[90vh] flex-col overflow-hidden border-surface-border bg-surface p-0",
-        sizeClasses[size]
-      )}>
-        <DialogHeader className="border-b border-surface-border p-4">
-          <DialogTitle className="text-lg font-bold text-foreground">{title}</DialogTitle>
+      <DialogContent
+        className={cn(
+          'border-surface-border bg-surface flex max-h-[90vh] flex-col overflow-hidden p-0',
+          sizeClasses[size],
+        )}
+      >
+        <DialogHeader className="border-surface-border border-b p-4">
+          <DialogTitle className="text-foreground text-lg font-bold">{title}</DialogTitle>
           <DialogDescription className="sr-only">Modal dialog for {title}</DialogDescription>
         </DialogHeader>
         <div className="custom-scrollbar flex-1 overflow-y-auto p-6">{children}</div>

@@ -7,7 +7,7 @@ const selectStyles =
 const Label = ({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) => (
   <label
     htmlFor={htmlFor}
-    className="block text-tiny font-bold tracking-[0.2em] text-text-muted uppercase"
+    className="text-tiny text-text-muted block font-bold tracking-[0.2em] uppercase"
   >
     {children}
   </label>
@@ -18,9 +18,7 @@ const Label = ({ htmlFor, children }: { htmlFor: string; children: React.ReactNo
  */
 export const AudienceField = ({ register }: { register: UseFormRegister<JobFormData> }) => (
   <div className="space-y-2">
-    <Label htmlFor="target_audience">
-      Target Audience
-    </Label>
+    <Label htmlFor="target_audience">Target Audience</Label>
     <select {...register('target_audience')} id="target_audience" className={selectStyles}>
       <option value="5-year-old">5-year-old</option>
       <option value="High School Student">High School Student</option>
@@ -49,9 +47,7 @@ export const ModelSelectionFields = ({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="provider">
-          AI Provider
-        </Label>
+        <Label htmlFor="provider">AI Provider</Label>
         <select {...register('provider')} id="provider" className={selectStyles}>
           {realProvidersOnly.map((providerGroup) => (
             <option key={providerGroup.provider} value={providerGroup.provider}>
@@ -63,9 +59,7 @@ export const ModelSelectionFields = ({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="model_id">
-          Intelligence Model
-        </Label>
+        <Label htmlFor="model_id">Intelligence Model</Label>
         <select
           {...register('model_id')}
           id="model_id"

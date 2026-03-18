@@ -55,7 +55,7 @@ function PipelineStepCard({
       className={cn(
         'relative flex min-w-[160px] flex-1 items-center gap-2.5 rounded-xl border p-2.5 transition-all duration-500 sm:min-w-[200px]',
         isCurrent
-          ? 'border-council-active bg-council-active/5 shadow-glow-council ring-1 ring-council-active/20'
+          ? 'border-council-active bg-council-active/5 shadow-glow-council ring-council-active/20 ring-1'
           : isPast
             ? 'border-success/30 bg-success/5 opacity-100'
             : 'border-surface-border bg-surface opacity-40',
@@ -78,16 +78,12 @@ function PipelineStepCard({
         <h4
           className={cn(
             'text-[10px] font-bold tracking-wider uppercase',
-            isCurrent
-              ? 'text-foreground'
-              : isPast
-                ? 'text-success'
-                : 'text-text-muted',
+            isCurrent ? 'text-foreground' : isPast ? 'text-success' : 'text-text-muted',
           )}
         >
           {step.agent}
         </h4>
-        <p className="truncate text-[9px] font-medium text-text-muted opacity-70">
+        <p className="text-text-muted truncate text-[9px] font-medium opacity-70">
           {statusMessage}
         </p>
       </div>
@@ -104,11 +100,11 @@ interface GeneratingLessonViewProps {
 export function GeneratingLessonView({ job, streamState, streamError }: GeneratingLessonViewProps) {
   const [showDetails, setShowDetails] = React.useState(false);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-  
+
   const [collapsed, setCollapsed] = useState({
     blueprint: false,
     storyboard: false,
-    terminal: false
+    terminal: false,
   });
 
   const isFailed = job.status === 'failed' || streamState === 'error';
@@ -116,17 +112,17 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
   if (isFailed) {
     const errorMsg = streamError instanceof Error ? streamError.message : String(streamError);
     return (
-      <div className="flex min-h-md flex-col items-center justify-center p-8 text-center">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-destructive/20 bg-destructive/10 text-destructive">
+      <div className="min-h-md flex flex-col items-center justify-center p-8 text-center">
+        <div className="border-destructive/20 bg-destructive/10 text-destructive mb-6 flex h-16 w-16 items-center justify-center rounded-full border">
           <Activity className="h-8 w-8" />
         </div>
-        <h2 className="mb-2 text-2xl font-bold text-foreground">Orchestration Halted</h2>
-        <p className="mb-8 max-w-md text-text-muted">
+        <h2 className="text-foreground mb-2 text-2xl font-bold">Orchestration Halted</h2>
+        <p className="text-text-muted mb-8 max-w-md">
           {job.error || errorMsg || 'The council encountered an unexpected synchronization error.'}
         </p>
         <button
           onClick={() => window.location.reload()}
-          className="rounded-xl bg-foreground px-8 py-3 font-bold text-background transition-opacity hover:opacity-90"
+          className="bg-foreground text-background rounded-xl px-8 py-3 font-bold transition-opacity hover:opacity-90"
         >
           Retry Connection
         </button>
@@ -140,12 +136,12 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
       <section className="space-y-6">
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-council-active/10 text-council-active shadow-glow-council ring-1 ring-council-active/20">
+            <div className="bg-council-active/10 text-council-active shadow-glow-council ring-council-active/20 flex h-10 w-10 items-center justify-center rounded-xl ring-1">
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">Agent Council</h1>
-              <p className="text-tiny font-bold tracking-[0.2em] text-text-muted uppercase opacity-60">
+              <h1 className="text-foreground text-xl font-bold tracking-tight">Agent Council</h1>
+              <p className="text-tiny text-text-muted font-bold tracking-[0.2em] uppercase opacity-60">
                 Orchestration Pipeline
               </p>
             </div>
@@ -153,19 +149,22 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
           {job.status === 'completed' && showDetails && (
             <button
               onClick={() => setShowDetails(false)}
-              className="flex items-center gap-2 rounded-lg border border-surface-border bg-surface px-3 py-1.5 text-micro font-bold tracking-widest text-foreground uppercase transition-colors hover:bg-background"
+              className="border-surface-border bg-surface text-micro text-foreground hover:bg-background flex items-center gap-2 rounded-lg border px-3 py-1.5 font-bold tracking-widest uppercase transition-colors"
             >
-              <Play className="h-3 w-3 text-council-active" />
+              <Play className="text-council-active h-3 w-3" />
               Back to Video
             </button>
           )}
         </div>
 
-        <div className="flex w-full items-center gap-2 overflow-x-auto pb-4 custom-scrollbar sm:gap-3">
+        <div className="custom-scrollbar flex w-full items-center gap-2 overflow-x-auto pb-4 sm:gap-3">
           {PIPELINE_STEPS.map((step, idx) => {
-            const isCurrent = job.status === step.id || (step.id === 'planning' && job.status === 'awaiting_review');
+            const isCurrent =
+              job.status === step.id ||
+              (step.id === 'planning' && job.status === 'awaiting_review');
             const isPast =
-              (PIPELINE_STEPS.findIndex((s) => s.id === job.status) > idx && job.status !== 'awaiting_review') ||
+              (PIPELINE_STEPS.findIndex((s) => s.id === job.status) > idx &&
+                job.status !== 'awaiting_review') ||
               job.status === 'completed';
 
             const statusMessage = (() => {
@@ -178,7 +177,8 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
               }
               if (isCurrent) {
                 if (step.id === 'animating') return `Scene ${job.render_progress || 1} logic`;
-                if (step.id === 'rendering') return `${Math.round(job.render_progress || 0)}% frames`;
+                if (step.id === 'rendering')
+                  return `${Math.round(job.render_progress || 0)}% frames`;
                 return 'Working...';
               }
               return 'Queued';
@@ -196,7 +196,7 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
                 {idx < PIPELINE_STEPS.length - 1 && (
                   <div
                     className={cn(
-                      'h-0.5 w-3 shrink-0 sm:w-6 transition-colors duration-500',
+                      'h-0.5 w-3 shrink-0 transition-colors duration-500 sm:w-6',
                       isPast ? 'bg-success/30' : 'bg-surface-border',
                     )}
                   />
@@ -210,10 +210,10 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
       {/* 2. Human in the Loop (Priority Alert) */}
       {job.status === 'awaiting_review' && job.plan && (
         <section className="animate-in fade-in slide-in-from-top-4 duration-700">
-          <HitlReviewPanel 
-            jobId={job.job_id} 
-            plan={job.plan as CurriculumPlan} 
-            onActionComplete={() => {}} 
+          <HitlReviewPanel
+            jobId={job.job_id}
+            plan={job.plan as CurriculumPlan}
+            onActionComplete={() => {}}
           />
         </section>
       )}
@@ -221,27 +221,46 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
       {/* 3. Rendering Monitor (Visible only during render) */}
       {job.status === 'rendering' && (
         <section className="animate-in fade-in zoom-in-95 duration-700">
-          <div className="relative overflow-hidden rounded-3xl border border-council-active/20 bg-surface p-12 shadow-2xl backdrop-blur-sm">
+          <div className="border-council-active/20 bg-surface relative overflow-hidden rounded-3xl border p-12 shadow-2xl backdrop-blur-sm">
             <div className="mx-auto flex max-w-md flex-col items-center text-center">
               <div className="relative mb-10 h-48 w-48">
                 <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-border" />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="text-surface-border"
+                  />
                   <motion.circle
-                    cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray="283"
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeDasharray="283"
                     animate={{ strokeDashoffset: 283 - (283 * (job.render_progress || 0)) / 100 }}
                     className="text-council-active"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-5xl font-mono font-bold text-foreground tracking-tighter">
+                  <span className="text-foreground font-mono text-5xl font-bold tracking-tighter">
                     {Math.round(job.render_progress || 0)}%
                   </span>
-                  <span className="text-micro font-bold text-text-muted uppercase tracking-[0.2em]">Frames Synced</span>
+                  <span className="text-micro text-text-muted font-bold tracking-[0.2em] uppercase">
+                    Frames Synced
+                  </span>
                 </div>
               </div>
-              <h2 className="mb-3 text-2xl font-bold text-foreground tracking-tight">Materializing Mathematics</h2>
-              <p className="text-sm text-text-muted leading-relaxed">
-                The Animator is executing Manim code to generate high-fidelity educational assets at 60 frames per second.
+              <h2 className="text-foreground mb-3 text-2xl font-bold tracking-tight">
+                Materializing Mathematics
+              </h2>
+              <p className="text-text-muted text-sm leading-relaxed">
+                The Animator is executing Manim code to generate high-fidelity educational assets at
+                60 frames per second.
               </p>
             </div>
           </div>
@@ -254,34 +273,41 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
         <section className="animate-in fade-in slide-in-from-bottom-2 duration-500">
           <div className="mb-6 flex items-center justify-between px-2">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-council-active/10 text-council-active ring-1 ring-council-active/20">
+              <div className="bg-council-active/10 text-council-active ring-council-active/20 flex h-8 w-8 items-center justify-center rounded-lg ring-1">
                 <Search className="h-4 w-4" />
               </div>
-              <h3 className="text-sm font-bold tracking-[0.15em] text-foreground uppercase">
+              <h3 className="text-foreground text-sm font-bold tracking-[0.15em] uppercase">
                 Pedagogical Blueprint
               </h3>
             </div>
-            <button 
-              onClick={() => setCollapsed(prev => ({ ...prev, blueprint: !prev.blueprint }))}
-              className="text-micro font-bold text-text-muted uppercase tracking-widest hover:text-foreground transition-colors"
+            <button
+              onClick={() => setCollapsed((prev) => ({ ...prev, blueprint: !prev.blueprint }))}
+              className="text-micro text-text-muted hover:text-foreground font-bold tracking-widest uppercase transition-colors"
             >
               {collapsed.blueprint ? '[+] Expand' : '[-] Minimize'}
             </button>
           </div>
-          
-          <div className={cn("transition-all duration-500", collapsed.blueprint ? "h-0 opacity-0 overflow-hidden" : "opacity-100")}>
+
+          <div
+            className={cn(
+              'transition-all duration-500',
+              collapsed.blueprint ? 'h-0 overflow-hidden opacity-0' : 'opacity-100',
+            )}
+          >
             <CurriculumPlanView
-              plan={job.plan as CurriculumPlan || null}
+              plan={(job.plan as CurriculumPlan) || null}
               status={job.status}
               onViewFull={() => setIsModalOpen(true)}
             />
-            
+
             {/* Embedded Verdict when available */}
             {job.validation && (
-              <div className="mt-8 animate-in fade-in slide-in-from-top-2 duration-500">
+              <div className="animate-in fade-in slide-in-from-top-2 mt-8 duration-500">
                 <div className="mb-4 flex items-center gap-3 px-2">
-                  <ShieldCheck className="h-4 w-4 text-success" />
-                  <span className="text-tiny font-bold tracking-widest text-success uppercase">Pedagogical Audit Verdict</span>
+                  <ShieldCheck className="text-success h-4 w-4" />
+                  <span className="text-tiny text-success font-bold tracking-widest uppercase">
+                    Pedagogical Audit Verdict
+                  </span>
                 </div>
                 <AnalystVerdict validation={job.validation} />
               </div>
@@ -293,24 +319,29 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
         <section className="animate-in fade-in slide-in-from-bottom-2 delay-75 duration-500">
           <div className="mb-6 flex items-center justify-between px-2">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-council-active/10 text-council-active ring-1 ring-council-active/20">
+              <div className="bg-council-active/10 text-council-active ring-council-active/20 flex h-8 w-8 items-center justify-center rounded-lg ring-1">
                 <Layout className="h-4 w-4" />
               </div>
-              <h3 className="text-sm font-bold tracking-[0.15em] text-foreground uppercase">
+              <h3 className="text-foreground text-sm font-bold tracking-[0.15em] uppercase">
                 Visual Storyboard
               </h3>
             </div>
-            <button 
-              onClick={() => setCollapsed(prev => ({ ...prev, storyboard: !prev.storyboard }))}
-              className="text-micro font-bold text-text-muted uppercase tracking-widest hover:text-foreground transition-colors"
+            <button
+              onClick={() => setCollapsed((prev) => ({ ...prev, storyboard: !prev.storyboard }))}
+              className="text-micro text-text-muted hover:text-foreground font-bold tracking-widest uppercase transition-colors"
             >
               {collapsed.storyboard ? '[+] Expand' : '[-] Minimize'}
             </button>
           </div>
-          
-          <div className={cn("transition-all duration-500", collapsed.storyboard ? "h-0 opacity-0 overflow-hidden" : "opacity-100")}>
+
+          <div
+            className={cn(
+              'transition-all duration-500',
+              collapsed.storyboard ? 'h-0 overflow-hidden opacity-0' : 'opacity-100',
+            )}
+          >
             <StoryboardView
-              storyboard={job.storyboard as Storyboard || null}
+              storyboard={(job.storyboard as Storyboard) || null}
               status={job.status}
             />
           </div>
@@ -320,28 +351,35 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
         <section className="animate-in fade-in slide-in-from-bottom-2 delay-150 duration-500">
           <div className="mb-6 flex items-center justify-between px-2">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-border text-text-muted ring-1 ring-surface-border">
+              <div className="bg-surface-border text-text-muted ring-surface-border flex h-8 w-8 items-center justify-center rounded-lg ring-1">
                 <Terminal className="h-4 w-4" />
               </div>
               <div className="flex items-center gap-3">
-                <h3 className="text-sm font-bold tracking-[0.15em] text-foreground uppercase">
+                <h3 className="text-foreground text-sm font-bold tracking-[0.15em] uppercase">
                   Council Intelligence Stream
                 </h3>
-                <div className="flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 ring-1 ring-success/20">
-                  <div className="h-1.5 w-1.5 rounded-full bg-success animate-pulse shadow-glow-success" />
-                  <span className="font-mono text-[9px] font-bold text-success uppercase">Live</span>
+                <div className="bg-success/10 ring-success/20 flex items-center gap-1.5 rounded-full px-2 py-0.5 ring-1">
+                  <div className="bg-success shadow-glow-success h-1.5 w-1.5 animate-pulse rounded-full" />
+                  <span className="text-success font-mono text-[9px] font-bold uppercase">
+                    Live
+                  </span>
                 </div>
               </div>
             </div>
-            <button 
-              onClick={() => setCollapsed(prev => ({ ...prev, terminal: !prev.terminal }))}
-              className="text-micro font-bold text-text-muted uppercase tracking-widest hover:text-foreground transition-colors"
+            <button
+              onClick={() => setCollapsed((prev) => ({ ...prev, terminal: !prev.terminal }))}
+              className="text-micro text-text-muted hover:text-foreground font-bold tracking-widest uppercase transition-colors"
             >
               {collapsed.terminal ? '[+] Expand' : '[-] Minimize'}
             </button>
           </div>
-          
-          <div className={cn("transition-all duration-500", collapsed.terminal ? "h-0 opacity-0 overflow-hidden" : "opacity-100")}>
+
+          <div
+            className={cn(
+              'transition-all duration-500',
+              collapsed.terminal ? 'h-0 overflow-hidden opacity-0' : 'opacity-100',
+            )}
+          >
             <CouncilDeliberation thoughts={job.streamed_thoughts || []} />
           </div>
         </section>
@@ -351,8 +389,8 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
       <LessonArtifactModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        plan={job.plan as CurriculumPlan ?? null}
-        storyboard={job.storyboard as Storyboard ?? null}
+        plan={(job.plan as CurriculumPlan) ?? null}
+        storyboard={(job.storyboard as Storyboard) ?? null}
       />
     </div>
   );

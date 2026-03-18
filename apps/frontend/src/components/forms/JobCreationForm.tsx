@@ -19,26 +19,24 @@ import {
 import { LoadingOverlay, NoKeysAlert } from '@/components/forms/JobFormFeedback';
 import { JobFormData, jobSchema } from '@/components/forms/JobFormTypes';
 
-function FormSection({ 
-  number, 
-  title, 
-  children, 
-  className = "" 
-}: { 
-  number: number; 
-  title: string; 
-  children: React.ReactNode; 
-  className?: string 
+function FormSection({
+  number,
+  title,
+  children,
+  className = '',
+}: {
+  number: number;
+  title: string;
+  children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <section className={cn("space-y-6", className)}>
+    <section className={cn('space-y-6', className)}>
       <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-council-active/10 text-xs font-bold text-council-active">
+        <span className="bg-council-active/10 text-council-active flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold">
           {number}
         </span>
-        <h3 className="text-sm font-bold tracking-wider text-text-muted uppercase">
-          {title}
-        </h3>
+        <h3 className="text-text-muted text-sm font-bold tracking-wider uppercase">{title}</h3>
       </div>
       {children}
     </section>
@@ -131,10 +129,10 @@ export function JobCreationForm() {
       <Card variant="premium" className="relative max-w-xl overflow-hidden p-8">
         <LoadingOverlay isLoading={isLoading} />
 
-        <h2 className="mb-1 bg-gradient-to-r from-foreground to-text-muted bg-clip-text text-xl font-bold text-transparent">
+        <h2 className="from-foreground to-text-muted mb-1 bg-gradient-to-r bg-clip-text text-xl font-bold text-transparent">
           Create New Concept
         </h2>
-        <p className="mb-8 text-sm text-text-muted">
+        <p className="text-text-muted mb-8 text-sm">
           Orchestrate a pedagogical animation with the Council agents.
         </p>
 
@@ -146,10 +144,7 @@ export function JobCreationForm() {
           <div className="grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2">
             <FormSection number={1} title="Subject Matter" className="md:col-span-2">
               <div className="space-y-2">
-                <label
-                  htmlFor="topic"
-                  className="block text-sm font-semibold text-foreground"
-                >
+                <label htmlFor="topic" className="text-foreground block text-sm font-semibold">
                   What would you like to learn?
                 </label>
                 <input
@@ -160,12 +155,12 @@ export function JobCreationForm() {
                   }}
                   type="text"
                   id="topic"
-                  className="w-full rounded-xl border border-surface-border bg-background/50 px-4 py-3.5 text-foreground transition-all outline-none placeholder:text-text-muted hover:border-council-active/50 focus:border-transparent focus:ring-2 focus:ring-council-active"
+                  className="border-surface-border bg-background/50 text-foreground placeholder:text-text-muted hover:border-council-active/50 focus:ring-council-active w-full rounded-xl border px-4 py-3.5 transition-all outline-none focus:border-transparent focus:ring-2"
                   placeholder="e.g. Quantum Entanglement, The French Revolution..."
                 />
                 {errors.topic && (
-                  <p className="flex items-center gap-1 text-xs font-semibold text-destructive">
-                    <span className="h-1 w-1 rounded-full bg-destructive" />
+                  <p className="text-destructive flex items-center gap-1 text-xs font-semibold">
+                    <span className="bg-destructive h-1 w-1 rounded-full" />
                     {errors.topic.message as string}
                   </p>
                 )}
@@ -176,7 +171,7 @@ export function JobCreationForm() {
               <div className="space-y-6">
                 <AudienceField register={register} />
                 {errors.target_audience && (
-                  <p className="mt-1 text-xs text-destructive">
+                  <p className="text-destructive mt-1 text-xs">
                     {errors.target_audience.message as string}
                   </p>
                 )}
@@ -193,16 +188,19 @@ export function JobCreationForm() {
                   />
 
                   {settings.showAdvancedModelSettings && (
-                    <div className="mt-6 border-t border-surface-border pt-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="border-surface-border animate-in fade-in slide-in-from-top-2 mt-6 border-t pt-6 duration-300">
                       <div className="mb-4">
-                        <h4 className="text-xs font-bold tracking-widest text-council-active uppercase">
+                        <h4 className="text-council-active text-xs font-bold tracking-widest uppercase">
                           Manual Model Overrides
                         </h4>
                         <p className="text-micro text-text-muted mt-1">
                           Configure specific models for each stage of the orchestration.
                         </p>
                       </div>
-                      <AgentModelSelectionFields register={register} providers={realProvidersOnly} />
+                      <AgentModelSelectionFields
+                        register={register}
+                        providers={realProvidersOnly}
+                      />
                     </div>
                   )}
                 </div>
@@ -210,21 +208,15 @@ export function JobCreationForm() {
             )}
 
             {noKeys && (
-              <div className="flex items-center gap-3 rounded-xl border border-warning/20 bg-warning/5 p-4 text-sm font-medium text-warning italic md:col-span-2">
-                <div
-                  className={`h-2 w-2 rounded-full bg-warning animate-pulse`}
-                />
+              <div className="border-warning/20 bg-warning/5 text-warning flex items-center gap-3 rounded-xl border p-4 text-sm font-medium italic md:col-span-2">
+                <div className={`bg-warning h-2 w-2 animate-pulse rounded-full`} />
                 No real AI providers configured. Using simulated engine.
               </div>
             )}
           </div>
 
           <div className="flex flex-col gap-4 pt-4">
-            <Button
-              type="submit"
-              disabled={isLoading || noKeys}
-              className="w-full"
-            >
+            <Button type="submit" disabled={isLoading || noKeys} className="w-full">
               {isLoading ? 'Consulting Council...' : 'Generate Lesson'}
             </Button>
             {showMockButton && (

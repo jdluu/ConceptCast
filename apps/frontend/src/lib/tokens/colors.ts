@@ -19,12 +19,12 @@ export const colors = {
   'warning-foreground': 'var(--warning-foreground)',
   info: 'var(--info)',
   'info-foreground': 'var(--info-foreground)',
-  
+
   // Custom Council tokens
   'council-active': 'var(--council-active)',
   'council-completed': 'var(--council-completed)',
   'council-pending': 'var(--council-pending)',
-  
+
   // UI Specific
   ring: 'var(--ring)',
   'terminal-bg': 'var(--terminal-bg)',

@@ -17,7 +17,7 @@ export function StatusIcon({ status, className = 'w-5 h-5' }: StatusIconProps) {
     case 'rendering':
     case 'reviewing':
     case 'animating' as any:
-      return <Loader2 className={`${className} animate-spin text-council-active`} />;
+      return <Loader2 className={`${className} text-council-active animate-spin`} />;
     case 'completed':
       return <CheckCircle2 className={`${className} text-council-completed`} />;
     case 'failed':

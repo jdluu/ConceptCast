@@ -26,24 +26,23 @@ class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground">
-          <div className="w-full max-w-lg rounded-3xl border border-surface-border bg-surface p-10 shadow-2xl">
-            <h2 className="mb-4 text-2xl font-bold text-destructive uppercase tracking-tight">Something went wrong.</h2>
-            <p className="mb-6 font-medium text-text-muted">
+        <div className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center p-4">
+          <div className="border-surface-border bg-surface w-full max-w-lg rounded-3xl border p-10 shadow-2xl">
+            <h2 className="text-destructive mb-4 text-2xl font-bold tracking-tight uppercase">
+              Something went wrong.
+            </h2>
+            <p className="text-text-muted mb-6 font-medium">
               An unexpected error occurred. Please try refreshing the page.
             </p>
             {this.state.error && (
-              <details className="mb-8 max-h-48 overflow-auto rounded-2xl border border-surface-border bg-background/50 p-4 font-mono text-mini whitespace-pre-wrap text-destructive/80">
+              <details className="border-surface-border bg-background/50 text-mini text-destructive/80 mb-8 max-h-48 overflow-auto rounded-2xl border p-4 font-mono whitespace-pre-wrap">
                 <summary className="mb-2 cursor-pointer font-bold tracking-[0.2em] uppercase opacity-60">
                   Error Details
                 </summary>
                 {this.state.error.toString()}
               </details>
             )}
-            <Button
-              onClick={() => window.location.reload()}
-              className="w-full h-12"
-            >
+            <Button onClick={() => window.location.reload()} className="h-12 w-full">
               Refresh Page
             </Button>
           </div>

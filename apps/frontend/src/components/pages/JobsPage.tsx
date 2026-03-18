@@ -1,10 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import {
-  retryJob,
-  deleteJob,
-  getJobStatus,
-  type JobStatus,
-} from '@/lib/api/client';
+import { retryJob, deleteJob, getJobStatus, type JobStatus } from '@/lib/api/client';
 import { useDeveloperMode } from '@/lib/contexts/developerMode';
 import { useJobStore, selectJobActions } from '@/lib/store/useJobStore';
 import { VideoPlayer } from '@/components/ui/VideoPlayer';
@@ -104,15 +99,15 @@ export function JobsPage() {
   };
 
   if (isPending) {
-    return <div className="p-8 text-text-muted">Synchronizing with Council database...</div>;
+    return <div className="text-text-muted p-8">Synchronizing with Council database...</div>;
   }
 
   return (
     <div className="mx-auto max-w-7xl px-6">
       <header className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Orchestration Jobs</h1>
-          <p className="mt-1 text-text-muted">Manage and monitor your pedagogical pipelines.</p>
+          <h1 className="text-foreground text-3xl font-bold tracking-tight">Orchestration Jobs</h1>
+          <p className="text-text-muted mt-1">Manage and monitor your pedagogical pipelines.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -140,7 +135,7 @@ export function JobsPage() {
           {selectedIds.size > 0 && (
             <button
               onClick={handleBatchDelete}
-              className="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm font-bold text-destructive transition-all hover:bg-destructive/20"
+              className="border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-all"
             >
               <Trash2 className="h-4 w-4" />
               Delete ({selectedIds.size})
@@ -149,17 +144,17 @@ export function JobsPage() {
         </div>
       </header>
 
-      <div className="overflow-x-auto rounded-2xl border border-surface-border bg-surface shadow-xl custom-scrollbar">
-        <table className="w-full border-collapse text-left min-w-[1000px]">
+      <div className="border-surface-border bg-surface custom-scrollbar overflow-x-auto rounded-2xl border shadow-xl">
+        <table className="w-full min-w-[1000px] border-collapse text-left">
           <thead>
-            <tr className="border-b border-surface-border bg-surface/50 text-tiny font-bold tracking-widest text-text-muted uppercase">
+            <tr className="border-surface-border bg-surface/50 text-tiny text-text-muted border-b font-bold tracking-widest uppercase">
               <th className="py-4 pr-4 pl-6">
                 <button
                   onClick={toggleSelectAll}
-                  className="p-1 transition-colors hover:text-foreground"
+                  className="hover:text-foreground p-1 transition-colors"
                 >
                   {selectedIds.size === filteredJobs.length && filteredJobs.length > 0 ? (
-                    <CheckSquare className="h-4 w-4 text-council-active" />
+                    <CheckSquare className="text-council-active h-4 w-4" />
                   ) : (
                     <Square className="h-4 w-4" />
                   )}
@@ -175,7 +170,7 @@ export function JobsPage() {
               <th className="py-4 pr-6 pl-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-surface-border/50">
+          <tbody className="divide-surface-border/50 divide-y">
             {filteredJobs.map((job) => (
               <JobRow
                 key={job.job_id}
@@ -201,7 +196,7 @@ export function JobsPage() {
             ))}
             {filteredJobs.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-20 text-center text-text-muted italic">
+                <td colSpan={9} className="text-text-muted py-20 text-center italic">
                   No orchestration records found matching your filters.
                 </td>
               </tr>
@@ -218,16 +213,16 @@ export function JobsPage() {
       >
         {playingJob && (
           <div className="space-y-6">
-            <div className="overflow-hidden rounded-xl border border-surface-border bg-black shadow-2xl">
+            <div className="border-surface-border overflow-hidden rounded-xl border bg-black shadow-2xl">
               <VideoPlayer src={playingJob.video_url!} />
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-text-muted">
+                <p className="text-text-muted text-sm">
                   {playingJob.model_id || 'ConceptCast Engine v1'}
                 </p>
               </div>
-              <button className="rounded-xl border border-surface-border bg-surface px-6 py-2.5 text-sm font-bold text-foreground transition-all hover:bg-surface-border/20">
+              <button className="border-surface-border bg-surface text-foreground hover:bg-surface-border/20 rounded-xl border px-6 py-2.5 text-sm font-bold transition-all">
                 Download HD
               </button>
             </div>

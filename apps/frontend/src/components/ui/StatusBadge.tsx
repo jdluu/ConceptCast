@@ -36,7 +36,7 @@ interface StatusBadgeProps {
 export function StatusBadge({ status, showIcon = true, className = '' }: StatusBadgeProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-mini font-bold ${statusColors[status] || 'border-surface-border/40 bg-surface-border/20 text-text-muted'} ${className}`}
+      className={`text-mini inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-bold ${statusColors[status] || 'border-surface-border/40 bg-surface-border/20 text-text-muted'} ${className}`}
     >
       {showIcon && <StatusIcon status={status} className="h-3 w-3" />}
       {statusLabels[status] || status}

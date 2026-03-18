@@ -10,17 +10,17 @@ export const LoadingOverlay = ({ isLoading }: { isLoading: boolean }) => (
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-surface/90 backdrop-blur-md"
+        className="bg-surface/90 absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 backdrop-blur-md"
       >
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="h-12 w-12 rounded-full border-4 border-council-active border-t-transparent shadow-lg shadow-council-active/10"
+          className="border-council-active shadow-council-active/10 h-12 w-12 rounded-full border-4 border-t-transparent shadow-lg"
         />
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-tiny font-bold tracking-[0.2em] text-foreground uppercase"
+          className="text-tiny text-foreground font-bold tracking-[0.2em] uppercase"
           aria-live="polite"
         >
           Summoning the Council...
@@ -43,7 +43,7 @@ export const NoKeysAlert = ({
   <motion.div
     initial={{ opacity: 0, height: 0 }}
     animate={{ opacity: 1, height: 'auto' }}
-    className="mb-8 flex items-start justify-between gap-4 rounded-xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning-foreground dark:text-warning"
+    className="border-warning/20 bg-warning/10 text-warning-foreground dark:text-warning mb-8 flex items-start justify-between gap-4 rounded-xl border p-4 text-sm"
     role="alert"
   >
     <span>
@@ -54,7 +54,7 @@ export const NoKeysAlert = ({
     <button
       type="button"
       onClick={onClose}
-      className="shrink-0 rounded p-0.5 text-warning/60 transition-colors hover:text-warning"
+      className="text-warning/60 hover:text-warning shrink-0 rounded p-0.5 transition-colors"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
