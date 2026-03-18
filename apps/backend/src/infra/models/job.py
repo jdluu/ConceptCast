@@ -21,7 +21,7 @@ class JobRecord(Base):
     job_id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     topic: Mapped[str] = mapped_column(String, index=True)
     target_audience: Mapped[str] = mapped_column(String, nullable=True)
-    status: Mapped[str] = mapped_column(String, default="planning")
+    status: Mapped[str] = mapped_column(String, default="planning", index=True)
     current_step: Mapped[str | None] = mapped_column(String, nullable=True)
     plan: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     validation: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
@@ -45,7 +45,7 @@ class JobRecord(Base):
     thumbnail_url: Mapped[str | None] = mapped_column(String, nullable=True)
     video_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(UTC)
+        DateTime, default=lambda: datetime.now(UTC), index=True
     )
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

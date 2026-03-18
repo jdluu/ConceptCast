@@ -30,47 +30,12 @@ class Base(DeclarativeBase):
 async def init_db() -> None:
     """Initializes the database tables and ensures WAL mode is enabled.
 
-    This function creates all tables defined in the metadata and sets the
-    SQLite journal mode to WAL for improved concurrency support.
+    This function creates all tables defined in the metadata (as a fallback)
+    and sets the SQLite journal mode to WAL for improved concurrency support.
     """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.execute(text("PRAGMA journal_mode=WAL;"))
-
-    if "sqlite" in DATABASE_URL:
-        await _migrate_sqlite_schema()
-
-
-async def _migrate_sqlite_schema() -> None:
-    """Performs lightweight schema migrations for SQLite.
-
-    Detects missing columns in the 'jobs' table and adds them with default values.
-    """
-    column_definitions = {
-        "resolution": "VARCHAR DEFAULT '720p'",
-        "frame_rate": "INTEGER DEFAULT 30",
-        "render_progress": "INTEGER DEFAULT 0",
-    }
-
-    try:
-        async with engine.connect() as conn:
-            result = await conn.execute(text("PRAGMA table_info(jobs)"))
-            existing_columns = {row[1] for row in result.fetchall()}
-
-            for col_name, col_type in column_definitions.items():
-                if col_name not in existing_columns:
-                    logger.info(
-                        f"DB Migration: Adding column '{col_name}' to 'jobs' table"
-                    )
-                    try:
-                        await conn.execute(
-                            text(f"ALTER TABLE jobs ADD COLUMN {col_name} {col_type}")
-                        )
-                        await conn.commit()
-                    except Exception as col_err:
-                        logger.error(f"Failed to add column '{col_name}': {col_err}")
-    except Exception as e:
-        logger.error(f"Critical failure during SQLite schema migration: {e}")
 
 
 async def check_db_health() -> bool:

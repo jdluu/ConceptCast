@@ -89,3 +89,9 @@ if _FRONTEND_DIST_PATH and _FRONTEND_DIST_PATH.is_dir():
                 return FileResponse(candidate)
 
         return FileResponse(_FRONTEND_DIST_PATH / "index.html")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -243,7 +243,9 @@ async def review_job(
 
 
 @router.get("/{job_id}/status", response_model=JobStatus)
-async def get_job_status(job_id: str, db: Annotated[AsyncSession, Depends(get_db)]) -> JobStatus:
+async def get_job_status(
+    job_id: str, db: Annotated[AsyncSession, Depends(get_db)]
+) -> JobStatus:
     """Retrieves the current status and artifacts for a specific job.
 
     Args:
@@ -268,7 +270,9 @@ async def get_job_status(job_id: str, db: Annotated[AsyncSession, Depends(get_db
 @router.get("/{job_id}/events")
 async def job_events(
     job_id: str,
-    db_session_factory: Annotated[Callable[[], AsyncSession], Depends(lambda: AsyncSessionLocal)],
+    db_session_factory: Annotated[
+        Callable[[], AsyncSession], Depends(lambda: AsyncSessionLocal)
+    ],
 ) -> StreamingResponse:
     """Provides a real-time stream of job updates via Server-Sent Events (SSE).
 
@@ -285,7 +289,9 @@ async def job_events(
 
 
 @router.get("/{job_id}/plan", response_model=CurriculumPlan)
-async def get_plan(job_id: str, db: Annotated[AsyncSession, Depends(get_db)]) -> CurriculumPlan:
+async def get_plan(
+    job_id: str, db: Annotated[AsyncSession, Depends(get_db)]
+) -> CurriculumPlan:
     """Retrieves the generated curriculum plan for a specific job.
 
     Args:

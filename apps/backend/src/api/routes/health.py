@@ -18,7 +18,7 @@ from infra.settings import get_settings
 router = APIRouter()
 
 
-@router.get("/", response_model=dict[str, Any])
+@router.get("/health", response_model=dict[str, Any])
 async def health_check(
     response: Response,
     _db: Annotated[AsyncSession, Depends(get_db)],
