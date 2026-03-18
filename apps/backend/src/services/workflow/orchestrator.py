@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.schemas import CurriculumPlan, JobRequest, Storyboard, ValidationResult
+from domain.models.workflow import GlobalContext
 from infra.database import AsyncSessionLocal
 from infra.exceptions import (
     AnimationGenerationError,
@@ -22,11 +23,16 @@ from infra.exceptions import (
     StoryboardGenerationError,
 )
 from infra.models.job import JobRecord
-from services.workflow.utils import calculate_job_cost, merge_usage
+from infra.tasks import render_video_task
+from services.workflow.utils import (
+    calculate_job_cost,
+    merge_usage,
+    parse_job_artifact,
+)
 
 from ..jobs.manager import (
+    _perform_job_update,
     prepare_job_for_retry_logic,
-    update_job_record,
     update_job_status,
 )
 from ..jobs.thoughts import append_job_thought
@@ -71,24 +77,41 @@ async def process_job_logic(
     """
     logger.info(f"Starting background orchestration for job {job_id}")
 
-    async def _update_job_callback(updates: dict[str, Any]) -> None:
-        await update_job_status(job_id, updates, db_session_factory)
+    async with db_session_factory() as session:
+        lock = asyncio.Lock()
 
-    async def _on_thought_callback(agent: str, phase: str, content: str) -> None:
-        await append_job_thought(db_session_factory, job_id, agent, phase, content)
+        async def _update_job_callback(updates: dict[str, Any]) -> None:
+            async with lock:
+                await update_job_status(job_id, updates, session)
+                await session.commit()
 
-    try:
-        await execute_workflow(
-            job_id=job_id,
-            topic=request.topic,
-            audience=request.target_audience,
-            provider=request.provider or "mock",
-            model_id=request.model_id or "default",
-            update_job=_update_job_callback,
-            on_thought=_on_thought_callback,
-        )
-    except Exception as e:
-        logger.error(f"Background job {job_id} failed: {e}")
+        async def _on_thought_callback(agent: str, phase: str, content: str) -> None:
+            async with lock:
+                await append_job_thought(session, job_id, agent, phase, content)
+                await session.commit()
+
+        try:
+            await execute_workflow(
+                session=session,
+                job_id=job_id,
+                topic=request.topic,
+                audience=request.target_audience,
+                provider=request.provider or "mock",
+                model_id=request.model_id or "default",
+                update_job=_update_job_callback,
+                on_thought=_on_thought_callback,
+            )
+        except ExceptionGroup as eg:
+            # Parallel tasks (Validation + Architecting) might fail together
+            logger.error(f"Parallel workflow error: {eg}")
+            for exc in eg.exceptions:
+                logger.error(f"  Sub-exception: {exc}")
+
+            # Use the first exception for the user-facing error message
+            first_err = eg.exceptions[0]
+            await _update_job_callback({"status": "failed", "error": str(first_err)})
+        except Exception as e:
+            logger.error(f"Background job {job_id} failed: {e}")
 
 
 async def _handle_planning_step(
@@ -98,8 +121,25 @@ async def _handle_planning_step(
     _provider: str,
     update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
+    ctx: GlobalContext,
 ) -> tuple[CurriculumPlan, RunUsage | None]:
-    """Handles Step 1 (Planning) with skip logic."""
+    """Handles Step 1 (Planning) including checkpoint skip logic.
+
+    Args:
+        job_id: The unique identifier for the job.
+        job_state: The current database record for the job.
+        request: The initial user request.
+        _provider: The AI provider to use.
+        update_job: Callback for persisting job state updates.
+        on_thought: Callback for streaming agent thoughts.
+        ctx: The Global Context Object (GCO) for the workflow.
+
+    Returns:
+        tuple: (The generated or cached CurriculumPlan, RunUsage data or None).
+
+    Raises:
+        PlanGenerationError: If the planning step fails to produce a curriculum.
+    """
     await update_job(
         {
             "status": "planning",
@@ -110,11 +150,17 @@ async def _handle_planning_step(
 
     if job_state.plan:
         logger.info(f"Job {job_id}: Found existing plan, skipping planning step.")
-        return CurriculumPlan(**job_state.plan), None
+        await on_thought("system", "status", "Using cached pedagogical plan...")
+        plan = parse_job_artifact(job_state.plan, CurriculumPlan)
+        ctx.plan = plan
+        return plan, None
 
-    plan, usage = await step_planning(request, job_state, update_job, on_thought)
+    await on_thought("system", "status", f"Generating curriculum for: {request.topic}")
+    plan, usage = await step_planning(request, job_state, update_job, on_thought, ctx)
     if not plan:
         raise PlanGenerationError("Planning failed to produce curriculum.")
+
+    ctx.plan = plan
     return plan, usage
 
 
@@ -126,30 +172,69 @@ async def _handle_architecting_steps(
     _provider: str,
     update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
+    ctx: GlobalContext,
 ) -> tuple[ValidationResult, Storyboard, RunUsage | None]:
-    """Handles Steps 2 & 3 (Validating and Architecting) with skip logic."""
+    """Handles Steps 2 & 3 (Validating and Architecting) concurrently.
+
+    Includes checkpoint skip logic if foundational artifacts already exist.
+
+    Args:
+        job_id: The unique identifier for the job.
+        job_state: The current database record for the job.
+        request: The initial user request.
+        plan: The pedagogically validated curriculum plan.
+        _provider: The AI provider to use.
+        update_job: Callback for persisting job state updates.
+        on_thought: Callback for streaming agent thoughts.
+        ctx: The Global Context Object (GCO) for the workflow.
+
+    Returns:
+        tuple: (ValidationResult, Storyboard, Combined RunUsage or None).
+
+    Raises:
+        ExceptionGroup: If either the validation or architecting tasks fail.
+    """
     if job_state.validation and job_state.storyboard:
         logger.info(
             f"Job {job_id}: Found existing validation and storyboard, skipping."
         )
-        return (
-            ValidationResult(**job_state.validation),
-            Storyboard(**job_state.storyboard),
-            None,
+        await on_thought(
+            "system", "status", "Using cached validation and storyboard..."
         )
+        val = parse_job_artifact(job_state.validation, ValidationResult)
+        arch = parse_job_artifact(job_state.storyboard, Storyboard)
+        ctx.storyboard = arch
+        return (val, arch, None)
 
+    await on_thought(
+        "system", "status", "Starting parallel validation and visual architecting..."
+    )
     await update_job({"status": "architecting", "current_step": "parallel_execution"})
 
     async def run_validating() -> Any:
-        return await step_validating(plan, request, job_state, update_job, on_thought)
+        try:
+            return await step_validating(
+                plan, request, job_state, update_job, on_thought, ctx, persist=False
+            )
+        except Exception as e:
+            ctx.add_error("validator", "parallel_execution", e)
+            logger.error(f"Validation step failed: {e}")
+            raise
 
     async def run_architecting() -> Any:
-        res = await step_architecting(plan, request, job_state, update_job, on_thought)
-        if not res[0]:
-            raise StoryboardGenerationError(
-                "Architecting failed to produce a storyboard."
+        try:
+            res = await step_architecting(
+                plan, request, job_state, update_job, on_thought, ctx, persist=False
             )
-        return res
+            if not res[0] or not res[0].scenes:
+                raise StoryboardGenerationError(
+                    "Architecting failed to produce a valid storyboard with scenes."
+                )
+            return res
+        except Exception as e:
+            ctx.add_error("architect", "parallel_execution", e)
+            logger.error(f"Architecting step failed: {e}")
+            raise
 
     async with asyncio.TaskGroup() as tg:
         val_task = tg.create_task(run_validating())
@@ -157,6 +242,8 @@ async def _handle_architecting_steps(
 
     validation, v_usage = val_task.result()
     storyboard, a_usage = arch_task.result()
+
+    ctx.storyboard = storyboard
 
     # Final sync for this block
     await update_job(
@@ -177,25 +264,48 @@ async def _handle_animating_step(
     _provider: str,
     update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
+    ctx: GlobalContext,
 ) -> tuple[str, RunUsage | None]:
-    """Handles Step 4 (Animating) with skip logic."""
+    """Handles Step 4 (Animating) including iterative code generation.
+
+    Args:
+        job_id: The unique identifier for the job.
+        job_state: The current database record for the job.
+        request: The initial user request.
+        storyboard: The visual sequence to animate.
+        _provider: The AI provider to use.
+        update_job: Callback for persisting job state updates.
+        on_thought: Callback for streaming agent thoughts.
+        ctx: The Global Context Object (GCO) for the workflow.
+
+    Returns:
+        tuple: (The generated Manim Python code, RunUsage data or None).
+
+    Raises:
+        AnimationGenerationError: If the animation step fails to produce valid code.
+    """
     if job_state.manim_code:
         logger.info(f"Job {job_id}: Found existing Manim code, skipping.")
+        await on_thought("system", "status", "Using cached Manim code...")
+        ctx.manim_code = job_state.manim_code
         return job_state.manim_code, None
 
+    await on_thought("system", "status", "Generating Manim animation script...")
     await update_job({"status": "animating", "current_step": "animating_start"})
 
     code, m_usage = await step_animating(
-        storyboard, request, job_state, update_job, on_thought
+        storyboard, request, job_state, update_job, on_thought, ctx
     )
     if not code:
         raise AnimationGenerationError("Animating failed to produce code.")
 
+    ctx.manim_code = code
     await update_job({"manim_code": code})
     return code, m_usage
 
 
 async def execute_workflow(
+    session: AsyncSession,
     job_id: str,
     topic: str,
     audience: str,
@@ -210,6 +320,7 @@ async def execute_workflow(
     managing state updates and usage tracking throughout the lifecycle.
 
     Args:
+        session: Active persistent database session.
         job_id: The unique identifier for the job.
         topic: The complex technical topic to explain.
         audience: The target knowledge level.
@@ -229,99 +340,108 @@ async def execute_workflow(
         nonlocal total_usage
         total_usage = merge_usage(total_usage, u)
 
-    async with AsyncSessionLocal() as session:
-        # 1. Fetch Job State
-        stmt = select(JobRecord).where(JobRecord.job_id == job_id)
-        res = await session.execute(stmt)
-        job_state = res.scalar_one_or_none()
+    # 1. Fetch Job State
+    stmt = select(JobRecord).where(JobRecord.job_id == job_id)
+    res = await session.execute(stmt)
+    job_state = res.scalar_one_or_none()
 
-        if not job_state:
-            logger.error(f"Job {job_id} not found in database.")
+    if not job_state:
+        logger.error(f"Job {job_id} not found in database.")
+        return
+
+    # 2. Re-construct Request for agents (used for getting models)
+    request = JobRequest(
+        topic=topic,
+        target_audience=audience,
+        provider=provider,
+        model_id=model_id,
+        hitl_enabled=job_state.hitl_enabled,
+        analyst_model=job_state.analyst_model,
+        validator_model=job_state.validator_model,
+        architect_model=job_state.architect_model,
+        animator_model=job_state.animator_model,
+    )
+
+    # 3. Initialize Global Context (GCO)
+    ctx = GlobalContext(topic=topic, target_audience=audience)
+
+    try:
+        plan, usage_1 = await _handle_planning_step(
+            job_id, job_state, request, provider, update_job, on_thought, ctx
+        )
+        add_usage(usage_1)
+
+        # --- Human in the Loop (HITL) Check ---
+        if request.hitl_enabled and job_state.status == "planning":
+            logger.info(f"Job {job_id}: HITL enabled. Pausing for review.")
+            await update_job(
+                {"status": "awaiting_review", "current_step": "planning_complete"}
+            )
             return
+        # ---------------------------------------
 
-        # 2. Re-construct Request for agents (used for getting models)
-        request = JobRequest(
-            topic=topic,
-            target_audience=audience,
-            provider=provider,
-            model_id=model_id,
-            hitl_enabled=job_state.hitl_enabled,
-            analyst_model=job_state.analyst_model,
-            validator_model=job_state.validator_model,
-            architect_model=job_state.architect_model,
-            animator_model=job_state.animator_model,
+        validation, storyboard, usage_23 = await _handle_architecting_steps(
+            job_id, job_state, request, plan, provider, update_job, on_thought, ctx
+        )
+        add_usage(usage_23)
+
+        code, usage_4 = await _handle_animating_step(
+            job_id,
+            job_state,
+            request,
+            storyboard,
+            provider,
+            update_job,
+            on_thought,
+            ctx,
+        )
+        add_usage(usage_4)
+
+        # Step 5: Rendering (Dispatched to background worker)
+        await render_video_task.kiq(
+            job_id=job_id,
+            code=code,
+            storyboard_dict=storyboard.model_dump(),
+            request_dict=request.model_dump(),
         )
 
-        try:
-            plan, usage_1 = await _handle_planning_step(
-                job_id, job_state, request, provider, update_job, on_thought
-            )
-            add_usage(usage_1)
+        logger.info(f"Job {job_id}: Rendering dispatched to Taskiq worker.")
 
-            # --- Human in the Loop (HITL) Check ---
-            if request.hitl_enabled and job_state.status == "planning":
-                logger.info(f"Job {job_id}: HITL enabled. Pausing for review.")
-                await update_job(
-                    {"status": "awaiting_review", "current_step": "planning_complete"}
-                )
-                return
-            # ---------------------------------------
-
-            validation, storyboard, usage_23 = await _handle_architecting_steps(
-                job_id, job_state, request, plan, provider, update_job, on_thought
-            )
-            add_usage(usage_23)
-
-            code, usage_4 = await _handle_animating_step(
-                job_id, job_state, request, storyboard, provider, update_job, on_thought
-            )
-            add_usage(usage_4)
-
-            # Step 5: Rendering (Dispatched to background worker)
-            from infra.tasks import render_video_task
-
-            await render_video_task.kiq(
-                job_id=job_id,
-                code=code,
-                storyboard_dict=storyboard.model_dump(),
-                request_dict=request.model_dump(),
-            )
-
-            logger.info(f"Job {job_id}: Rendering dispatched to Taskiq worker.")
-
-            # Update cumulative processing time on success (before final rendering)
-            if job_state.started_at:
-                started_at = job_state.started_at
-                if started_at.tzinfo is None:
-                    started_at = started_at.replace(tzinfo=UTC)
-                session_duration = (datetime.now(UTC) - started_at).total_seconds()
-                await update_job(
-                    {
-                        "total_execution_time": job_state.total_execution_time
-                        + session_duration
-                    }
-                )
-
-        except Exception as e:
-            logger.exception(f"Workflow failed for job {job_id}: {e}")
-            final_cost = calculate_job_cost(total_usage)
-            session_duration = 0.0
-            if job_state.started_at:
-                started_at = job_state.started_at
-                if started_at.tzinfo is None:
-                    started_at = started_at.replace(tzinfo=UTC)
-                session_duration = (datetime.now(UTC) - started_at).total_seconds()
-
-            await update_job_record(
-                db_session_factory=AsyncSessionLocal,
-                job_id=job_id,
-                updates={
-                    "status": "failed",
-                    "error": str(e),
-                    "cost": final_cost,
-                    "finished_at": datetime.now(UTC),
+        # Update cumulative processing time on success (before final rendering)
+        if job_state.started_at:
+            started_at = job_state.started_at
+            if started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=UTC)
+            session_duration = (datetime.now(UTC) - started_at).total_seconds()
+            await update_job(
+                {
                     "total_execution_time": job_state.total_execution_time
-                    + session_duration,
-                },
+                    + session_duration
+                }
             )
-            raise
+
+    except Exception as e:
+        logger.exception(f"Workflow failed for job {job_id}: {e}")
+        final_cost = calculate_job_cost(total_usage)
+        session_duration = 0.0
+        if job_state.started_at:
+            started_at = job_state.started_at
+            if started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=UTC)
+            session_duration = (datetime.now(UTC) - started_at).total_seconds()
+
+        # Update within the same session
+        await _perform_job_update(
+            session,
+            job_id,
+            {
+                "status": "failed",
+                "error": str(e),
+                "cost": final_cost,
+                "finished_at": datetime.now(UTC),
+                "total_execution_time": job_state.total_execution_time
+                + session_duration,
+            },
+        )
+        await session.commit()
+        raise

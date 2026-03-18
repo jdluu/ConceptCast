@@ -29,79 +29,98 @@ def determine_execution_mode(request: JobRequest) -> bool:
 
 
 async def update_job_record(
-    db_session_factory: Callable[[], AsyncSession], job_id: str, updates: dict[str, Any]
+    session_or_factory: AsyncSession | Callable[[], AsyncSession],
+    job_id: str,
+    updates: dict[str, Any],
 ) -> None:
-    """Updates a job record in the database using an asynchronous session.
+    """Updates a job record in the database.
+
+    Supports either a direct AsyncSession or a factory function. If a session
+    is provided, it is assumed the caller manages the transaction and commit.
 
     Args:
-        db_session_factory: A factory function that returns an AsyncSession.
+        session_or_factory: An active AsyncSession or a factory function.
         job_id: The unique identifier of the job to update.
         updates: A dictionary of field names and their new values.
     """
-    async with db_session_factory() as db:
-        try:
-            result = await db.execute(
-                select(JobRecord).where(JobRecord.job_id == job_id)
-            )
-            job = result.scalar_one_or_none()
-            if job:
-                for key, value in updates.items():
-                    setattr(job, key, value)
-                job.updated_at = datetime.now(UTC)
+    if isinstance(session_or_factory, AsyncSession):
+        await _perform_job_update(session_or_factory, job_id, updates)
+    else:
+        async with session_or_factory() as db:
+            try:
+                await _perform_job_update(db, job_id, updates)
                 await db.commit()
-                await job_event_manager.notify(job_id)
-        except Exception:
-            await db.rollback()
-            raise
+            except Exception:
+                await db.rollback()
+                raise
+
+
+async def _perform_job_update(
+    db: AsyncSession, job_id: str, updates: dict[str, Any]
+) -> None:
+    """Internal helper to apply updates to a job record within a session."""
+    result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
+    job = result.scalar_one_or_none()
+    if job:
+        for key, value in updates.items():
+            setattr(job, key, value)
+        job.updated_at = datetime.now(UTC)
+        await job_event_manager.notify(job_id)
 
 
 async def update_job_status(
     job_id: str,
     updates: dict[str, Any],
-    session_factory: Callable[[], AsyncSession],
+    session_or_factory: AsyncSession | Callable[[], AsyncSession],
 ) -> None:
     """Alias for update_job_record for backward compatibility and semantic clarity."""
-    await update_job_record(session_factory, job_id, updates)
+    await update_job_record(session_or_factory, job_id, updates)
 
 
 async def prepare_job_for_retry_logic(
-    job_id: str, db_session_factory: Callable[[], AsyncSession]
+    job_id: str, session_or_factory: AsyncSession | Callable[[], AsyncSession]
 ) -> JobRecord:
     """Resets a failed job to a state where it can be retried safely.
 
-    Clears error messages, render artifacts, and transient state while
-    preserving foundational artifacts (like the plan) if they were completed.
-    Increments the retry counter and resets the status to 'pending_retry'.
-
     Returns:
         JobRecord: The updated job record in its reset state.
-
-    Raises:
-        ValueError: If the job_id does not exist in the database.
     """
-    async with db_session_factory() as db:
-        result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
-        job = result.scalar_one_or_none()
+    if isinstance(session_or_factory, AsyncSession):
+        return await _perform_retry_prep(session_or_factory, job_id)
 
-        if not job:
-            raise ValueError(f"Job {job_id} not found")
+    async with session_or_factory() as db:
+        try:
+            job = await _perform_retry_prep(db, job_id)
+            await db.commit()
+            await db.refresh(job)
+            return job
+        except Exception:
+            await db.rollback()
+            raise
 
-        updates: dict[str, Any] = {
-            "status": "pending_retry",
-            "error": None,
-            "current_step": "retrying",
-            "retry_count": job.retry_count + 1,
-            "streamed_thoughts": [],
-            "render_progress": 0,
-            "started_at": None,
-            "finished_at": None,
-        }
 
-        for key, value in updates.items():
-            setattr(job, key, value)
+async def _perform_retry_prep(db: AsyncSession, job_id: str) -> JobRecord:
+    """Internal helper to prepare a job for retry within a session."""
+    result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
+    job = result.scalar_one_or_none()
 
-        job.updated_at = datetime.now(UTC)
-        await db.commit()
-        await job_event_manager.notify(job_id)
-        await db.refresh(job)
-        return job
+    if not job:
+        raise ValueError(f"Job {job_id} not found")
+
+    updates: dict[str, Any] = {
+        "status": "pending_retry",
+        "error": None,
+        "current_step": "retrying",
+        "retry_count": job.retry_count + 1,
+        "streamed_thoughts": [],
+        "render_progress": 0,
+        "started_at": None,
+        "finished_at": None,
+    }
+
+    for key, value in updates.items():
+        setattr(job, key, value)
+
+    job.updated_at = datetime.now(UTC)
+    await job_event_manager.notify(job_id)
+    return job

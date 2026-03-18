@@ -1,6 +1,33 @@
+import json
+from typing import Any, TypeVar
+
+from pydantic import BaseModel
 from pydantic_ai.usage import RunUsage
 
 from infra.settings import get_settings
+
+T = TypeVar("T", bound=BaseModel)
+
+
+def parse_job_artifact(data: Any, model_class: type[T]) -> T:
+    """Parses a job artifact from either a dict or a JSON string.
+
+    Commonly used when retrieving JSON/JSONB columns from different DB backends.
+
+    Args:
+        data: The raw data from the database.
+        model_class: The Pydantic model class to parse into.
+
+    Returns:
+        An instance of the specified Pydantic model.
+    """
+    if isinstance(data, dict):
+        return model_class(**data)
+    if isinstance(data, str):
+        return model_class(**json.loads(data))
+    raise ValueError(
+        f"Expected dict or str for {model_class.__name__}, got {type(data)}"
+    )
 
 
 def merge_usage(base: RunUsage | None, extra: RunUsage | None) -> RunUsage:
@@ -21,6 +48,7 @@ def merge_usage(base: RunUsage | None, extra: RunUsage | None) -> RunUsage:
     return RunUsage(
         input_tokens=(base.input_tokens or 0) + (extra.input_tokens or 0),
         output_tokens=(base.output_tokens or 0) + (extra.output_tokens or 0),
+        requests=(base.requests or 0) + (extra.requests or 0),
     )
 
 
@@ -42,8 +70,8 @@ def calculate_job_cost(
 
     token_cost = 0.0
     if usage:
-        prompt_tokens = usage.request_tokens or 0
-        completion_tokens = usage.response_tokens or 0
+        prompt_tokens = usage.input_tokens or 0
+        completion_tokens = usage.output_tokens or 0
         token_cost = (prompt_tokens * settings.pricing_input_rate) + (
             completion_tokens * settings.pricing_output_rate
         )

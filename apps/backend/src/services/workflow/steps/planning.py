@@ -1,5 +1,4 @@
 import asyncio
-import json
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -8,9 +7,11 @@ from pydantic_ai.usage import RunUsage
 
 from api.schemas import CurriculumPlan, JobRequest
 from domain.agents.analyst import generate_curriculum
+from domain.models.workflow import GlobalContext
 from infra.exceptions import PlanGenerationError
 from infra.models.job import JobRecord
 from services.workflow.base import get_step_model
+from services.workflow.utils import parse_job_artifact
 
 
 async def step_planning(
@@ -18,6 +19,7 @@ async def step_planning(
     job: JobRecord,
     update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
+    ctx: GlobalContext,
 ) -> tuple[CurriculumPlan, RunUsage | None]:
     """Executes the curriculum planning phase of the generation workflow.
 
@@ -29,6 +31,7 @@ async def step_planning(
         job: The current job record in the database.
         update_job: Async callback for persisting job state changes.
         on_thought: Async callback for streaming agent reasoning.
+        ctx: The Global Context Object (GCO) for shared memory.
 
     Returns:
         tuple: (The generated CurriculumPlan, RunUsage object from the AI).
@@ -52,6 +55,7 @@ async def step_planning(
             audience=request.target_audience,
             model=plan_model,
             on_thought=on_thought,
+            ctx=ctx,
         )
 
         if job.mode == "mock":
@@ -75,8 +79,5 @@ async def step_planning(
         logger.success("Step 1: Planning - Complete")
     else:
         logger.info("Using existing curriculum plan (Checkpoint)")
-        if isinstance(job.plan, dict):
-            plan = CurriculumPlan(**job.plan)
-        else:
-            plan = CurriculumPlan(**json.loads(job.plan))
+        plan = parse_job_artifact(job.plan, CurriculumPlan)
     return plan, usage

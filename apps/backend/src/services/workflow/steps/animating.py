@@ -7,6 +7,7 @@ from pydantic_ai.usage import RunUsage
 from api.schemas import JobRequest, Storyboard
 from domain.agents.animator import generate_manim_code
 from domain.agents.reviewer import review_animation
+from domain.models.workflow import GlobalContext
 from infra.engines.video import render_preview
 from infra.exceptions import AnimationGenerationError
 from infra.models.job import JobRecord
@@ -19,6 +20,7 @@ async def step_animating(
     job: JobRecord,
     update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
+    ctx: GlobalContext,
 ) -> tuple[str, RunUsage]:
     """Executes the AI-driven animation phase with iterative self-correction.
 
@@ -32,6 +34,7 @@ async def step_animating(
         job: The current job record in the database.
         update_job: Async callback for persisting job state changes.
         on_thought: Async callback for streaming agent reasoning.
+        ctx: The Global Context Object (GCO) for shared memory.
 
     Returns:
         tuple: (The final sanitized Manim code, Total RunUsage from the loop).
@@ -58,7 +61,7 @@ async def step_animating(
 
         try:
             current_code, usage = await generate_manim_code(
-                storyboard, model, on_thought=on_thought, retry_hint=hint
+                storyboard, model, on_thought=on_thought, retry_hint=hint, ctx=ctx
             )
             total_usage.incr(usage)
             sanitize_manim_code(current_code)
@@ -77,10 +80,18 @@ async def step_animating(
         preview_result = await render_preview(current_code, str(job.job_id))
         if not preview_result.success:
             logger.warning(f"Preview failed: {preview_result.error}")
-            hint = f"Animation failed to render: {preview_result.error}"
-            await on_thought("system", "Preview", f"Failed: {preview_result.error}")
+            # Extract last few lines of logs for context
+            log_tail = "\n".join(preview_result.logs.splitlines()[-10:])
+            hint = (
+                f"Animation failed to render: {preview_result.error}\nLogs:\n{log_tail}"
+            )
+            await on_thought(
+                "system", "Preview", f"Failed: {preview_result.error}\n{log_tail}"
+            )
             if i == max_iterations - 1:
-                raise AnimationGenerationError("Failed to render valid preview")
+                raise AnimationGenerationError(
+                    f"Failed to render valid preview: {preview_result.error}"
+                )
             continue
 
         review, r_usage = await review_animation(
@@ -89,6 +100,7 @@ async def step_animating(
             execution_logs=preview_result.logs,
             model=model,
             on_thought=on_thought,
+            ctx=ctx,
         )
         total_usage.incr(r_usage)
 

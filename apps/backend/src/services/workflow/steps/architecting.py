@@ -1,5 +1,4 @@
 import asyncio
-import json
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -8,9 +7,11 @@ from pydantic_ai.usage import RunUsage
 
 from api.schemas import CurriculumPlan, JobRequest, Storyboard
 from domain.agents.architect import generate_storyboard
+from domain.models.workflow import GlobalContext
 from infra.exceptions import StoryboardGenerationError
 from infra.models.job import JobRecord
 from services.workflow.base import get_step_model
+from services.workflow.utils import parse_job_artifact
 
 
 async def step_architecting(
@@ -19,6 +20,8 @@ async def step_architecting(
     job: JobRecord,
     update_job: Callable[[dict[str, Any]], Awaitable[Any]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
+    ctx: GlobalContext,
+    persist: bool = True,
 ) -> tuple[Storyboard, RunUsage | None]:
     """Executes the visual architecting phase of the generation workflow.
 
@@ -31,6 +34,8 @@ async def step_architecting(
         job: The current job record in the database.
         update_job: Async callback for persisting job state changes.
         on_thought: Async callback for streaming agent reasoning.
+        ctx: The Global Context Object (GCO) for shared memory.
+        persist: Whether to immediately persist the result to the database.
 
     Returns:
         tuple: (The generated Storyboard, RunUsage object from the AI).
@@ -50,10 +55,10 @@ async def step_architecting(
             )
 
         storyboard, usage = await generate_storyboard(
-            plan, architect_model, on_thought=on_thought
+            plan, architect_model, on_thought=on_thought, ctx=ctx
         )
 
-        if job.mode == "mock":
+        if job.mode == "mock" and persist:
             # Simulate incremental "filling in" of the storyboard
             logger.info("Simulating incremental storyboard population...")
             for i in range(1, len(storyboard.scenes) + 1):
@@ -65,17 +70,15 @@ async def step_architecting(
 
         job.storyboard = storyboard.model_dump()
         job.current_step = "architecting_complete"
-        await update_job(
-            {
-                "storyboard": job.storyboard,
-                "current_step": job.current_step,
-            }
-        )
+        if persist:
+            await update_job(
+                {
+                    "storyboard": job.storyboard,
+                    "current_step": job.current_step,
+                }
+            )
         logger.success("Step 3: Architecting - Complete")
     else:
         logger.info("Using existing storyboard (Checkpoint)")
-        if isinstance(job.storyboard, dict):
-            storyboard = Storyboard(**job.storyboard)
-        else:
-            storyboard = Storyboard(**json.loads(job.storyboard))
+        storyboard = parse_job_artifact(job.storyboard, Storyboard)
     return storyboard, usage
