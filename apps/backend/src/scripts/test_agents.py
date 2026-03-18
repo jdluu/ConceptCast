@@ -8,40 +8,53 @@ import asyncio
 import contextlib
 import sys
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 from loguru import logger
 from pydantic_ai import Agent
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.schemas import AnimationReview, CurriculumPlan, Storyboard, ValidationResult
-from infra.ai.mock import RealisticMockModel
+from api.schemas import (
+    AnimationReview,
+    CurriculumPlan,
+    Storyboard,
+    ValidationResult,
+)
+from domain.models.workflow import GlobalContext
+from infra.ai.mock import MockConceptModel, RealisticMockModel
 from infra.ai.streaming import run_agent_streamed
+from infra.models.job import JobRecord
+from services.workflow.orchestrator import execute_workflow
 
 
-async def test_agent_logic(
-    agent_name: str, 
-    system_prompt: str, 
-    output_type: type, 
-    topic: str = "Linear Algebra"
+async def test_agent_logic(  # noqa: C901, PLR0912
+    agent_name: str,
+    system_prompt: str,
+    output_type: type,
+    topic: str = "Linear Algebra",
 ) -> bool:
     """Simulates a single agent run and validates the event stream."""
     logger.info(f"--- Testing {agent_name.upper()} Agent ---")
-    
-    model = RealisticMockModel()
+
+    concept_model = MockConceptModel(RealisticMockModel(), f"mock-{agent_name}")
     agent = Agent(
-        model,
+        concept_model.model,
         system_prompt=system_prompt,
         output_type=output_type,
+        deps_type=GlobalContext,
     )
-    
+
     # We use a simple prompt that will trigger the mock model
     prompt = f"Explain '{topic}'"
-    
+
     captured_thoughts = []
     captured_output_chunks = 0
-    
+
     async def on_thought(_name: str, phase: str, content: str) -> None:
         if phase == "thinking":
             captured_thoughts.append(content)
+            # Print thoughts in a dimmed style to indicate internal reasoning
+            print(f"    \033[2m[Thought] {content}\033[0m", flush=True)  # noqa: T201
         elif phase == "output":
             nonlocal captured_output_chunks
             captured_output_chunks += 1
@@ -49,23 +62,62 @@ async def test_agent_logic(
     # Add dependencies if needed by the agent
     kwargs: dict[str, Any] = {}
     if agent_name in {"validator", "architect"}:
-        kwargs["deps"] = CurriculumPlan(concept_title=topic, target_audience="Beginner", teaching_steps=[])
+        kwargs["deps"] = CurriculumPlan(
+            concept_title=topic, target_audience="Beginner", teaching_steps=[]
+        )
     elif agent_name == "reviewer":
-        kwargs["deps"] = Storyboard(concept_title=topic, scenes=[])
+        # Reviewer requires a storyboard with at least one scene
+        from api.schemas import Scene
+
+        kwargs["deps"] = Storyboard(
+            concept_title=topic,
+            scenes=[
+                Scene(
+                    scene_id=1,
+                    title="Intro",
+                    description="Visual intro",
+                    narration="Let's start.",
+                    objects=[],
+                )
+            ],
+        )
+
+    ctx = GlobalContext(topic=topic, target_audience="Beginner")
+
+    # If the agent needs specific artifacts (like curriculum or storyboard),
+    # we should ideally put them inside the ctx (GCO) now.
+    if "deps" in kwargs:
+        artifact = kwargs.pop("deps")
+        if isinstance(artifact, CurriculumPlan):
+            ctx.plan = artifact
+        elif isinstance(artifact, Storyboard):
+            ctx.storyboard = artifact
 
     result, usage = await run_agent_streamed(
-        agent_name, 
-        agent, 
-        prompt, 
-        on_thought=on_thought,
-        **kwargs
+        agent_name, agent, prompt, on_thought=on_thought, deps=ctx, **kwargs
     )
-    
+
+    # Verbose Artifact Output
+    print("  \033[1m[Artifact]\033[0m")  # noqa: T201
+    try:
+        if hasattr(result, "model_dump_json"):
+            print(f"{result.model_dump_json(indent=4)}")  # noqa: T201
+        elif isinstance(result, (dict, list)):
+            import json
+
+            print(f"{json.dumps(result, indent=4)}")  # noqa: T201
+        else:
+            print(f"{result}")  # noqa: T201
+    except Exception as e:
+        print(f"  (Failed to serialize artifact: {e})")  # noqa: T201
+        print(f"{result}")  # noqa: T201
+    print()  # noqa: T201
+
     # Assertions
     if not captured_thoughts:
         logger.error(f"FAIL: {agent_name} emitted NO thinking parts.")
         return False
-    
+
     if not result:
         logger.error(f"FAIL: {agent_name} produced NO final result.")
         return False
@@ -74,18 +126,105 @@ async def test_agent_logic(
     if agent_name == "validator" and not isinstance(result, ValidationResult):
         logger.error(f"FAIL: {agent_name} result is not a ValidationResult.")
         return False
-    if agent_name == "architect" and (not isinstance(result, Storyboard) or len(result.scenes) == 0):
+    if agent_name == "architect" and (
+        not isinstance(result, Storyboard) or len(result.scenes) == 0
+    ):
         logger.error(f"FAIL: {agent_name} produced an empty or invalid Storyboard.")
         return False
 
-    logger.success(f"PASS: {agent_name} verified. ({len(captured_thoughts)} thought blocks)")
+    logger.success(
+        f"PASS: {agent_name} verified. ({len(captured_thoughts)} thought blocks)"
+    )
     return True
+
+
+async def test_full_workflow(topic: str = "Quantum Entanglement") -> bool:
+    """Tests the entire orchestration workflow (Step 1-4) in mock mode.
+
+    Verifies that the orchestrator correctly flows information through all agents
+    and persists the results into the JobRecord.
+    """
+    from datetime import UTC, datetime
+    from unittest.mock import patch
+
+    logger.info(f"--- Testing FULL WORKFLOW Integration for '{topic}' ---")
+
+    # 1. Setup Mock JobRecord
+    job_id = "test-workflow-uuid"
+    job = JobRecord(
+        job_id=job_id,
+        topic=topic,
+        target_audience="Beginner",
+        status="pending",
+        mode="mock",
+        provider="mock",
+        model_id="mock-model",
+        hitl_enabled=False,
+        started_at=datetime.now(UTC),
+        total_execution_time=0.0,
+    )
+
+    # 2. Mock DB Session
+    mock_session = AsyncMock(spec=AsyncSession)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = job
+    mock_session.execute.return_value = mock_result
+
+    # 3. Callbacks for tracking
+    captured_thoughts = []
+
+    async def on_thought(agent: str, phase: str, content: str) -> None:
+        captured_thoughts.append((agent, phase))
+        if phase == "thinking":
+            print(f"    \033[2m[{agent}] {content[:100]}...\033[0m", flush=True)  # noqa: T201
+
+    async def update_job(updates: dict[str, Any]) -> None:
+        for k, v in updates.items():
+            setattr(job, k, v)
+
+    # 4. Execute Workflow with mocked renderer
+    with patch("services.workflow.orchestrator.render_video_task") as mock_render_task:
+        mock_render_task.kiq = AsyncMock()
+
+        try:
+            await execute_workflow(
+                session=mock_session,
+                job_id=job_id,
+                topic=topic,
+                audience="Beginner",
+                provider="mock",
+                model_id="mock-model",
+                update_job=update_job,
+                on_thought=on_thought,
+            )
+        except Exception as e:
+            logger.error(f"FAIL: Workflow execution crashed: {e}")
+            return False
+
+        # 5. Assertions
+        if not job.plan:
+            logger.error("FAIL: Workflow finished but JobRecord has NO plan.")
+            return False
+        if not job.storyboard:
+            logger.error("FAIL: Workflow finished but JobRecord has NO storyboard.")
+            return False
+        if not job.manim_code:
+            logger.error("FAIL: Workflow finished but JobRecord has NO manim_code.")
+            return False
+
+        # Verify renderer was dispatched
+        mock_render_task.kiq.assert_called_once()
+
+        logger.success(
+            f"PASS: Full Workflow Integration verified. (Captured {len(captured_thoughts)} thoughts)"
+        )
+        return True
 
 
 async def run_diagnostics() -> None:
     """Runs a full suite of agent diagnostics."""
     logger.info("Starting Council Intelligence Diagnostics...")
-    
+
     tests = [
         ("analyst", "Analyst Agent", CurriculumPlan),
         ("validator", "Validator Agent", ValidationResult),
@@ -93,13 +232,17 @@ async def run_diagnostics() -> None:
         ("animator", "Animator Agent", str),
         ("reviewer", "Reviewer Agent", AnimationReview),
     ]
-    
+
     results = []
     for name, prompt, out_type in tests:
         success = await test_agent_logic(name, prompt, out_type)
         results.append(success)
-        await asyncio.sleep(0.2) # Small delay for readability
-        
+        await asyncio.sleep(0.2)  # Small delay for readability
+
+    # --- FULL WORKFLOW INTEGRATION TEST ---
+    workflow_success = await test_full_workflow("Quantum Entanglement")
+    results.append(workflow_success)
+
     if all(results):
         logger.success("\nAll Agent Intelligence Tests Passed!")
     else:

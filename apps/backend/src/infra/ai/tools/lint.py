@@ -5,7 +5,7 @@ from pathlib import Path
 from loguru import logger
 from pydantic_ai import RunContext
 
-from api.schemas import Storyboard
+from domain.models.workflow import GlobalContext
 from infra.engines.sandbox import local_sandbox
 
 _LOWERCASE_COLOR_RE = re.compile(
@@ -13,14 +13,14 @@ _LOWERCASE_COLOR_RE = re.compile(
 )
 
 
-async def lint_manim_code(_ctx: RunContext[Storyboard], code: str) -> str:
+async def lint_manim_code(_ctx: RunContext[GlobalContext], code: str) -> str:
     """Lints generated Manim code within a sandboxed environment.
 
     Performs static and dynamic checks to ensure the code is valid Python
     and follows Manim-specific rules (e.g., uppercase color constants).
 
     Args:
-        ctx: Run context containing the Storyboard.
+        _ctx: Run context containing the global workflow state.
         code: The generated Python code to validate.
 
     Returns:

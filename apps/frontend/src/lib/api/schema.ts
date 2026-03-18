@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/": {
+    "/health": {
         parameters: {
             query?: never;
             header?: never;
@@ -25,7 +25,7 @@ export interface paths {
          *     Returns:
          *         A dictionary containing the overall status and individual service statuses.
          */
-        get: operations["health_check__get"];
+        get: operations["health_check_health_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -491,6 +491,8 @@ export interface components {
             topic: string;
             /** Status */
             status: string;
+            /** Current Step */
+            current_step?: string | null;
             /** Mode */
             mode: string;
             /** Created At */
@@ -757,7 +759,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_check__get: {
+    health_check_health_get: {
         parameters: {
             query?: never;
             header?: never;

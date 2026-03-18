@@ -20,6 +20,7 @@ class JobSummary(BaseModel):
     job_id: str
     topic: str
     status: str
+    current_step: str | None = None
     mode: str
     created_at: str
     retry_count: int

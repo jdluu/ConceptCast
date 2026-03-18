@@ -2,7 +2,7 @@ import json
 
 from pydantic_ai import RunContext, ToolDefinition
 
-from api.schemas import Storyboard
+from domain.models.workflow import GlobalContext
 from infra.settings import get_settings
 
 from .docs_client import get_manim_docs_context
@@ -142,7 +142,7 @@ MANIM_DOCS: dict[str, str] = {
 
 
 async def prepare_manim_docs(
-    ctx: RunContext[Storyboard], tool_def: ToolDefinition
+    ctx: RunContext[GlobalContext], tool_def: ToolDefinition
 ) -> ToolDefinition | None:
     """Prepares and filters Manim documentation for the current storyboard.
 
@@ -151,13 +151,16 @@ async def prepare_manim_docs(
     reducing token usage and focusing the agent's attention.
 
     Args:
-        ctx: Run context containing the current Storyboard state.
+        ctx: Run context containing the global workflow state.
         tool_def: The definition of the search tool being prepared.
 
     Returns:
         The modified ToolDefinition with an contextually relevant description.
     """
-    storyboard = ctx.deps
+    storyboard = ctx.deps.storyboard
+    if not storyboard or not storyboard.scenes:
+        return tool_def
+
     mentioned_types = {obj.type for scene in storyboard.scenes for obj in scene.objects}
 
     relevant_docs = {k: v for k, v in MANIM_DOCS.items() if k in mentioned_types}
@@ -170,7 +173,7 @@ async def prepare_manim_docs(
     return tool_def
 
 
-async def search_manim_docs(_ctx: RunContext[Storyboard], query: str) -> str:
+async def search_manim_docs(_ctx: RunContext[GlobalContext], query: str) -> str:
     """Keyword or semantic search for Manim Community documentation.
 
     Leverages Context7 for external documentation retrieval if an API key
@@ -178,7 +181,7 @@ async def search_manim_docs(_ctx: RunContext[Storyboard], query: str) -> str:
     curated `MANIM_DOCS` list.
 
     Args:
-        ctx: Run context containing the current Storyboard.
+        _ctx: Run context containing the global workflow state.
         query: Search term or question regarding Manim syntax/objects.
 
     Returns:
