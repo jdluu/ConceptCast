@@ -1,7 +1,7 @@
-from typing import Any
 
 from api.schemas import JobRequest
-from infra.ai.factory import get_model
+from infra.ai.base import BaseConceptModel
+from infra.ai.factory import get_concept_model
 from infra.models.job import JobRecord
 
 
@@ -29,8 +29,8 @@ def resolve_model_args(
 
 def get_step_model(
     request: JobRequest, job: JobRecord, agent_id: str | None = None
-) -> Any:
-    """Retrieves an authorized PydanticAI model instance for a workflow step.
+) -> BaseConceptModel | None:
+    """Retrieves an authorized ConceptCast model wrapper for a workflow step.
 
     Uses `resolve_model_args` to determine the correct provider and model
     based on the job's execution mode and user preferences.
@@ -41,7 +41,7 @@ def get_step_model(
         agent_id: The identifier of the agent (e.g., 'analyst').
 
     Returns:
-        A configured PydanticAI model instance.
+        A configured BaseConceptModel instance.
     """
     model_override = None
     if agent_id:
@@ -50,4 +50,4 @@ def get_step_model(
         )
 
     provider_name, model_id = resolve_model_args(request, job, model_override)
-    return get_model(provider_name=provider_name, model_id=model_id)
+    return get_concept_model(provider_name=provider_name, model_id=model_id)
