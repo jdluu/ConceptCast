@@ -15,7 +15,7 @@ async def step_validating(
     plan: CurriculumPlan,
     request: JobRequest,
     job: JobRecord,
-    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    update_job: Callable[[dict[str, Any]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
     persist: bool = True,

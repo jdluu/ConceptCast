@@ -58,13 +58,11 @@ def calculate_job_cost(
     """Combines LLM token usage costs with infrastructure and rendering costs.
 
     Args:
-        usage (Usage | None, optional): A usage object from the AI provider containing
-            'request_tokens' and 'response_tokens'. Defaults to None.
-        render_duration (float): Duration of the rendered video in seconds.
-            Used to calculate rendering compute costs. Defaults to 0.0.
+        usage: A usage object from the AI provider containing token counts.
+        render_duration: Duration of the rendered video in seconds.
 
     Returns:
-        float: Total estimated job cost in USD, rounded to two decimal places.
+        Total estimated job cost in USD, rounded to two decimal places.
     """
     settings = get_settings()
 

@@ -17,7 +17,7 @@ from services.workflow.utils import parse_job_artifact
 async def step_planning(
     request: JobRequest,
     job: JobRecord,
-    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    update_job: Callable[[dict[str, Any]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
 ) -> tuple[CurriculumPlan, RunUsage | None]:

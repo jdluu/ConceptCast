@@ -94,18 +94,22 @@ class MockStreamedResponse(StreamedResponse):
 
     @property
     def model_name(self) -> str:
+        """Returns the internal name of the mock model."""
         return self._model_name
 
     @property
     def provider_name(self) -> str | None:
+        """Identifies the provider as mock for testing."""
         return "mock"
 
     @property
     def provider_url(self) -> str | None:
+        """No provider URL is required for local mock execution."""
         return None
 
     @property
     def timestamp(self) -> datetime:
+        """The simulation timestamp for this response."""
         return self._timestamp
 
 
@@ -118,10 +122,12 @@ class RealisticMockModel(Model):
 
     @property
     def model_name(self) -> str:
+        """The identifier for the realistic mock model."""
         return "realistic-mock"
 
     @property
     def system(self) -> str:
+        """Return 'mock' as the system identifier."""
         return "mock"
 
     @asynccontextmanager

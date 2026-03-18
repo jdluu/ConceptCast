@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Any
 
 from pydantic_ai.models import Model
 
@@ -7,14 +6,10 @@ from api.schemas import ProviderModels
 from infra.settings import Settings, get_settings
 
 from .base import BaseConceptModel, BaseProvider
-from .deepseek import DeepSeekModelProvider
-from .groq import GroqModelProvider
 from .mock import MockModelProvider
 from .nano import NanoModelProvider
 
 PROVIDER_CLASSES: dict[str, type[BaseProvider]] = {
-    "groq": GroqModelProvider,
-    "deepseek": DeepSeekModelProvider,
     "nano": NanoModelProvider,
     "mock": MockModelProvider,
 }
@@ -41,36 +36,23 @@ class ProviderEntry:
 
 PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
     ProviderEntry(
-        id="groq",
-        settings_key="groq_api_key",
-        models=(
-            "llama-3.1-8b-instant",
-            "llama-3.3-70b-versatile",
-            "openai/gpt-oss-120b",
-            "openai/gpt-oss-20b",
-        ),
-        default_model="llama-3.3-70b-versatile",
-        display_name="Groq",
-    ),
-    ProviderEntry(
-        id="deepseek",
-        settings_key="deepseek_api_key",
-        models=("deepseek-chat", "deepseek-reasoner"),
-        default_model="deepseek-chat",
-        display_name="DeepSeek",
-    ),
-    ProviderEntry(
         id="nano",
         settings_key="nano_api_key",
         models=(
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "meta-llama/llama-3.3-70b-instruct",
+            "meta-llama/llama-3.1-8b-instruct",
+            "deepseek/deepseek-v3.2:thinking",
+            "deepseek/deepseek-v3.2-speciale",
             "nvidia/nemotron-3-super-120b-a12b:thinking",
             "minimax/minimax-m2.5",
             "qwen/qwen3.5-397b-a17b-thinking",
             "zai-org/glm-5:thinking",
             "moonshotai/kimi-k2.5:thinking",
         ),
-        default_model="nvidia/nemotron-3-super-120b-a12b:thinking",
-        display_name="Nano GPT (Subscription)",
+        default_model="openai/gpt-oss-120b",
+        display_name="Nano GPT",
     ),
     ProviderEntry(
         id="mock",
@@ -202,7 +184,7 @@ def get_concept_model(
 
 def get_model(
     provider_name: str | None = None, model_id: str | None = None
-) -> Model | Any:
+) -> Model | None:
     """Creates a configured PydanticAI model instance.
 
     Args:

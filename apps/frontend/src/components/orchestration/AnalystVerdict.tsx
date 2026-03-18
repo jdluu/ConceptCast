@@ -43,7 +43,7 @@ export function AnalystVerdict({ validation }: AnalystVerdictProps) {
           "{validation.feedback}"
         </p>
         <div className="mt-4 flex items-center gap-2">
-          <ArtifactBadge variant="active">— Analyst A2A</ArtifactBadge>
+          <ArtifactBadge variant="active">- Analyst A2A</ArtifactBadge>
           <span className="bg-council-active/20 h-1 w-1 rounded-full" />
           <ArtifactBadge>Verified Step 4</ArtifactBadge>
         </div>

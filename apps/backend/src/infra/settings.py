@@ -40,14 +40,11 @@ class Settings(BaseSettings):
     """Application settings and secrets loaded from environment variables and .env.
 
     Attributes:
-        groq_api_key: Groq API key for Llama/Mixtral models.
-        deepseek_api_key: DeepSeek API key for chat models.
         nano_api_key: Nano GPT provider API key.
         context7_api_key: Context7 API key for high-quality package documentation.
         context7_cache_ttl_seconds: Seconds before cached documentation expires.
         context7_cache_max_entries: Max entries kept in the documentation cache.
         context7_max_retries: Retry limit for transient Context7 API errors.
-        deepseek_model_name: Overridable model identifier for DeepSeek.
         nano_model_name: Overridable model identifier for the Nano GPT provider.
         render_quality: Default Manim render quality (low, medium, high).
         streamed_thoughts_max_entries: Max thought deltas stored per job execution.
@@ -61,15 +58,12 @@ class Settings(BaseSettings):
         pricing_base_overhead: Fixed processing overhead per job.
     """
 
-    groq_api_key: str | None = None
-    deepseek_api_key: str | None = None
     nano_api_key: str | None = None
     context7_api_key: str | None = None
     context7_cache_ttl_seconds: int = 1800
     context7_cache_max_entries: int = 256
     context7_max_retries: int = 2
-    deepseek_model_name: str = "deepseek-chat"
-    nano_model_name: str = "nvidia/nemotron-3-super-120b-a12b:thinking"
+    nano_model_name: str = "openai/gpt-oss-120b"
     render_quality: str = "ql"
     streamed_thoughts_max_entries: int = 500
     animation_review_max_iterations: int = 3
@@ -107,7 +101,7 @@ class Settings(BaseSettings):
         Returns:
             bool: True if at least one API key is detected.
         """
-        return bool(self.groq_api_key or self.deepseek_api_key or self.nano_api_key)
+        return bool(self.nano_api_key)
 
     def is_dummy_key(self) -> bool:
         """Checks if configured API keys are placeholders.
@@ -115,8 +109,7 @@ class Settings(BaseSettings):
         Returns:
             bool: True if keys match known dummy values (e.g., 'your-key-here').
         """
-        keys = [self.groq_api_key, self.deepseek_api_key, self.nano_api_key]
-        return any(k and "your-key-here" in k.lower() for k in keys)
+        return bool(self.nano_api_key and "your-key-here" in self.nano_api_key.lower())
 
 
 @lru_cache

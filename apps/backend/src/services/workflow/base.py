@@ -1,4 +1,3 @@
-
 from api.schemas import JobRequest
 from infra.ai.base import BaseConceptModel
 from infra.ai.factory import get_concept_model

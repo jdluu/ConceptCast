@@ -81,11 +81,23 @@ async def process_job_logic(
         lock = asyncio.Lock()
 
         async def _update_job_callback(updates: dict[str, Any]) -> None:
+            """Internal helper to update the job record using the workflow session.
+
+            Args:
+                updates: A dictionary of field updates for the JobRecord.
+            """
             async with lock:
                 await update_job_status(job_id, updates, session)
                 await session.commit()
 
         async def _on_thought_callback(agent: str, phase: str, content: str) -> None:
+            """Internal helper to append a thought delta using the workflow session.
+
+            Args:
+                agent: The name of the agent generating the thought.
+                phase: The current execution phase.
+                content: The thought content to append.
+            """
             async with lock:
                 await append_job_thought(session, job_id, agent, phase, content)
                 await session.commit()
@@ -119,7 +131,7 @@ async def _handle_planning_step(
     job_state: JobRecord,
     request: JobRequest,
     _provider: str,
-    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    update_job: Callable[[dict[str, Any]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
 ) -> tuple[CurriculumPlan, RunUsage | None]:
@@ -170,7 +182,7 @@ async def _handle_architecting_steps(
     request: JobRequest,
     plan: CurriculumPlan,
     _provider: str,
-    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    update_job: Callable[[dict[str, Any]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
 ) -> tuple[ValidationResult, Storyboard, RunUsage | None]:
@@ -211,7 +223,12 @@ async def _handle_architecting_steps(
     )
     await update_job({"status": "architecting", "current_step": "parallel_execution"})
 
-    async def run_validating() -> Any:
+    async def run_validating() -> tuple[ValidationResult, RunUsage | None]:
+        """Internal helper to execute validation in a TaskGroup.
+
+        Returns:
+            tuple: (The ValidationResult, RunUsage from the AI).
+        """
         try:
             return await step_validating(
                 plan, request, job_state, update_job, on_thought, ctx, persist=False
@@ -221,7 +238,12 @@ async def _handle_architecting_steps(
             logger.error(f"Validation step failed: {e}")
             raise
 
-    async def run_architecting() -> Any:
+    async def run_architecting() -> tuple[Storyboard, RunUsage | None]:
+        """Internal helper to execute visual architecting in a TaskGroup.
+
+        Returns:
+            tuple: (The generated Storyboard, RunUsage from the AI).
+        """
         try:
             res = await step_architecting(
                 plan, request, job_state, update_job, on_thought, ctx, persist=False
@@ -262,7 +284,7 @@ async def _handle_animating_step(
     request: JobRequest,
     storyboard: Storyboard,
     _provider: str,
-    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    update_job: Callable[[dict[str, Any]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
 ) -> tuple[str, RunUsage | None]:
@@ -311,7 +333,7 @@ async def execute_workflow(
     audience: str,
     provider: str,
     model_id: str,
-    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    update_job: Callable[[dict[str, Any]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> None:
     """Executes the 4-step pedagogical video generation workflow.
@@ -324,7 +346,7 @@ async def execute_workflow(
         job_id: The unique identifier for the job.
         topic: The complex technical topic to explain.
         audience: The target knowledge level.
-        provider: The selected AI provider (e.g., 'openai', 'groq').
+        provider: The selected AI provider (e.g., 'nano').
         model_id: The specific model to use (e.g., 'nvidia/nemotron-3-super-120b-a12b:thinking').
         update_job: Async callback for persisting job state changes.
         on_thought: Async callback for streaming agent thoughts to the UI.
@@ -337,6 +359,11 @@ async def execute_workflow(
     total_usage: RunUsage | None = None
 
     def add_usage(u: RunUsage | None) -> None:
+        """Helper to accumulate token usage across multiple workflow steps.
+
+        Args:
+            u: Usage information from a completed AI run.
+        """
         nonlocal total_usage
         total_usage = merge_usage(total_usage, u)
 

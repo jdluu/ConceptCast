@@ -44,13 +44,23 @@ async def render_video_task(
         lock = asyncio.Lock()
 
         async def update_job(updates: dict[str, Any]) -> None:
-            """Helper to update the job record using the task's persistent session."""
+            """Helper to update the job record using the task's persistent session.
+
+            Args:
+                updates: A dictionary of field updates for the JobRecord.
+            """
             async with lock:
                 await update_job_status(job_id, updates, session)
                 await session.commit()
 
         async def on_thought(agent: str, phase: str, content: str) -> None:
-            """Callback to store agent thought deltas using the task's persistent session."""
+            """Callback to store agent thought deltas using the task's persistent session.
+
+            Args:
+                agent: The name of the agent generating the thought.
+                phase: The current execution phase.
+                content: The thought content to append.
+            """
             async with lock:
                 await append_job_thought(session, job_id, agent, phase, content)
                 await session.commit()

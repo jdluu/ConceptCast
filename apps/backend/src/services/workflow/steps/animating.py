@@ -18,7 +18,7 @@ async def step_animating(
     storyboard: Storyboard,
     request: JobRequest,
     job: JobRecord,
-    update_job: Callable[[dict[str, Any]], Awaitable[Any]],
+    update_job: Callable[[dict[str, Any]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
 ) -> tuple[str, RunUsage]:

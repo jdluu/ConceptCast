@@ -20,6 +20,15 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
+        """Intercepts HTTP requests for centralized logging and request ID injection.
+
+        Args:
+            request: The incoming FastAPI request.
+            call_next: The next middleware or route handler in the pipeline.
+
+        Returns:
+            The processed response with added X-Request-ID header.
+        """
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
 

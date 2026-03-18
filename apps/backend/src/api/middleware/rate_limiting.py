@@ -10,11 +10,10 @@ from starlette.responses import JSONResponse
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """
-    Simple in-memory fixed-window rate limiter.
+    """Provides in-memory fixed-window rate limiting for sensitive API paths.
 
-    NOTE: In a multi-worker production environment, this should be
-    replaced by a Redis-backed limiter.
+    Prevents abuse of resource-intensive endpoints by restricting the number of
+    requests allowed per IP address within a specified time window.
     """
 
     def __init__(
@@ -24,16 +23,32 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         window: int = 60,
         restricted_paths: list[str] | None = None,
     ):
+        """Initializes the rate limiting middleware.
+
+        Args:
+            app: The standard FastAPI application instance.
+            limit: Maximum number of requests allowed per window.
+            window: Duration of the rate limit window in seconds.
+            restricted_paths: List of path prefixes that should be restricted.
+        """
         super().__init__(app)
         self.limit = limit
         self.window = window
         self.restricted_paths = restricted_paths or ["/jobs"]
-        # In-memory store: { ip : [timestamps] }
         self.requests: dict[str, list[float]] = defaultdict(list)
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
+        """Evaluates rate limits for incoming requests and enforces restrictions.
+
+        Args:
+            request: The incoming FastAPI request.
+            call_next: The next handler in the execution pipeline.
+
+        Returns:
+            The original response or a JSONResponse with 429 status code.
+        """
         # Only rate limit POST requests to restricted paths
         is_restricted = any(
             request.url.path.startswith(p) for p in self.restricted_paths
