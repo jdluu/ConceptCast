@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { LazyMotion, domAnimation } from 'motion/react';
+import * as m from 'motion/react-m';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { getAvailableModels, type JobRequest } from '@/lib/api/client';
@@ -60,7 +61,7 @@ export function JobCreationForm() {
   } = useForm<JobFormData>({
     resolver: zodResolver(jobSchema),
     defaultValues: {
-      target_audience: 'University Student',
+      target_audience: settings.defaultAudience,
       provider: 'mock',
       model_id: 'mock-gpt-4',
     },
@@ -91,19 +92,18 @@ export function JobCreationForm() {
     try {
       const request: JobRequest = {
         topic: data.topic,
-        target_audience: data.target_audience || 'General',
+        target_audience: data.target_audience || settings.defaultAudience,
         provider: data.provider,
         model_id: data.model_id,
         hitl_enabled: settings.hitlEnabled,
         analyst_model: data.analyst_model || undefined,
-        validator_model: data.validator_model || undefined,
         architect_model: data.architect_model || undefined,
         animator_model: data.animator_model || undefined,
       };
       await createJob(request);
     } catch (error) {
       console.error('Submission failed:', error);
-      toast.error('Failed to initiate orchestration. Check your connection.');
+      toast.error('Failed to start generation. Check your connection.');
     }
   };
 
@@ -121,118 +121,120 @@ export function JobCreationForm() {
   const { ref: topicRef, ...topicRegister } = register('topic');
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      <Card variant="premium" className="relative max-w-xl overflow-hidden p-8">
-        <LoadingOverlay isLoading={isLoading} />
+    <LazyMotion features={domAnimation}>
+      <m.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Card variant="premium" className="relative max-w-xl overflow-hidden p-8">
+          <LoadingOverlay isLoading={isLoading} />
 
-        <h2 className="from-foreground to-text-muted mb-1 bg-gradient-to-r bg-clip-text text-xl font-bold text-transparent">
-          Create New Concept
-        </h2>
-        <p className="text-text-muted mb-8 text-sm">
-          Orchestrate a pedagogical animation with the Council agents.
-        </p>
+          <h2 className="from-foreground to-text-muted mb-1 bg-gradient-to-r bg-clip-text text-xl font-bold text-transparent">
+            Create New Concept
+          </h2>
+          <p className="text-text-muted mb-8 text-sm">
+            Generate an educational animation with the Council agents.
+          </p>
 
-        {noKeys && showNoKeysToast && (
-          <NoKeysAlert developerMode={developerMode} onClose={() => setShowNoKeysToast(false)} />
-        )}
+          {noKeys && showNoKeysToast && (
+            <NoKeysAlert developerMode={developerMode} onClose={() => setShowNoKeysToast(false)} />
+          )}
 
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-12">
-          <div className="grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2">
-            <FormSection number={1} title="Subject Matter" className="md:col-span-2">
-              <div className="space-y-2">
-                <label htmlFor="topic" className="text-foreground block text-sm font-semibold">
-                  What would you like to learn?
-                </label>
-                <input
-                  {...topicRegister}
-                  ref={(e) => {
-                    topicRef(e);
-                    topicInputRef.current = e;
-                  }}
-                  type="text"
-                  id="topic"
-                  className="border-surface-border bg-background/50 text-foreground placeholder:text-text-muted hover:border-council-active/50 focus:ring-council-active w-full rounded-xl border px-4 py-3.5 transition-all outline-none focus:border-transparent focus:ring-2"
-                  placeholder="e.g. Quantum Entanglement, The French Revolution..."
-                />
-                {errors.topic && (
-                  <p className="text-destructive flex items-center gap-1 text-xs font-semibold">
-                    <span className="bg-destructive h-1 w-1 rounded-full" />
-                    {errors.topic.message as string}
-                  </p>
-                )}
-              </div>
-            </FormSection>
-
-            <FormSection number={2} title="Context">
-              <div className="space-y-6">
-                <AudienceField register={register} />
-                {errors.target_audience && (
-                  <p className="text-destructive mt-1 text-xs">
-                    {errors.target_audience.message as string}
-                  </p>
-                )}
-              </div>
-            </FormSection>
-
-            {hasRealProviders && (
-              <FormSection number={3} title="Intelligence" className="md:col-span-2">
-                <div className="space-y-8">
-                  <ModelSelectionFields
-                    register={register}
-                    selectedProvider={selectedProvider}
-                    realProvidersOnly={realProvidersOnly}
+          <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-12">
+            <div className="grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2">
+              <FormSection number={1} title="Subject Matter" className="md:col-span-2">
+                <div className="space-y-2">
+                  <label htmlFor="topic" className="text-foreground block text-sm font-semibold">
+                    What would you like to learn?
+                  </label>
+                  <input
+                    {...topicRegister}
+                    ref={(e) => {
+                      topicRef(e);
+                      topicInputRef.current = e;
+                    }}
+                    type="text"
+                    id="topic"
+                    className="border-surface-border bg-background/50 text-foreground placeholder:text-text-muted hover:border-council-active/50 focus:ring-council-active w-full rounded-xl border px-4 py-3.5 transition-all outline-none focus:border-transparent focus:ring-2"
+                    placeholder="e.g. Quantum Entanglement, The French Revolution..."
                   />
-
-                  {settings.showAdvancedModelSettings && (
-                    <div className="border-surface-border animate-in fade-in slide-in-from-top-2 mt-6 border-t pt-6 duration-300">
-                      <div className="mb-4">
-                        <h4 className="text-council-active text-xs font-bold tracking-widest uppercase">
-                          Manual Model Overrides
-                        </h4>
-                        <p className="text-micro text-text-muted mt-1">
-                          Configure specific models for each stage of the orchestration.
-                        </p>
-                      </div>
-                      <AgentModelSelectionFields
-                        register={register}
-                        providers={realProvidersOnly}
-                      />
-                    </div>
+                  {errors.topic && (
+                    <p className="text-destructive flex items-center gap-1 text-xs font-semibold">
+                      <span className="bg-destructive h-1 w-1 rounded-full" />
+                      {errors.topic.message as string}
+                    </p>
                   )}
                 </div>
               </FormSection>
-            )}
 
-            {noKeys && (
-              <div className="border-warning/20 bg-warning/5 text-warning flex items-center gap-3 rounded-xl border p-4 text-sm font-medium italic md:col-span-2">
-                <div className={`bg-warning h-2 w-2 animate-pulse rounded-full`} />
-                No real AI providers configured. Using simulated engine.
-              </div>
-            )}
-          </div>
+              <FormSection number={2} title="Context">
+                <div className="space-y-6">
+                  <AudienceField register={register} />
+                  {errors.target_audience && (
+                    <p className="text-destructive mt-1 text-xs">
+                      {errors.target_audience.message as string}
+                    </p>
+                  )}
+                </div>
+              </FormSection>
 
-          <div className="flex flex-col gap-4 pt-4">
-            <Button type="submit" disabled={isLoading || noKeys} className="w-full">
-              {isLoading ? 'Consulting Council...' : 'Generate Lesson'}
-            </Button>
-            {showMockButton && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={runMockDemo}
-                disabled={isLoading}
-                className="w-full"
-              >
-                Run mock demo
+              {hasRealProviders && (
+                <FormSection number={3} title="Intelligence" className="md:col-span-2">
+                  <div className="space-y-8">
+                    <ModelSelectionFields
+                      register={register}
+                      selectedProvider={selectedProvider}
+                      realProvidersOnly={realProvidersOnly}
+                    />
+
+                    {settings.showAdvancedModelSettings && (
+                      <div className="border-surface-border animate-in fade-in slide-in-from-top-2 mt-6 border-t pt-6 duration-300">
+                        <div className="mb-4">
+                          <h4 className="text-council-active text-xs font-bold tracking-widest uppercase">
+                            Manual Model Overrides
+                          </h4>
+                          <p className="text-micro text-text-muted mt-1">
+                            Configure specific models for each stage of the generation pipeline.
+                          </p>
+                        </div>
+                        <AgentModelSelectionFields
+                          register={register}
+                          providers={realProvidersOnly}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </FormSection>
+              )}
+
+              {noKeys && (
+                <div className="border-warning/20 bg-warning/5 text-warning flex items-center gap-3 rounded-xl border p-4 text-sm font-medium italic md:col-span-2">
+                  <div className={`bg-warning h-2 w-2 animate-pulse rounded-full`} />
+                  No real AI providers configured. Using simulated engine.
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-4 pt-4">
+              <Button type="submit" disabled={isLoading || noKeys} className="w-full">
+                {isLoading ? 'Consulting Council...' : 'Generate Lesson'}
               </Button>
-            )}
-          </div>
-        </form>
-      </Card>
-    </motion.div>
+              {showMockButton && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={runMockDemo}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  Run mock demo
+                </Button>
+              )}
+            </div>
+          </form>
+        </Card>
+      </m.div>
+    </LazyMotion>
   );
 }

@@ -6,7 +6,6 @@ export const jobSchema = z.object({
   provider: z.string().optional(),
   model_id: z.string().optional(),
   analyst_model: z.string().optional(),
-  validator_model: z.string().optional(),
   architect_model: z.string().optional(),
   animator_model: z.string().optional(),
 });

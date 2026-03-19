@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import * as m from 'motion/react-m';
 import { CurriculumPlan } from '@/lib/api/client';
 import { ArtifactCard, ArtifactPlaceholder, ArtifactAction } from './ArtifactCommon';
 
@@ -15,19 +15,19 @@ export function CurriculumPlanView({ plan, status, onViewFull }: CurriculumPlanV
     return (
       <ArtifactPlaceholder
         status={isQueued ? 'queued' : 'loading'}
-        message={isQueued ? 'Queued' : 'Pedagogy Design'}
+        message={isQueued ? 'Queued' : 'Curriculum planning'}
         submessage={
-          isQueued ? 'Awaiting council initialization...' : 'Architecting teaching steps...'
+          isQueued ? 'Awaiting council initialization...' : 'Drafting curriculum steps...'
         }
       />
     );
   }
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5"
+      className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5"
     >
       {plan.teaching_steps.slice(0, 10).map((step, idx) => (
         <ArtifactCard
@@ -49,12 +49,12 @@ export function CurriculumPlanView({ plan, status, onViewFull }: CurriculumPlanV
         </ArtifactCard>
       ))}
       {plan.teaching_steps.length > 10 && (
-        <div className="mt-4 sm:col-span-2 lg:col-span-5">
+        <div className="mt-4 md:col-span-2 lg:col-span-5">
           <ArtifactAction onClick={onViewFull}>
-            Explore All {plan.teaching_steps.length} Pedagogical Steps
+            Explore all {plan.teaching_steps.length} curriculum steps
           </ArtifactAction>
         </div>
       )}
-    </motion.div>
+    </m.div>
   );
 }

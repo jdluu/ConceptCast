@@ -19,14 +19,14 @@ interface FilterSelectProps {
  */
 export function FilterSelect({ icon, value, onChange, options }: FilterSelectProps) {
   return (
-    <div className="group relative">
+    <div className="group relative w-full">
       <div className="text-text-muted group-hover:text-council-active pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 transition-colors">
         {icon}
       </div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-surface-border bg-surface text-foreground hover:border-council-active/30 focus:border-council-active focus:ring-council-active/50 cursor-pointer appearance-none rounded-2xl border py-3 pr-10 pl-10 text-sm font-semibold shadow-sm transition-all outline-none focus:ring-2"
+        className="border-surface-border bg-surface text-foreground hover:border-council-active/30 focus:border-council-active focus:ring-council-active/50 w-full cursor-pointer appearance-none rounded-2xl border py-3 pr-10 pl-10 text-sm font-semibold shadow-sm transition-all outline-none focus:ring-2"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

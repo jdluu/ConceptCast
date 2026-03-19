@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import * as m from 'motion/react-m';
 import { Video, Film } from 'lucide-react';
 import { Storyboard } from '@/lib/api/client';
 import { ArtifactCard, ArtifactPlaceholder, ArtifactBadge } from './ArtifactCommon';
@@ -17,14 +17,14 @@ export function StoryboardView({ storyboard, status }: StoryboardViewProps) {
         status={isQueued ? 'queued' : 'loading'}
         message={isQueued ? 'Visual Sequence Pending' : 'Visual Deliberation'}
         submessage={
-          isQueued ? 'Waiting for pedagogical structure...' : 'Designing cinematic sequences...'
+          isQueued ? 'Waiting for curriculum plan...' : 'Designing cinematic sequences...'
         }
       />
     );
   }
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5"
@@ -68,6 +68,6 @@ export function StoryboardView({ storyboard, status }: StoryboardViewProps) {
           </div>
         </ArtifactCard>
       ))}
-    </motion.div>
+    </m.div>
   );
 }

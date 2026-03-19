@@ -13,6 +13,30 @@ const Label = ({ htmlFor, children }: { htmlFor: string; children: React.ReactNo
   </label>
 );
 
+const AgentSelect = ({
+  id,
+  label,
+  register,
+  uniqueModels,
+}: {
+  id: keyof JobFormData;
+  label: string;
+  register: UseFormRegister<JobFormData>;
+  uniqueModels: string[];
+}) => (
+  <div className="space-y-2">
+    <Label htmlFor={id as string}>{label}</Label>
+    <select {...register(id as any)} id={id as string} className={selectStyles}>
+      <option value="">Default (Global Model)</option>
+      {uniqueModels.map((model) => (
+        <option key={model} value={model}>
+          {model}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
 /**
  * Form field for selecting the target audience knowledge level.
  */
@@ -20,7 +44,6 @@ export const AudienceField = ({ register }: { register: UseFormRegister<JobFormD
   <div className="space-y-2">
     <Label htmlFor="target_audience">Target Audience</Label>
     <select {...register('target_audience')} id="target_audience" className={selectStyles}>
-      <option value="5-year-old">5-year-old</option>
       <option value="High School Student">High School Student</option>
       <option value="University Student">University Student</option>
       <option value="Expert">Expert</option>
@@ -91,26 +114,26 @@ export const AgentModelSelectionFields = ({
   const allModels = providers.flatMap((p) => p.models);
   const uniqueModels = Array.from(new Set(allModels)).toSorted();
 
-  const AgentSelect = ({ id, label }: { id: keyof JobFormData; label: string }) => (
-    <div className="space-y-2">
-      <Label htmlFor={id as string}>{label}</Label>
-      <select {...register(id as any)} id={id as string} className={selectStyles}>
-        <option value="">Default (Global Model)</option>
-        {uniqueModels.map((model) => (
-          <option key={model} value={model}>
-            {model}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-      <AgentSelect id="analyst_model" label="Analyst Agent" />
-      <AgentSelect id="validator_model" label="Validator Agent" />
-      <AgentSelect id="architect_model" label="Architect Agent" />
-      <AgentSelect id="animator_model" label="Animator Agent" />
+      <AgentSelect
+        id="analyst_model"
+        label="Analyst Agent"
+        register={register}
+        uniqueModels={uniqueModels}
+      />
+      <AgentSelect
+        id="architect_model"
+        label="Architect Agent"
+        register={register}
+        uniqueModels={uniqueModels}
+      />
+      <AgentSelect
+        id="animator_model"
+        label="Animator Agent"
+        register={register}
+        uniqueModels={uniqueModels}
+      />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'motion/react';
+import * as m from 'motion/react-m';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -93,7 +94,7 @@ export function VideoPlayer({
       {/* Overlay: Loading State */}
       <AnimatePresence>
         {isLoading && src && !error && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -103,14 +104,14 @@ export function VideoPlayer({
             <p className="text-tiny text-text-muted animate-pulse font-bold tracking-[0.2em] uppercase">
               Loading Stream...
             </p>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 
       {/* Overlay: Error State */}
       <AnimatePresence>
         {error && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -130,7 +131,7 @@ export function VideoPlayer({
               <RefreshCw className="h-4 w-4" />
               Retry Connection
             </button>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 

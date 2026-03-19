@@ -183,15 +183,13 @@ export function SettingsPage() {
           </div>
         </section>
 
-        {/* AI Orchestration */}
+        {/* Generation */}
         <section>
           <header className="mb-4">
             <h2 className="text-tiny text-text-muted font-bold tracking-[0.2em] uppercase">
-              AI Orchestration
+              Generation
             </h2>
-            <p className="text-text-muted mt-1 text-sm">
-              Configure how the agent council operates.
-            </p>
+            <p className="text-text-muted mt-1 text-sm">Configure how the agent council runs.</p>
           </header>
 
           <div className="border-surface-border bg-surface overflow-hidden rounded-2xl border backdrop-blur-sm">

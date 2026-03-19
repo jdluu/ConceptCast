@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import * as m from 'motion/react-m';
 import { cn } from '@/lib/utils';
 
 /**
@@ -15,7 +15,7 @@ export function ArtifactCard({
   delay?: number;
 }) {
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
@@ -25,7 +25,7 @@ export function ArtifactCard({
       )}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 

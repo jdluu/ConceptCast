@@ -360,7 +360,7 @@ export interface components {
       topic: string;
       /**
        * Target Audience
-       * @default Undergraduate CS
+       * @default General Audience
        */
       target_audience: string;
       /** Provider */
@@ -374,8 +374,6 @@ export interface components {
       hitl_enabled: boolean;
       /** Analyst Model */
       analyst_model?: string | null;
-      /** Validator Model */
-      validator_model?: string | null;
       /** Architect Model */
       architect_model?: string | null;
       /** Animator Model */
@@ -417,7 +415,6 @@ export interface components {
        */
       status:
         | 'planning'
-        | 'validating'
         | 'architecting'
         | 'animating'
         | 'rendering'
@@ -429,7 +426,6 @@ export interface components {
       /** Current Step */
       current_step?: string | null;
       plan?: components['schemas']['CurriculumPlan'] | null;
-      validation?: components['schemas']['ValidationResult'] | null;
       storyboard?: components['schemas']['Storyboard'] | null;
       /** Manim Code */
       manim_code?: string | null;
@@ -454,8 +450,6 @@ export interface components {
       model_id?: string | null;
       /** Analyst Model */
       analyst_model?: string | null;
-      /** Validator Model */
-      validator_model?: string | null;
       /** Architect Model */
       architect_model?: string | null;
       /** Animator Model */
@@ -489,6 +483,12 @@ export interface components {
        * @default 0
        */
       render_progress: number;
+      /** Failure Stage */
+      failure_stage?: string | null;
+      /** Failure Type */
+      failure_type?: string | null;
+      /** Failure Summary */
+      failure_summary?: string | null;
     };
     /**
      * JobSummary
@@ -522,8 +522,6 @@ export interface components {
       model_id?: string | null;
       /** Analyst Model */
       analyst_model?: string | null;
-      /** Validator Model */
-      validator_model?: string | null;
       /** Architect Model */
       architect_model?: string | null;
       /** Animator Model */
@@ -554,6 +552,12 @@ export interface components {
        * @default 0
        */
       render_progress: number;
+      /** Failure Stage */
+      failure_stage?: string | null;
+      /** Failure Type */
+      failure_type?: string | null;
+      /** Failure Summary */
+      failure_summary?: string | null;
     };
     /**
      * ProviderModels
@@ -685,44 +689,6 @@ export interface components {
       ctx?: Record<string, never>;
     };
     /**
-     * ValidationResult
-     * @description Pedagogical audit results for a curriculum plan.
-     *
-     *     Attributes:
-     *         is_valid: Whether the plan passes pedagogical standards.
-     *         feedback: Constructive feedback or validation errors.
-     *         suggestions: List of actionable improvement suggestions.
-     *         metadata: Additional diagnostic information.
-     *         scores: Qualitative scores for different aspects.
-     *         issues: Specific issues identified during the audit.
-     */
-    ValidationResult: {
-      /**
-       * Is Valid
-       * @description Whether the plan passes pedagogical standards
-       */
-      is_valid: boolean;
-      /**
-       * Feedback
-       * @description Constructive feedback or validation errors
-       */
-      feedback: string;
-      /** Suggestions */
-      suggestions?: string[];
-      /** Metadata */
-      metadata?: {
-        [key: string]: unknown;
-      };
-      /** Scores */
-      scores?: {
-        [key: string]: unknown;
-      };
-      /** Issues */
-      issues?: {
-        [key: string]: string;
-      }[];
-    };
-    /**
      * VisualObject
      * @description A declaratively defined entity in a Manim animation.
      *
@@ -732,6 +698,7 @@ export interface components {
      *         position: Relative position constant or coordinate.
      *         color: Visual color constant or hex string.
      *         label: Text label associated with the object.
+     *         parameters: Optional dictionary of specific Manim parameters (e.g., {'radius': 1.0}).
      */
     VisualObject: {
       /**
@@ -759,6 +726,13 @@ export interface components {
        * @description Associated text label
        */
       label?: string | null;
+      /**
+       * Parameters
+       * @description Detailed Manim parameters
+       */
+      parameters?: {
+        [key: string]: unknown;
+      };
     };
   };
   responses: never;

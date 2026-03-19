@@ -49,7 +49,6 @@
     --terminal-text: #e5e5e5;
 
     --agent-planning: #60a5fa;
-    --agent-validating: #c084fc;
     --agent-architecting: #3b82f6;
     --agent-animating: #22d3ee;
     --agent-rendering: #facc15;
@@ -79,7 +78,6 @@
     --terminal-text: #d4d4d4;
 
     --agent-planning: #60a5fa;
-    --agent-validating: #c084fc;
     --agent-architecting: #60a5fa;
     --agent-animating: #22d3ee;
     --agent-rendering: #facc15;
@@ -124,7 +122,6 @@
   --color-terminal-bg: var(--terminal-bg);
   --color-terminal-text: var(--terminal-text);
   --color-agent-planning: var(--agent-planning);
-  --color-agent-validating: var(--agent-validating);
   --color-agent-architecting: var(--agent-architecting);
   --color-agent-animating: var(--agent-animating);
   --color-agent-rendering: var(--agent-rendering);

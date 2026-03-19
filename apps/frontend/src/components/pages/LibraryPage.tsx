@@ -73,7 +73,7 @@ export function LibraryPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-6 transition-colors duration-300">
+    <div className="mx-auto max-w-7xl px-4 transition-colors duration-300 sm:px-6">
       <header className="mb-12">
         <h1 className="text-foreground mb-2 text-4xl font-bold tracking-tight">Library</h1>
         <p className="text-text-muted">
@@ -81,7 +81,7 @@ export function LibraryPage() {
         </p>
       </header>
 
-      <div className="mb-10 flex flex-col items-center gap-4 md:flex-row">
+      <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center">
         <div className="group relative w-full flex-1">
           <Search className="text-text-muted group-focus-within:text-council-active absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 transition-colors" />
           <input
@@ -92,7 +92,7 @@ export function LibraryPage() {
             className="border-surface-border bg-surface text-foreground placeholder:text-text-muted focus:border-council-active/50 focus:ring-council-active/50 w-full rounded-2xl border py-3 pr-4 pl-12 text-sm shadow-sm transition-all outline-none focus:ring-2"
           />
         </div>
-        <div className="flex w-full gap-3 md:w-auto">
+        <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
           <FilterSelect
             icon={<Calendar className="h-4 w-4" />}
             value={sortBy}

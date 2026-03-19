@@ -1,27 +1,17 @@
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { JobStatus, CurriculumPlan, Storyboard } from '@/lib/api/client';
-import { motion } from 'framer-motion';
+import { LazyMotion, domAnimation } from 'motion/react';
+import * as m from 'motion/react-m';
 import { CouncilDeliberation } from '@/components/orchestration/Deliberation';
 import { CurriculumPlanView } from '@/components/orchestration/artifacts/CurriculumPlanView';
 import { StoryboardView } from '@/components/orchestration/artifacts/StoryboardView';
-import { AnalystVerdict } from '@/components/orchestration/AnalystVerdict';
 import { LessonArtifactModal } from '@/components/orchestration/LessonModal';
 import { HitlReviewPanel } from '@/components/orchestration/HitlReviewPanel';
-import {
-  Search,
-  CheckCircle,
-  Layout,
-  Play,
-  Activity,
-  Sparkles,
-  Terminal,
-  ShieldCheck,
-} from 'lucide-react';
+import { Search, CheckCircle, Layout, Play, Activity, Sparkles, Terminal } from 'lucide-react';
 
 const PIPELINE_STEPS = [
-  { id: 'planning', agent: 'Pedagogue', label: 'Plan' },
-  { id: 'validating', agent: 'Validator', label: 'Audit' },
+  { id: 'planning', agent: 'Planner', label: 'Plan' },
   { id: 'architecting', agent: 'Architect', label: 'Design' },
   { id: 'animating', agent: 'Animator', label: 'Script' },
   { id: 'rendering', agent: 'Manim', label: 'Render' },
@@ -44,7 +34,6 @@ function PipelineStepCard({
   const Icon =
     {
       planning: Search,
-      validating: CheckCircle,
       architecting: Layout,
       animating: Play,
       rendering: Activity,
@@ -116,7 +105,7 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
         <div className="border-destructive/20 bg-destructive/10 text-destructive mb-6 flex h-16 w-16 items-center justify-center rounded-full border">
           <Activity className="h-8 w-8" />
         </div>
-        <h2 className="text-foreground mb-2 text-2xl font-bold">Orchestration Halted</h2>
+        <h2 className="text-foreground mb-2 text-2xl font-bold">Generation Halted</h2>
         <p className="text-text-muted mb-8 max-w-md">
           {job.error || errorMsg || 'The council encountered an unexpected synchronization error.'}
         </p>
@@ -132,7 +121,7 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
 
   return (
     <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
-      {/* 1. Agent Council Pipeline (Header) */}
+      {/* 1. Generation Pipeline (Header) */}
       <section className="space-y-6">
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
@@ -142,7 +131,7 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
             <div>
               <h1 className="text-foreground text-xl font-bold tracking-tight">Agent Council</h1>
               <p className="text-tiny text-text-muted font-bold tracking-[0.2em] uppercase opacity-60">
-                Orchestration Pipeline
+                Generation Pipeline
               </p>
             </div>
           </div>
@@ -170,7 +159,6 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
             const statusMessage = (() => {
               if (isPast) {
                 if (step.id === 'planning') return 'Structure finalized';
-                if (step.id === 'validating') return 'Quality verified';
                 if (step.id === 'architecting') return 'Scenes mapped';
                 if (step.id === 'animating') return 'Script ready';
                 return 'Complete';
@@ -234,29 +222,31 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
                     strokeWidth="2"
                     className="text-surface-border"
                   />
-                  <motion.circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeDasharray="283"
-                    animate={{ strokeDashoffset: 283 - (283 * (job.render_progress || 0)) / 100 }}
-                    className="text-council-active"
-                  />
+                  <LazyMotion features={domAnimation}>
+                    <m.circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeDasharray="283"
+                      animate={{ strokeDashoffset: 283 - (283 * (job.render_progress || 0)) / 100 }}
+                      className="text-council-active"
+                    />
+                  </LazyMotion>
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-foreground font-mono text-5xl font-bold tracking-tighter">
                     {Math.round(job.render_progress || 0)}%
                   </span>
                   <span className="text-micro text-text-muted font-bold tracking-[0.2em] uppercase">
-                    Frames Synced
+                    Frames rendered
                   </span>
                 </div>
               </div>
               <h2 className="text-foreground mb-3 text-2xl font-bold tracking-tight">
-                Materializing Mathematics
+                Rendering video
               </h2>
               <p className="text-text-muted text-sm leading-relaxed">
                 The Animator is executing Manim code to generate high-fidelity educational assets at
@@ -269,7 +259,7 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
 
       {/* 4. Artifact Previews (Primary View) - Stacked Rows */}
       <div className="flex flex-col gap-12">
-        {/* Row A: Pedagogical Blueprint */}
+        {/* Row A: Curriculum Plan */}
         <section className="animate-in fade-in slide-in-from-bottom-2 duration-500">
           <div className="mb-6 flex items-center justify-between px-2">
             <div className="flex items-center gap-3">
@@ -277,7 +267,7 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
                 <Search className="h-4 w-4" />
               </div>
               <h3 className="text-foreground text-sm font-bold tracking-[0.15em] uppercase">
-                Pedagogical Blueprint
+                Curriculum Plan
               </h3>
             </div>
             <button
@@ -299,19 +289,6 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
               status={job.status}
               onViewFull={() => setIsModalOpen(true)}
             />
-
-            {/* Embedded Verdict when available */}
-            {job.validation && (
-              <div className="animate-in fade-in slide-in-from-top-2 mt-8 duration-500">
-                <div className="mb-4 flex items-center gap-3 px-2">
-                  <ShieldCheck className="text-success h-4 w-4" />
-                  <span className="text-tiny text-success font-bold tracking-widest uppercase">
-                    Pedagogical Audit Verdict
-                  </span>
-                </div>
-                <AnalystVerdict validation={job.validation} />
-              </div>
-            )}
           </div>
         </section>
 
@@ -356,7 +333,7 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
               </div>
               <div className="flex items-center gap-3">
                 <h3 className="text-foreground text-sm font-bold tracking-[0.15em] uppercase">
-                  Council Intelligence Stream
+                  Council Stream
                 </h3>
                 <div className="bg-success/10 ring-success/20 flex items-center gap-1.5 rounded-full px-2 py-0.5 ring-1">
                   <div className="bg-success shadow-glow-success h-1.5 w-1.5 animate-pulse rounded-full" />

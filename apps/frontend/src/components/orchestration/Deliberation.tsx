@@ -83,9 +83,9 @@ export function CouncilDeliberation({ thoughts }: { thoughts: Thought[] }) {
             Waiting for council transmission...
           </div>
         ) : (
-          thoughtBlocks.map((block, i) => (
+          thoughtBlocks.map((block) => (
             <div
-              key={i}
+              key={`${block.agent}:${block.phase}:${block.startIndex}`}
               className="group hover:border-council-active/30 flex items-start gap-4 border-l-2 border-white/5 py-1 pl-4 transition-colors"
             >
               <span className="text-terminal-text/20 mt-0.5 shrink-0 text-[10px]">
@@ -96,7 +96,8 @@ export function CouncilDeliberation({ thoughts }: { thoughts: Thought[] }) {
                   <span
                     className={cn(
                       'text-[10px] font-bold tracking-wider',
-                      block.agent.toLowerCase().includes('pedagogue') ||
+                      block.agent.toLowerCase().includes('planner') ||
+                        block.agent.toLowerCase().includes('pedagogue') ||
                         block.agent.toLowerCase().includes('analyst')
                         ? 'text-agent-planning'
                         : block.agent.toLowerCase().includes('critic') ||

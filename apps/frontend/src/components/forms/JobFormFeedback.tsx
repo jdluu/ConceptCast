@@ -1,4 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'motion/react';
+import * as m from 'motion/react-m';
 
 /**
  * A full-screen loading state displayed while the job is being submitted.
@@ -6,26 +7,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 export const LoadingOverlay = ({ isLoading }: { isLoading: boolean }) => (
   <AnimatePresence>
     {isLoading && (
-      <motion.div
+      <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="bg-surface/90 absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 backdrop-blur-md"
       >
-        <motion.div
+        <m.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           className="border-council-active shadow-council-active/10 h-12 w-12 rounded-full border-4 border-t-transparent shadow-lg"
         />
-        <motion.p
+        <m.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-tiny text-foreground font-bold tracking-[0.2em] uppercase"
           aria-live="polite"
         >
           Summoning the Council...
-        </motion.p>
-      </motion.div>
+        </m.p>
+      </m.div>
     )}
   </AnimatePresence>
 );
@@ -40,7 +41,7 @@ export const NoKeysAlert = ({
   developerMode: boolean;
   onClose: () => void;
 }) => (
-  <motion.div
+  <m.div
     initial={{ opacity: 0, height: 0 }}
     animate={{ opacity: 1, height: 'auto' }}
     className="border-warning/20 bg-warning/10 text-warning-foreground dark:text-warning mb-8 flex items-start justify-between gap-4 rounded-xl border p-4 text-sm"
@@ -71,5 +72,5 @@ export const NoKeysAlert = ({
         />
       </svg>
     </button>
-  </motion.div>
+  </m.div>
 );

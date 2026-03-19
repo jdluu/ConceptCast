@@ -202,7 +202,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </nav>
 
       {/* Main content */}
-      <main id="main-content" className="min-h-screen p-8 transition-colors duration-300 lg:ml-64">
+      <main
+        id="main-content"
+        className="min-h-screen p-4 pl-16 transition-colors duration-300 sm:p-6 sm:pl-20 lg:ml-64 lg:p-8"
+      >
         {children}
       </main>
     </div>

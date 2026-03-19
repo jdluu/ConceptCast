@@ -3,7 +3,6 @@ import { StatusIcon } from '@/components/ui/StatusIcon';
 
 const statusLabels: Record<string, string> = {
   planning: 'Planning',
-  validating: 'Validating',
   architecting: 'Architecting',
   animating: 'Animating',
   rendering: 'Rendering',
@@ -16,7 +15,6 @@ const statusLabels: Record<string, string> = {
 
 const statusColors: Record<string, string> = {
   planning: 'bg-agent-planning/10 text-agent-planning border-agent-planning/20',
-  validating: 'bg-agent-validating/10 text-agent-validating border-agent-validating/20',
   architecting: 'bg-agent-architecting/10 text-agent-architecting border-agent-architecting/20',
   animating: 'bg-agent-animating/10 text-agent-animating border-agent-animating/20',
   rendering: 'bg-agent-rendering/10 text-agent-rendering border-agent-rendering/20',

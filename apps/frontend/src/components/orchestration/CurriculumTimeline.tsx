@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import * as m from 'motion/react-m';
 import { Lightbulb } from 'lucide-react';
 import type { CurriculumPlan } from '@/lib/api/client';
 import { ArtifactCard } from './artifacts/ArtifactCommon';
@@ -15,7 +15,7 @@ export function CurriculumTimeline({ plan }: CurriculumTimelineProps) {
   return (
     <div className="before:border-council-active/30 before:from-council-active/50 before:via-council-active/20 relative space-y-8 pl-6 before:absolute before:top-2 before:bottom-2 before:left-3 before:w-px before:border-l before:border-dashed before:bg-gradient-to-b before:to-transparent">
       {plan.teaching_steps.map((step, idx) => (
-        <motion.div
+        <m.div
           key={step.step_id}
           initial={{ opacity: 0, x: -10 }}
           whileInView={{ opacity: 1, x: 0 }}
@@ -39,7 +39,7 @@ export function CurriculumTimeline({ plan }: CurriculumTimelineProps) {
               {step.visual_metaphor}
             </p>
           </ArtifactCard>
-        </motion.div>
+        </m.div>
       ))}
     </div>
   );

@@ -1,16 +1,15 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
-import { getJobStatus, JobStatus, ThoughtLog, CurriculumPlan, Storyboard } from '@/lib/api/client';
+import { LazyMotion, domAnimation } from 'motion/react';
+import * as m from 'motion/react-m';
+import { JobStatus, ThoughtLog, CurriculumPlan, Storyboard } from '@/lib/api/client';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { VideoPlayer } from '@/components/ui/VideoPlayer';
 import { CurriculumTimeline } from '@/components/orchestration/CurriculumTimeline';
 import { ArtifactCard, ArtifactBadge } from '@/components/orchestration/artifacts/ArtifactCommon';
-import { AnalystVerdict } from '@/components/orchestration/AnalystVerdict';
 import { format } from 'date-fns';
 import { formatDuration } from '@/lib/utils/durationUtils';
-import { isJobInProgress } from '@/lib/utils/jobUtils';
 import { Loader2 } from 'lucide-react';
+import { useJobEvents } from '@/lib/hooks/useJobEvents';
 
 interface JobDetailPanelProps {
   jobId: string;
@@ -19,22 +18,18 @@ interface JobDetailPanelProps {
 
 /**
  * Detailed view of a job's artifacts and metadata.
- * Self-updates when the job is in progress.
+ * Uses SSE via useJobEvents for real-time updates.
  */
-export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
-  const { data: job, isLoading } = useQuery({
-    queryKey: ['job', jobId],
-    queryFn: () => getJobStatus(jobId),
-    initialData,
-    refetchInterval: (query) =>
-      query.state.data && isJobInProgress(query.state.data) ? 3000 : false,
-  });
+export function JobDetailPanel({ jobId }: JobDetailPanelProps) {
+  const { jobStatus: job, connectionState } = useJobEvents(jobId);
 
-  if (isLoading || !job) {
+  if (!job) {
     return (
       <div className="bg-surface/50 flex flex-col items-center justify-center p-12 text-center">
         <Loader2 className="text-council-active mb-2 h-6 w-6 animate-spin" />
-        <span className="text-text-muted text-sm">Fetching job details...</span>
+        <span className="text-text-muted text-sm">
+          {connectionState === 'connecting' ? 'Connecting to stream...' : 'Fetching job details...'}
+        </span>
       </div>
     );
   }
@@ -55,7 +50,7 @@ export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
               {job.status === 'rendering' && (
                 <div className="mr-2 flex items-center gap-2">
                   <div className="bg-surface-border h-1.5 w-24 overflow-hidden rounded-full">
-                    <motion.div
+                    <m.div
                       initial={{ width: 0 }}
                       animate={{ width: `${job.render_progress}%` }}
                       className="bg-council-active h-full"
@@ -126,20 +121,11 @@ export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
               },
               {
                 id: 'plan',
-                label: 'Pedagogy',
+                label: 'Curriculum',
                 content: job.plan ? (
                   <CurriculumTimeline plan={job.plan as unknown as CurriculumPlan} />
                 ) : (
                   <NoArtifact title="Curriculum Plan" />
-                ),
-              },
-              {
-                id: 'validation',
-                label: 'Verdict',
-                content: job.validation ? (
-                  <AnalystVerdict validation={job.validation} />
-                ) : (
-                  <NoArtifact title="Pedagogical Validation" />
                 ),
               },
               {
@@ -154,7 +140,7 @@ export function JobDetailPanel({ jobId, initialData }: JobDetailPanelProps) {
               { id: 'code', label: 'Script', content: <CodeView code={job.manim_code} /> },
               {
                 id: 'thoughts',
-                label: 'Log',
+                label: 'Stream',
                 content: <ThoughtsView thoughts={job.streamed_thoughts} />,
               },
             ]}
@@ -198,9 +184,9 @@ function StoryboardView({ storyboard }: { storyboard: Storyboard }) {
             <div className="border-surface-border/50 mt-3 border-t pt-2">
               <ArtifactBadge variant="active">Visual Elements</ArtifactBadge>
               <div className="mt-1 flex flex-wrap gap-1.5">
-                {scene.objects.map((v, i) => (
+                {scene.objects.map((v) => (
                   <span
-                    key={i}
+                    key={`${scene.scene_id}:${v.name}`}
                     className="border-council-active/10 bg-council-active/5 text-tiny text-council-active rounded-md border px-2 py-0.5 font-medium"
                   >
                     {v.name}
@@ -285,8 +271,11 @@ function ThoughtsView({ thoughts }: { thoughts: ThoughtLog[] | undefined }) {
       {groupedThoughts.length === 0 ? (
         <p className="text-text-muted py-8 text-center text-sm italic">No thoughts recorded</p>
       ) : (
-        groupedThoughts.map((t, i) => (
-          <div key={i} className="border-council-active/30 border-l-2 py-1 pl-4">
+        groupedThoughts.map((t) => (
+          <div
+            key={`${t.agent}:${t.phase}:${t.content.slice(0, 40)}`}
+            className="border-council-active/30 border-l-2 py-1 pl-4"
+          >
             <div className="mb-1 flex items-center gap-2">
               <span className="bg-council-active/10 text-tiny text-council-active rounded px-2 py-0.5 font-bold tracking-tighter uppercase">
                 {t.agent}
@@ -312,22 +301,26 @@ function TabsSection({
   return (
     <div className="flex h-full flex-col">
       <div className="border-surface-border scrollbar-none mb-6 flex gap-1 overflow-x-auto border-b">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`-mb-px shrink-0 border-b-2 px-3 py-3 text-[10px] font-bold tracking-widest uppercase transition-all ${
-              activeTab === tab.id
-                ? 'border-council-active bg-council-active/5 text-council-active'
-                : 'text-text-muted hover:text-foreground hover:bg-surface-border/10 border-transparent'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        <LazyMotion features={domAnimation}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`-mb-px shrink-0 border-b-2 px-3 py-3 text-[10px] font-bold tracking-widest uppercase transition-all ${
+                activeTab === tab.id
+                  ? 'border-council-active bg-council-active/5 text-council-active'
+                  : 'text-text-muted hover:text-foreground hover:bg-surface-border/10 border-transparent'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </LazyMotion>
       </div>
       <div className="animate-in fade-in slide-in-from-bottom-2 flex-1 duration-300">
-        {tabs.find((t) => t.id === activeTab)?.content}
+        <LazyMotion features={domAnimation}>
+          {tabs.find((t) => t.id === activeTab)?.content}
+        </LazyMotion>
       </div>
     </div>
   );

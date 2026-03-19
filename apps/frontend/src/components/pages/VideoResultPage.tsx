@@ -1,8 +1,7 @@
-import { useRef, useEffect } from 'react';
-import { ShieldCheck, Lightbulb, Video, Code, Clock, PlayCircle, Plus } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
+import { Lightbulb, Video, Code, Clock, PlayCircle, Plus } from 'lucide-react';
 import type { CurriculumPlan, Storyboard } from '@/lib/api/client';
 import { CollapsiblePanel } from '@/components/ui/CollapsiblePanel';
-import { AnalystVerdict } from '@/components/orchestration/AnalystVerdict';
 import { CurriculumTimeline } from '@/components/orchestration/CurriculumTimeline';
 import { SceneGallery } from '@/components/orchestration/SceneGallery';
 import { CodeWorkspace } from '@/components/orchestration/CodeWorkspace';
@@ -14,7 +13,6 @@ interface VideoResultPageProps {
   conceptTitle: string;
   plan: CurriculumPlan;
   storyboard: Storyboard;
-  validation?: any;
   manimCode?: string | null;
   durationSeconds?: number | null;
   videoMetadata?: any | null;
@@ -29,13 +27,13 @@ export function VideoResultPage({
   conceptTitle,
   plan,
   storyboard,
-  validation,
   manimCode,
   durationSeconds,
   videoMetadata,
   onReset,
 }: VideoResultPageProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [technicalOpen, setTechnicalOpen] = useState(false);
 
   useEffect(() => {
     if (videoUrl && videoRef.current) videoRef.current.load();
@@ -108,12 +106,6 @@ export function VideoResultPage({
 
       {/* Artifact Panels */}
       <div className="grid grid-cols-1 gap-6 pb-20 lg:grid-cols-2">
-        {validation && (
-          <CollapsiblePanel title="Council Verdict" icon={ShieldCheck}>
-            <AnalystVerdict validation={validation} />
-          </CollapsiblePanel>
-        )}
-
         <CollapsiblePanel title="Curriculum Timeline" icon={Lightbulb}>
           <CurriculumTimeline plan={plan} />
         </CollapsiblePanel>
@@ -123,7 +115,12 @@ export function VideoResultPage({
         </CollapsiblePanel>
 
         {manimCode && (
-          <CollapsiblePanel title="Technical Script" icon={Code} defaultOpen={false}>
+          <CollapsiblePanel
+            title="Technical Script"
+            icon={Code}
+            open={technicalOpen}
+            onOpenChange={setTechnicalOpen}
+          >
             <CodeWorkspace code={manimCode} />
           </CollapsiblePanel>
         )}

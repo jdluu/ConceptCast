@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
 import { Toaster, toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { JobCreationForm } from '@/components/forms/JobCreationForm';
+import { ChatLaunchForm } from '@/components/forms/ChatLaunchForm';
 import { GeneratingLessonView } from '@/components/orchestration/GeneratingLessonView';
 import { LibraryPage } from '@/components/pages/LibraryPage';
 import { SettingsPage } from '@/components/pages/SettingsPage';
 import { JobsPage } from '@/components/pages/JobsPage';
 import { VideoResultPage } from '@/components/pages/VideoResultPage';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { LazyMotion, domAnimation, AnimatePresence, useReducedMotion } from 'motion/react';
+import * as m from 'motion/react-m';
 import { CurriculumPlan, Storyboard } from '@/lib/api/client';
 import { useJobEvents } from '@/lib/hooks/useJobEvents';
 import { useJobStore, selectCurrentJob, selectJobActions } from '@/lib/store/useJobStore';
@@ -51,6 +52,51 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
 /**
  * AppContent orchestrates the global state and view coordination.
  */
+function MainContent({
+  job,
+  connectionState,
+  streamError,
+  resetJob,
+  locationPathname,
+}: {
+  job: any;
+  connectionState: 'connecting' | 'connected' | 'error' | 'closed';
+  streamError: Error | string | null;
+  resetJob: () => void;
+  locationPathname: string;
+}) {
+  const isAtHome = locationPathname === '/';
+
+  if (job && isJobInProgress(job) && isAtHome) {
+    return (
+      <GeneratingLessonView job={job} streamState={connectionState} streamError={streamError} />
+    );
+  }
+
+  if (job?.status === 'completed' && job.plan && job.storyboard && isAtHome) {
+    const plan = job.plan as unknown as CurriculumPlan;
+    const storyboard = job.storyboard as unknown as Storyboard;
+    return (
+      <VideoResultPage
+        videoUrl={resolveVideoUrl(job.video_url)}
+        conceptTitle={plan.concept_title || 'Concept'}
+        plan={plan}
+        storyboard={storyboard}
+        manimCode={job.manim_code}
+        durationSeconds={job.duration_seconds}
+        videoMetadata={job.video_metadata}
+        onReset={resetJob}
+      />
+    );
+  }
+
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <Outlet />
+    </ErrorBoundary>
+  );
+}
+
 function AppContent() {
   const initialJob = useJobStore(selectCurrentJob);
   const { resetJob } = useJobStore(useShallow(selectJobActions));
@@ -89,54 +135,28 @@ function AppContent() {
     }
   }, [job?.status, job?.error, job?.topic, sendNotification, playSound]);
 
-  const renderMainContent = () => {
-    const isAtHome = location.pathname === '/';
-
-    if (job && isJobInProgress(job) && isAtHome) {
-      return (
-        <GeneratingLessonView job={job} streamState={connectionState} streamError={streamError} />
-      );
-    }
-
-    if (job?.status === 'completed' && job.plan && job.storyboard && isAtHome) {
-      const plan = job.plan as unknown as CurriculumPlan;
-      const storyboard = job.storyboard as unknown as Storyboard;
-      return (
-        <VideoResultPage
-          videoUrl={resolveVideoUrl(job.video_url)}
-          conceptTitle={plan.concept_title || 'Concept'}
-          plan={plan}
-          storyboard={storyboard}
-          validation={job.validation}
-          manimCode={job.manim_code}
-          durationSeconds={job.duration_seconds}
-          videoMetadata={job.video_metadata}
-          onReset={resetJob}
-        />
-      );
-    }
-
-    return (
-      <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <Outlet />
-      </ErrorBoundary>
-    );
-  };
-
   return (
     <>
       <Toaster position="top-right" richColors theme={theme === 'system' ? 'system' : theme} />
       <DashboardLayout>
         <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname + (job?.job_id ?? '')}
-            initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: -10 }}
-            transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-          >
-            {renderMainContent()}
-          </motion.div>
+          <LazyMotion features={domAnimation}>
+            <m.div
+              key={location.pathname + (job?.job_id ?? '')}
+              initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: -10 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+            >
+              <MainContent
+                job={job}
+                connectionState={connectionState}
+                streamError={streamError}
+                resetJob={resetJob}
+                locationPathname={location.pathname}
+              />
+            </m.div>
+          </LazyMotion>
         </AnimatePresence>
       </DashboardLayout>
     </>
@@ -145,14 +165,7 @@ function AppContent() {
 
 // Ensure the JobCreationForm is wrapped nicely
 function IndexView() {
-  return (
-    <div className="mx-auto max-w-3xl">
-      <header className="mb-8">
-        <h1 className="text-foreground text-2xl font-bold tracking-tight">Consult the Council</h1>
-      </header>
-      <JobCreationForm />
-    </div>
-  );
+  return <ChatLaunchForm />;
 }
 
 // Router Configuration

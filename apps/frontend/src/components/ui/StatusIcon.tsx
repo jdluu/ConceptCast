@@ -12,7 +12,6 @@ export function StatusIcon({ status, className = 'w-5 h-5' }: StatusIconProps) {
     case 'pending_retry':
       return <Clock className={`${className} text-text-muted`} />;
     case 'planning':
-    case 'validating':
     case 'architecting':
     case 'rendering':
     case 'reviewing':

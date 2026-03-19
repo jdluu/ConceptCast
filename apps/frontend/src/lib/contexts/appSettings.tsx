@@ -11,14 +11,13 @@ export interface AppSettings {
   showAdvancedModelSettings: boolean;
   agentModels: {
     analyst: string;
-    validator: string;
     architect: string;
     animator: string;
   };
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  defaultAudience: 'Undergraduate CS',
+  defaultAudience: 'General Audience',
   enableNotifications: true,
   enableSound: true,
   reducedMotion: false,
@@ -26,8 +25,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   showAdvancedModelSettings: false,
   agentModels: {
     analyst: 'nvidia/nemotron-3-super-120b-a12b:thinking',
-    validator: 'meta/llama-3.3-70b-versatile',
-    architect: 'minimax/minimax-m2.5',
+    architect: 'minimax/minimax-m2.7',
     animator: 'nvidia/nemotron-3-super-120b-a12b:thinking',
   },
 };

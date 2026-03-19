@@ -32,7 +32,6 @@ export const colors = {
 
   // Agent / Phase Specific
   'agent-planning': 'var(--agent-planning)',
-  'agent-validating': 'var(--agent-validating)',
   'agent-architecting': 'var(--agent-architecting)',
   'agent-animating': 'var(--agent-animating)',
   'agent-rendering': 'var(--agent-rendering)',

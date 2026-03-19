@@ -1,4 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'motion/react';
+import * as m from 'motion/react-m';
 import { Video } from 'lucide-react';
 import { CurriculumPlan, Storyboard } from '@/lib/api/client';
 import {
@@ -28,13 +29,13 @@ export function LessonArtifacts({
   const hasPlan = !!plan;
 
   return (
-    <motion.div
+    <m.div
       layout
       className="border-surface-border bg-surface overflow-hidden rounded-2xl border shadow-xl"
     >
       <div className="border-surface-border bg-surface/50 flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-3">
-          <motion.span
+          <m.span
             animate={{ opacity: [0.4, 1, 0.4] }}
             transition={{ duration: 2, repeat: Infinity }}
             className="bg-council-active h-2 w-2 rounded-full"
@@ -65,7 +66,7 @@ export function LessonArtifacts({
       <div className="custom-scrollbar overflow-y-auto p-4">
         <AnimatePresence mode="wait">
           {hasStoryboard ? (
-            <motion.div
+            <m.div
               key="storyboard"
               initial={{ opacity: 0, scale: 0.99 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -104,9 +105,9 @@ export function LessonArtifacts({
                   </div>
                 </ArtifactCard>
               ))}
-            </motion.div>
+            </m.div>
           ) : hasPlan ? (
-            <motion.div
+            <m.div
               key="plan"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -136,7 +137,7 @@ export function LessonArtifacts({
                   View all {plan!.teaching_steps.length} steps in detail
                 </ArtifactAction>
               )}
-            </motion.div>
+            </m.div>
           ) : (
             <ArtifactPlaceholder
               status="loading"
@@ -146,6 +147,6 @@ export function LessonArtifacts({
           )}
         </AnimatePresence>
       </div>
-    </motion.div>
+    </m.div>
   );
 }

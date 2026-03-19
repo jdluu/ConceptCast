@@ -1,5 +1,6 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'motion/react';
+import * as m from 'motion/react-m';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface CollapsibleSectionProps {
@@ -27,13 +28,13 @@ export function CollapsibleSection({
       >
         <div className="flex items-center gap-3">
           {icon && (
-            <motion.span
+            <m.span
               animate={{ opacity: isCollapsed ? 0.4 : [0.4, 1, 0.4] }}
               transition={{ duration: 2, repeat: Infinity }}
               className="flex h-2 w-2 items-center justify-center"
             >
               {icon}
-            </motion.span>
+            </m.span>
           )}
           <span className="text-mini text-foreground font-bold tracking-widest uppercase">
             {title}
@@ -51,14 +52,14 @@ export function CollapsibleSection({
 
       <AnimatePresence initial={false}>
         {!isCollapsed && (
-          <motion.div
+          <m.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
           >
             <div className="p-4">{children}</div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'motion/react';
+import * as m from 'motion/react-m';
 import { ChevronDown } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 
@@ -10,8 +11,10 @@ interface CollapsiblePanelProps {
   icon?: any;
   /** Panel body content. */
   children: React.ReactNode;
-  /** Whether the panel starts expanded. Defaults to true. */
-  defaultOpen?: boolean;
+  /** Controlled open state (optional). */
+  open?: boolean;
+  /** Controlled state setter (optional). */
+  onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -24,17 +27,20 @@ export function CollapsiblePanel({
   title,
   icon: Icon,
   children,
-  defaultOpen = true,
+  open,
+  onOpenChange,
 }: CollapsiblePanelProps) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(true);
+  const isOpen = open ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
 
   return (
     <Card className="border-surface-border bg-surface overflow-hidden shadow-sm transition-all duration-300">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen(!isOpen)}
         className="group hover:bg-background/50 flex w-full items-center justify-between px-6 py-4 text-left transition-colors"
-        aria-expanded={open}
+        aria-expanded={isOpen}
       >
         <div className="flex items-center gap-3">
           {Icon && <Icon className="text-council-active h-4 w-4" />}
@@ -43,20 +49,20 @@ export function CollapsiblePanel({
           </span>
         </div>
         <ChevronDown
-          className={`text-text-muted h-4 w-4 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
+          className={`text-text-muted h-4 w-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
           aria-hidden
         />
       </button>
       <AnimatePresence>
-        {open && (
-          <motion.div
+        {isOpen && (
+          <m.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
           >
             <div className="px-6 pt-0 pb-6">{children}</div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </Card>

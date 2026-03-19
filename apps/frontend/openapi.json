@@ -221,7 +221,7 @@
             "type": "string",
             "title": "Target Audience",
             "description": "Optional knowledge level",
-            "default": "Undergraduate CS"
+            "default": "General Audience"
           },
           "provider": {
             "anyOf": [{ "type": "string" }, { "type": "null" }],
@@ -250,15 +250,7 @@
           },
           "status": {
             "type": "string",
-            "enum": [
-              "planning",
-              "validating",
-              "architecting",
-              "rendering",
-              "reviewing",
-              "completed",
-              "failed"
-            ],
+            "enum": ["planning", "architecting", "rendering", "reviewing", "completed", "failed"],
             "title": "Status"
           },
           "current_step": {
@@ -267,9 +259,6 @@
           },
           "plan": {
             "anyOf": [{ "$ref": "#/components/schemas/CurriculumPlan" }, { "type": "null" }]
-          },
-          "validation": {
-            "anyOf": [{ "$ref": "#/components/schemas/ValidationResult" }, { "type": "null" }]
           },
           "storyboard": {
             "anyOf": [{ "$ref": "#/components/schemas/Storyboard" }, { "type": "null" }]
@@ -294,7 +283,7 @@
         "type": "object",
         "required": ["job_id", "status"],
         "title": "JobStatus",
-        "description": "Status tracking model for a ConceptCast generation job.\n\nAttributes:\n    job_id (str): Unique UUID for the job.\n    status (str): Current processing status (planning, validating, etc.).\n    current_step (str | None): Detail on the specific sub-step execution.\n    plan (CurriculumPlan | None): The curriculum plan data.\n    validation (ValidationResult | None): Generation validation data.\n    storyboard (Storyboard | None): The storyboard data.\n    manim_code (str | None): The generated Manim Python code.\n    video_url (str | None): URL to the final rendered video.\n    error (str | None): Error message if the job failed.\n    mode (str): Execution mode ('live' for API calls, 'mock' for simulation).\n    streamed_thoughts (list[ThoughtLog]): Live stream of agent thoughts."
+        "description": "Status tracking model for a ConceptCast generation job.\n\nAttributes:\n    job_id (str): Unique UUID for the job.\n    status (str): Current processing status (planning, architecting, etc.).\n    current_step (str | None): Detail on the specific sub-step execution.\n    plan (CurriculumPlan | None): The curriculum plan data.\n    storyboard (Storyboard | None): The storyboard data.\n    manim_code (str | None): The generated Manim Python code.\n    video_url (str | None): URL to the final rendered video.\n    error (str | None): Error message if the job failed.\n    mode (str): Execution mode ('live' for API calls, 'mock' for simulation).\n    streamed_thoughts (list[ThoughtLog]): Live stream of agent thoughts."
       },
       "ProviderModels": {
         "properties": {
