@@ -127,8 +127,10 @@ def map_job_record_to_status(job: JobRecord) -> JobStatus:
         topic=job.topic,
         status=status_literal,
         current_step=job.current_step,
-        plan=CurriculumPlan(**job.plan) if job.plan else None,
-        storyboard=Storyboard(**job.storyboard) if job.storyboard else None,
+        plan=CurriculumPlan.model_validate(job.plan) if job.plan else None,
+        storyboard=Storyboard.model_validate(job.storyboard)
+        if job.storyboard
+        else None,
         manim_code=job.manim_code,
         video_url=job.video_url,
         error=job.error,

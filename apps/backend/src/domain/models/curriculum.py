@@ -4,8 +4,6 @@ Defines the structure for teaching steps, full curriculum plans, and the results
 of pedagogical audits.
 """
 
-from typing import Any
-
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 _PLACEHOLDER_TEXT = {"", "__missing__", "missing", "tbd", "n/a", "..."}
@@ -104,8 +102,8 @@ class ValidationResult(BaseModel):
     )
     feedback: str = Field(..., description="Constructive feedback or validation errors")
     suggestions: list[str] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-    scores: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, object] = Field(default_factory=dict)
+    scores: dict[str, object] = Field(default_factory=dict)
     issues: list[dict[str, str]] = Field(default_factory=list)
 
     @model_validator(mode="after")

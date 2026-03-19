@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from typing import Any
 
 from sqlalchemy import JSON, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -23,9 +22,9 @@ class JobRecord(Base):
     target_audience: Mapped[str] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, default="planning", index=True)
     current_step: Mapped[str | None] = mapped_column(String, nullable=True)
-    plan: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    validation: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    storyboard: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    plan: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    validation: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    storyboard: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     manim_code: Mapped[str | None] = mapped_column(String, nullable=True)
     video_url: Mapped[str | None] = mapped_column(String, nullable=True)
     error: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -38,12 +37,14 @@ class JobRecord(Base):
     validator_model: Mapped[str | None] = mapped_column(String, nullable=True)
     architect_model: Mapped[str | None] = mapped_column(String, nullable=True)
     animator_model: Mapped[str | None] = mapped_column(String, nullable=True)
-    streamed_thoughts: Mapped[list[dict[str, Any]] | None] = mapped_column(
+    streamed_thoughts: Mapped[list[dict[str, str]] | None] = mapped_column(
         JSON, nullable=True, default=None
     )
     cost: Mapped[float] = mapped_column(default=0.0)
     thumbnail_url: Mapped[str | None] = mapped_column(String, nullable=True)
-    video_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    video_metadata: Mapped[dict[str, object] | None] = mapped_column(
+        JSON, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC), index=True
     )

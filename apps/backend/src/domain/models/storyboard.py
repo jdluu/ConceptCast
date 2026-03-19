@@ -4,8 +4,6 @@ Defines the abstract visual representation of scenes and objects that the
 Manim engine eventually renders.
 """
 
-from typing import Any
-
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -26,7 +24,7 @@ class VisualObject(BaseModel):
     position: str = Field(..., description="Relative position")
     color: str | None = Field(None, description="Visual color or hex string")
     label: str | None = Field(None, description="Associated text label")
-    parameters: dict[str, Any] = Field(
+    parameters: dict[str, object] = Field(
         default_factory=dict, description="Detailed Manim parameters"
     )
 

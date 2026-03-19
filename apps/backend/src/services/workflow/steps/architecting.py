@@ -1,6 +1,5 @@
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import Any
 
 import structlog
 from pydantic_ai.usage import RunUsage
@@ -142,7 +141,7 @@ async def step_architecting(
     plan: CurriculumPlan,
     request: JobRequest,
     job: JobRecord,
-    update_job: Callable[[dict[str, Any]], Awaitable[None]],
+    update_job: Callable[[dict[str, object]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
     persist: bool = True,

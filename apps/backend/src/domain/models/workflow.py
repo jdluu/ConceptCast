@@ -5,7 +5,7 @@ consistency across pedagogical steps, visual styles, and spatial layouts.
 """
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -47,7 +47,7 @@ class VisualSymbol(BaseModel):
     color: str  # e.g. "BLUE", "#2364AA"
     stroke_width: float = 2.0
     fill_opacity: float = 0.5
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, object] = Field(default_factory=dict)
 
 
 class ErrorEvent(BaseModel):
@@ -57,7 +57,7 @@ class ErrorEvent(BaseModel):
     step: str
     error_type: str  # e.g. "SyntaxError", "ValidationFailure"
     message: str
-    context: dict[str, Any] = Field(default_factory=dict)
+    context: dict[str, object] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 

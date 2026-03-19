@@ -3,7 +3,7 @@ Standardizes streamed thoughts across providers/models."""
 
 import json
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
 
 import structlog
 from pydantic import BaseModel, ValidationError
@@ -28,6 +28,7 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
     agent: Agent[Any, Any],
     prompt: Any,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None,
+    *,
     accumulated_usage: RunUsage | None = None,
     **run_kwargs: Any,
 ) -> tuple[Any, RunUsage]:
@@ -48,7 +49,7 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
         A tuple containing the final parsed output and the total run usage.
     """
     usage = RunUsage()
-    final = None
+    final: Any = None
     tool_names: dict[int, str] = {}
     # Some models/providers emit the same `final_result` tool-call multiple times
     # during structured-output completion. We only want to show the "commit" once
@@ -194,4 +195,4 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
             requests=(usage.requests or 0) + (accumulated_usage.requests or 0),
         )
 
-    return final, usage
+    return cast(Any, final), usage

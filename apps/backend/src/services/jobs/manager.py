@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -34,7 +33,7 @@ def determine_execution_mode(request: JobRequest) -> bool:
 async def update_job_record(
     session_or_factory: AsyncSession | Callable[[], AsyncSession],
     job_id: str,
-    updates: dict[str, Any],
+    updates: dict[str, object],
 ) -> None:
     """Updates a job record in the database.
 
@@ -59,7 +58,7 @@ async def update_job_record(
 
 
 async def _perform_job_update(
-    db: AsyncSession, job_id: str, updates: dict[str, Any]
+    db: AsyncSession, job_id: str, updates: dict[str, object]
 ) -> None:
     """Internal helper to apply updates to a job record within a session."""
     result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
@@ -73,7 +72,7 @@ async def _perform_job_update(
 
 async def update_job_status(
     job_id: str,
-    updates: dict[str, Any],
+    updates: dict[str, object],
     session_or_factory: AsyncSession | Callable[[], AsyncSession],
 ) -> None:
     """Alias for update_job_record for backward compatibility and semantic clarity."""
@@ -141,7 +140,7 @@ async def _perform_retry_prep(db: AsyncSession, job_id: str) -> JobRecord:
         is_render_repair or failure_stage == "animating"
     )
 
-    updates: dict[str, Any] = {
+    updates: dict[str, object] = {
         "status": "pending_retry",
         # Keep the render error message as retry hint when repairing.
         "error": job.error if is_render_repair else None,
@@ -177,7 +176,7 @@ async def _perform_retry_prep(db: AsyncSession, job_id: str) -> JobRecord:
             "thumbnail_url",
             "video_metadata",
         ],
-        current_step=updates["current_step"],
+        current_step=str(updates["current_step"]),
     )
 
     job.updated_at = datetime.now(UTC)

@@ -14,7 +14,7 @@ from api.schemas import (
 async def run_mock_flow(
     topic: str,
     target_audience: str,
-    update_job: Callable[[dict[str, Any]], Any],
+    update_job: Callable[[dict[str, object]], Any],
     on_thought: Callable[[str, str, str], Any],
 ) -> None:
     """Executes a simulated generation workflow for testing and UI demonstration.

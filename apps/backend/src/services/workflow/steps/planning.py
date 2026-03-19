@@ -1,6 +1,5 @@
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import Any
 
 import structlog
 from pydantic_ai.usage import RunUsage
@@ -68,7 +67,7 @@ def _plan_structure_issues(plan: CurriculumPlan) -> list[str]:
 async def step_planning(
     request: JobRequest,
     job: JobRecord,
-    update_job: Callable[[dict[str, Any]], Awaitable[None]],
+    update_job: Callable[[dict[str, object]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
     force_generate: bool = False,

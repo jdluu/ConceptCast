@@ -6,7 +6,7 @@ subsystems.
 
 import os
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,11 +18,11 @@ from infra.settings import get_settings
 router = APIRouter()
 
 
-@router.get("/health", response_model=dict[str, Any])
+@router.get("/health", response_model=dict[str, object])
 async def health_check(
     response: Response,
     _db: Annotated[AsyncSession, Depends(get_db)],
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Retrieves the health status of the application and its core services.
 
     Checks the connectivity of the database, the availability of the Manim engine,

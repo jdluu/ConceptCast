@@ -4,7 +4,7 @@ Defines the structure for job summaries, comprehensive status records, and
 creation requests.
 """
 
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -38,7 +38,7 @@ class JobSummary(BaseModel):
     cost: float = 0.0
     thumbnail_url: str | None = None
     video_url: str | None = None
-    video_metadata: dict[str, Any] | None = None
+    video_metadata: dict[str, object] | None = None
     render_progress: int = 0
     failure_stage: str | None = None
     failure_type: str | None = None
@@ -89,7 +89,7 @@ class JobStatus(BaseModel):
     cost: float = 0.0
     retry_count: int = 0
     thumbnail_url: str | None = None
-    video_metadata: dict[str, Any] | None = None
+    video_metadata: dict[str, object] | None = None
     render_progress: int = 0
     failure_stage: str | None = None
     failure_type: str | None = None

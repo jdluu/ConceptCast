@@ -27,7 +27,7 @@ class VideoResult:
 
     video_url: str
     thumbnail_url: str | None = None
-    metadata: dict[str, Any] | None = None
+    metadata: dict[str, str | float | None] | None = None
 
 
 @dataclass
@@ -123,7 +123,7 @@ def _prepare_render_environment(code: str, job_id: str) -> tuple[Path, Path | No
 async def render_storyboard(
     code: str,
     job_id: str,
-    update_job: Callable[[dict[str, Any]], Awaitable[Any]] | None = None,
+    update_job: Callable[[dict[str, object]], Awaitable[Any]] | None = None,
     resolution: str = "720p",
     frame_rate: int = 30,  # noqa: ARG001
 ) -> VideoResult:

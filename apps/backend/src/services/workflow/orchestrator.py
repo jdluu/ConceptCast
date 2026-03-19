@@ -7,7 +7,6 @@ into a structured curriculum and eventually a rendered Manim animation.
 import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import Any
 
 import structlog
 from pydantic_ai.usage import RunUsage
@@ -108,7 +107,7 @@ async def process_job_logic(
     async with db_session_factory() as session:
         lock = asyncio.Lock()
 
-        async def _update_job_callback(updates: dict[str, Any]) -> None:
+        async def _update_job_callback(updates: dict[str, object]) -> None:
             """Internal helper to update the job record using the workflow session.
 
             Args:
@@ -163,7 +162,7 @@ async def _handle_planning_step(
     job_state: JobRecord,
     request: JobRequest,
     _provider: str,
-    update_job: Callable[[dict[str, Any]], Awaitable[None]],
+    update_job: Callable[[dict[str, object]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
 ) -> tuple[CurriculumPlan, RunUsage | None]:
@@ -305,7 +304,7 @@ async def _handle_architecting_steps(
     request: JobRequest,
     plan: CurriculumPlan,
     _provider: str,
-    update_job: Callable[[dict[str, Any]], Awaitable[None]],
+    update_job: Callable[[dict[str, object]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
 ) -> tuple[Storyboard, RunUsage | None]:
@@ -358,7 +357,7 @@ async def _handle_animating_step(
     request: JobRequest,
     storyboard: Storyboard,
     _provider: str,
-    update_job: Callable[[dict[str, Any]], Awaitable[None]],
+    update_job: Callable[[dict[str, object]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
     retry_hint: str | None = None,
@@ -414,7 +413,7 @@ async def execute_workflow(  # noqa: PLR0915
     audience: str,
     provider: str,
     model_id: str,
-    update_job: Callable[[dict[str, Any]], Awaitable[None]],
+    update_job: Callable[[dict[str, object]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> None:
     """Executes the pedagogical video generation workflow.

@@ -9,7 +9,7 @@ import shutil
 import time
 import uuid
 from collections.abc import AsyncGenerator, Callable
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 import structlog
 from fastapi import (
@@ -47,7 +47,7 @@ logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
-def _plan_structural_ok(plan: dict[str, Any] | None) -> bool:
+def _plan_structural_ok(plan: dict[str, object] | None) -> bool:
     if not isinstance(plan, dict):
         return False
     concept = str(plan.get("concept_title") or "").strip().lower()
@@ -383,7 +383,7 @@ async def get_plan(
     if not job or not job.plan:
         raise HTTPException(status_code=404, detail="Plan not found")
 
-    return CurriculumPlan(**job.plan)
+    return CurriculumPlan.model_validate(job.plan)
 
 
 @router.get("", response_model=JobListResponse)
