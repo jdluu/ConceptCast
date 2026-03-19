@@ -4,7 +4,7 @@ Utilizes taskiq for distributed task execution and long-running job processing.
 """
 
 import asyncio
-from typing import Any
+from typing import TYPE_CHECKING
 
 import structlog
 from sqlalchemy import select
@@ -18,6 +18,9 @@ from services.jobs.manager import update_job_status
 from services.jobs.thoughts import append_job_thought
 from services.workflow.steps.rendering import RenderRepairRequiredError, step_rendering
 
+if TYPE_CHECKING:
+    pass
+
 logger = structlog.get_logger(__name__)
 
 settings = get_settings()
@@ -29,8 +32,8 @@ broker = ListQueueBroker(url=settings.redis_url)
 async def render_video_task(
     job_id: str,
     code: str,
-    storyboard_dict: dict[str, Any],
-    request_dict: dict[str, Any],
+    storyboard_dict: dict[str, object],
+    request_dict: dict[str, object],
 ) -> None:
     """Asynchronous background task to perform Manim rendering for a specific job.
 
@@ -40,13 +43,13 @@ async def render_video_task(
         storyboard_dict: Dictionary representation of the visual storyboard.
         request_dict: Dictionary representation of the original job request.
     """
-    storyboard = Storyboard(**storyboard_dict)
-    request = JobRequest(**request_dict)
+    storyboard = Storyboard.model_validate(storyboard_dict)
+    request = JobRequest.model_validate(request_dict)
 
     async with AsyncSessionLocal() as session:
         lock = asyncio.Lock()
 
-        async def update_job(updates: dict[str, Any]) -> None:
+        async def update_job(updates: dict[str, object]) -> None:
             """Helper to update the job record using the task's persistent session.
 
             Args:

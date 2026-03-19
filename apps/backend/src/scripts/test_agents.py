@@ -184,7 +184,7 @@ async def test_full_workflow(topic: str = "Quantum Entanglement") -> bool:
         if phase == "thinking":
             print(f"    \033[2m[{agent}] {content[:100]}...\033[0m", flush=True)  # noqa: T201
 
-    async def update_job(updates: dict[str, Any]) -> None:
+    async def update_job(updates: dict[str, object]) -> None:
         for k, v in updates.items():
             setattr(job, k, v)
 

@@ -74,7 +74,7 @@ def _is_missing_text(value: Any) -> bool:
     return normalized in {"", "__missing__", "missing"}
 
 
-def _summarize_plan_quality(plan: Any) -> dict[str, Any]:
+def _summarize_plan_quality(plan: Any) -> dict[str, object]:
     if not isinstance(plan, dict):
         return {
             "concept_missing": True,
@@ -133,7 +133,7 @@ class E2EWorkflowLogger:
         self.topic = topic
         self.provider = provider
         self.model_id = model_id
-        self.last_step = None
+        self.last_step: str | None = None
         self.printed_thoughts_count = 0
         self.last_progress = -1
         self.last_thought_content = ""
@@ -151,10 +151,10 @@ class E2EWorkflowLogger:
         print(f"\n{CLR_BOLD}{CLR_CYAN}🚀 Starting Workflow: {topic}{CLR_RESET}")  # noqa: T201
         print(f"{CLR_DIM}Model: {provider}/{model_id}{CLR_RESET}\n")  # noqa: T201
 
-    def log_event(self, event_data: dict[str, Any]) -> None:  # noqa: C901, PLR0912, PLR0915
+    def log_event(self, event_data: dict[str, object]) -> None:  # noqa: C901, PLR0912, PLR0915
         """Logs an event from the SSE stream to the report file and terminal."""
-        status = event_data.get("status")
-        step = event_data.get("current_step")
+        status = str(event_data.get("status") or "")
+        step = str(event_data.get("current_step") or "")
         progress = event_data.get("render_progress", 0)
         error = event_data.get("error")
         plan = event_data.get("plan")
@@ -171,20 +171,21 @@ class E2EWorkflowLogger:
             f.write(
                 "  ARTIFACTS: "
                 f"plan={has_plan} "
-                f"plan_structural_ok={plan_quality['structural_ok']} "
-                f"teaching_steps_len={plan_quality['teaching_steps_len']} "
-                f"plan_concept_missing={plan_quality['concept_missing']} "
-                f"plan_target_audience_missing={plan_quality['audience_missing']} "
+                f"plan_structural_ok={plan_quality.get('structural_ok')} "
+                f"teaching_steps_len={plan_quality.get('teaching_steps_len')} "
+                f"plan_concept_missing={plan_quality.get('concept_missing')} "
+                f"plan_target_audience_missing={plan_quality.get('audience_missing')} "
                 f"storyboard={has_storyboard} "
                 f"manim_code={has_code} "
                 f"error_present={bool(error)}\n"
             )
             if error:
                 f.write(f"  ERROR: {error}\n")
-            thoughts = event_data.get("streamed_thoughts", [])
+            thoughts_raw = event_data.get("streamed_thoughts", [])
+            thoughts = thoughts_raw if isinstance(thoughts_raw, list) else []
             if len(thoughts) > self.printed_thoughts_count:
                 for i in range(self.printed_thoughts_count, len(thoughts)):
-                    t = thoughts[i]
+                    t = cast(dict[str, Any], thoughts[i])
                     phase = t.get("phase")
                     content = t.get("content")
                     if phase == "structured_output" and not self.verbose_structured:
@@ -194,7 +195,7 @@ class E2EWorkflowLogger:
                 # Log content delta for the last thought.
                 # For structured outputs, providers may resend cumulative JSON
                 # payloads (causing huge repeated log lines). Suppress that noise.
-                last_t = thoughts[-1]
+                last_t = cast(dict[str, Any], thoughts[-1])
                 if last_t.get("phase") == "structured_output":
                     f.write(
                         "  THOUGHT DELTA - "
@@ -214,10 +215,10 @@ class E2EWorkflowLogger:
                     "  "
                     f"{CLR_DIM}└─ Artifacts: "
                     f"plan={has_plan} "
-                    f"plan_ok={plan_quality['structural_ok']} "
-                    f"steps={plan_quality['teaching_steps_len']} "
-                    f"concept_missing={plan_quality['concept_missing']} "
-                    f"audience_missing={plan_quality['audience_missing']} "
+                    f"plan_ok={plan_quality.get('structural_ok')} "
+                    f"steps={plan_quality.get('teaching_steps_len')} "
+                    f"concept_missing={plan_quality.get('concept_missing')} "
+                    f"audience_missing={plan_quality.get('audience_missing')} "
                     f"storyboard={has_storyboard} "
                     f"code={has_code} "
                     f"error_present={bool(error)}{CLR_RESET}\n"
@@ -266,7 +267,8 @@ class E2EWorkflowLogger:
             )
 
         # Handle thoughts
-        thoughts = event_data.get("streamed_thoughts", [])
+        thoughts_raw = event_data.get("streamed_thoughts", [])
+        thoughts = thoughts_raw if isinstance(thoughts_raw, list) else []
         if not thoughts:
             return
 
@@ -277,29 +279,29 @@ class E2EWorkflowLogger:
                 print()  # noqa: T201
 
             for i in range(self.printed_thoughts_count, len(thoughts)):
-                t = thoughts[i]
+                t = cast(dict[str, Any], thoughts[i])
                 agent = t.get("agent", "Unknown")
                 phase = t.get("phase", "reasoning")
                 content = t.get("content", "")
                 if phase == "structured_output" and not self.verbose_structured:
-                    content = _summarize_structured_content(content)
+                    content = _summarize_structured_content(str(content or ""))
 
                 # Visual style based on phase
                 if agent == "system" and phase == "status":
                     header = f"{CLR_BOLD}{CLR_WHITE}󰋼 SYSTEM:{CLR_RESET}"
                     content_style = CLR_DIM
                 elif phase == "structured_output":
-                    color = AGENT_COLORS.get(agent, CLR_RESET)
+                    color = AGENT_COLORS.get(str(agent), CLR_RESET)
                     header = (
                         f"{color}{CLR_BOLD}󰏬 {agent} (structured_output):{CLR_RESET}"
                     )
                     content_style = CLR_DIM
                 elif phase == "tool_call":
-                    color = AGENT_COLORS.get(agent, CLR_RESET)
+                    color = AGENT_COLORS.get(str(agent), CLR_RESET)
                     header = f"{color}{CLR_BOLD}󱐋 {agent} (tool_call):{CLR_RESET}"
                     content_style = CLR_DIM
                 else:
-                    color = AGENT_COLORS.get(agent, CLR_RESET)
+                    color = AGENT_COLORS.get(str(agent), CLR_RESET)
                     icon = "󰚩" if phase == "thinking" else "󰙨"
                     header = f"{color}{CLR_BOLD}{icon} {agent} ({phase}):{CLR_RESET}"
                     content_style = ""
@@ -309,14 +311,14 @@ class E2EWorkflowLogger:
                     print()  # noqa: T201
 
                 print(f"  {header} {content_style}{content}", end="", flush=True)  # noqa: T201
-                self.last_thought_content = content
+                self.last_thought_content = str(content or "")
 
             self.printed_thoughts_count = len(thoughts)
 
         # 2. Handle DELTAS for the last thought (aggregation)
         elif self.printed_thoughts_count > 0:
-            last_t = thoughts[-1]
-            current_content = last_t.get("content", "")
+            last_t = cast(dict[str, Any], thoughts[-1])
+            current_content = str(last_t.get("content") or "")
             if last_t.get("phase") == "structured_output":
                 # Structured output deltas are often re-sent as cumulative JSON.
                 # Keep state in sync but avoid printing huge chunks.
@@ -336,6 +338,8 @@ class E2EWorkflowLogger:
                 self.last_thought_content = current_content
 
         # Handle progress
+        progress_raw = event_data.get("render_progress", 0)
+        progress = int(progress_raw) if isinstance(progress_raw, (int, float)) else 0
         if status == "rendering" and progress > self.last_progress:
             bar_length = 20
             filled = int(bar_length * progress / 100)
@@ -352,7 +356,7 @@ class E2EWorkflowLogger:
             f.write(f"\nCRITICAL FAILURE: {error}\n")
         print(f"\n\n{CLR_RED}{CLR_BOLD}❌ FAILED: {error}{CLR_RESET}\n")  # noqa: T201
 
-    def log_success(self, final_data: dict[str, Any]) -> None:
+    def log_success(self, final_data: dict[str, object]) -> None:
         """Logs final job completion details."""
         final_cost = final_data.get("cost", 0.0)
         duration = final_data.get("duration_seconds", 0.0)
@@ -374,7 +378,7 @@ class E2EWorkflowLogger:
             )
         print("")  # noqa: T201
 
-    def log_run_summary(self, event_data: dict[str, Any]) -> None:
+    def log_run_summary(self, event_data: dict[str, object]) -> None:
         """Writes a compact end-of-run summary to terminal and report file."""
         status = event_data.get("status")
         step = event_data.get("current_step")
@@ -407,7 +411,7 @@ class E2EWorkflowLogger:
         print(f"\n{CLR_DIM}{summary}{CLR_RESET}")  # noqa: T201
 
 
-async def monitor_job(job_id: str, e2e_logger: E2EWorkflowLogger) -> dict[str, Any]:
+async def monitor_job(job_id: str, e2e_logger: E2EWorkflowLogger) -> dict[str, object]:
     """Monitors a job's progress via the SSE endpoint."""
     async with httpx.AsyncClient(timeout=None) as client:
         try:
@@ -427,8 +431,8 @@ async def monitor_job(job_id: str, e2e_logger: E2EWorkflowLogger) -> dict[str, A
                         event_data = json.loads(data_str)
 
                         if "error" in event_data and event_data["error"]:
-                            e2e_logger.log_error(event_data["error"])
-                            return cast(dict[str, Any], event_data)
+                            e2e_logger.log_error(str(event_data["error"]))
+                            return cast(dict[str, object], event_data)
 
                         e2e_logger.log_event(event_data)
                         last_event_data = event_data
@@ -437,15 +441,15 @@ async def monitor_job(job_id: str, e2e_logger: E2EWorkflowLogger) -> dict[str, A
                             if event_data.get("status") == "completed":
                                 e2e_logger.log_success(event_data)
                             e2e_logger.log_run_summary(event_data)
-                            return cast(dict[str, Any], event_data)
+                            return cast(dict[str, object], event_data)
                         if (
                             event_data.get("status") == "awaiting_review"
                             and event_data.get("current_step")
                             == "rendering_failed_needs_fix"
                         ):
                             e2e_logger.log_run_summary(event_data)
-                            return cast(dict[str, Any], event_data)
-                return cast(dict[str, Any], last_event_data)
+                            return cast(dict[str, object], event_data)
+                return cast(dict[str, object], last_event_data)
         except Exception as e:
             e2e_logger.log_error(str(e))
             raise
@@ -462,7 +466,7 @@ async def run_single_simulation(  # noqa: PLR0913
     architect_model: str | None = None,
     animator_model: str | None = None,
     verbose_structured: bool = False,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Runs a single simulation for one provider/model."""
     e2e_logger = E2EWorkflowLogger(
         provider, model_id, topic, verbose_structured=verbose_structured
@@ -525,7 +529,7 @@ async def run_single_simulation(  # noqa: PLR0913
             }
 
 
-def _print_aggregate_summary(results: list[dict[str, Any]]) -> None:
+def _print_aggregate_summary(results: list[dict[str, object]]) -> None:
     if not results:
         return
 
@@ -583,7 +587,7 @@ async def run_full_simulation(  # noqa: PLR0913
             )
             return
 
-    aggregate_results: list[dict[str, Any]] = []
+    aggregate_results: list[dict[str, object]] = []
     for provider_info in active_providers:
         provider = provider_info.provider
         if provider == "mock" and not include_mock:
