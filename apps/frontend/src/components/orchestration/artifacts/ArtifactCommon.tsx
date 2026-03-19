@@ -9,16 +9,19 @@ export function ArtifactCard({
   children,
   className,
   delay = 0,
+  onClick,
 }: {
   children: ReactNode;
   className?: string;
   delay?: number;
+  onClick?: () => void;
 }) {
   return (
     <m.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
+      onClick={onClick}
       className={cn(
         'border-surface-border bg-background hover:border-council-active/30 flex flex-col rounded-xl border p-3 shadow-sm transition-all',
         className,
