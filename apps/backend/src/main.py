@@ -8,10 +8,10 @@ import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.middleware.logging import LoggingMiddleware
@@ -71,10 +71,9 @@ _FRONTEND_DIST = os.environ.get("FRONTEND_DIST")
 _FRONTEND_DIST_PATH = Path(_FRONTEND_DIST) if _FRONTEND_DIST else None
 
 if _FRONTEND_DIST_PATH and _FRONTEND_DIST_PATH.is_dir():
-    from fastapi.responses import FileResponse
 
     @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str) -> Any:
+    async def serve_spa(full_path: str) -> FileResponse | dict[str, str]:
         """Serves the Single Page Application assets.
 
         Args:
