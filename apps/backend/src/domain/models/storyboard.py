@@ -4,6 +4,8 @@ Defines the abstract visual representation of scenes and objects that the
 Manim engine eventually renders.
 """
 
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -16,6 +18,7 @@ class VisualObject(BaseModel):
         position: Relative position constant or coordinate.
         color: Visual color constant or hex string.
         label: Text label associated with the object.
+        parameters: Optional dictionary of specific Manim parameters (e.g., {'radius': 1.0}).
     """
 
     name: str = Field(..., description="Internal name")
@@ -23,6 +26,19 @@ class VisualObject(BaseModel):
     position: str = Field(..., description="Relative position")
     color: str | None = Field(None, description="Visual color or hex string")
     label: str | None = Field(None, description="Associated text label")
+    parameters: dict[str, Any] = Field(
+        default_factory=dict, description="Detailed Manim parameters"
+    )
+
+    @field_validator("name", "type", "position")
+    @classmethod
+    def validate_non_empty_core_fields(cls, value: str) -> str:
+        normalized = value.strip()
+        if normalized.lower() in {"", "__missing__", "missing", "tbd", "n/a", "..."}:
+            raise ValueError(
+                "VisualObject core fields must be non-empty and non-placeholder."
+            )
+        return normalized
 
 
 class Scene(BaseModel):

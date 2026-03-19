@@ -4,7 +4,7 @@ Defines the structured feedback and approval mechanisms for AI-generated
 visual outputs.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AnimationReview(BaseModel):
@@ -23,3 +23,19 @@ class AnimationReview(BaseModel):
     revision_instructions: str = Field(
         ..., description="Actionable instructions to fix issues"
     )
+
+    @model_validator(mode="after")
+    def validate_consistency(self) -> "AnimationReview":
+        cleaned_issues = [issue.strip() for issue in self.issues if issue.strip()]
+        self.issues = cleaned_issues
+
+        if self.approved and not cleaned_issues:
+            return self
+
+        if not self.approved and not cleaned_issues:
+            raise ValueError("AnimationReview with approved=False must include issues.")
+        if not self.approved and not self.revision_instructions.strip():
+            raise ValueError(
+                "AnimationReview with approved=False must include revision instructions."
+            )
+        return self

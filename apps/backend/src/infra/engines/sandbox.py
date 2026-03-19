@@ -3,8 +3,12 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from loguru import logger
+import structlog
 from pydantic import BaseModel
+
+logger = structlog.get_logger(__name__)
+
+MANIM_IMAGE = "docker.io/manimcommunity/manim:v0.20.1"
 
 
 class SandboxResult(BaseModel):
@@ -42,7 +46,7 @@ class LocalSandbox:
                 return True
             return shutil.which("manim") is not None
         except Exception as e:
-            logger.error(f"Engine health check failed: {e}")
+            logger.error("sandbox_engine_health_check_failed", error=str(e))
             return False
 
     async def run_check(
@@ -61,7 +65,7 @@ class LocalSandbox:
                     "--userns=keep-id",
                     "-v",
                     f"{job_dir.absolute()}:/manim",
-                    "docker.io/manimcommunity/manim:latest",
+                    MANIM_IMAGE,
                     "python3",
                     "-m",
                     "py_compile",
@@ -82,7 +86,7 @@ class LocalSandbox:
                 )
             except TimeoutError:
                 process.kill()
-                logger.error(f"Syntax check timed out after {timeout}s")
+                logger.error("sandbox_syntax_check_timeout", timeout_seconds=timeout)
                 return SandboxResult(
                     stdout="", stderr=f"Check timed out after {timeout}s"
                 )
@@ -92,7 +96,7 @@ class LocalSandbox:
                 stderr=stderr.decode("utf-8", errors="replace"),
             )
         except Exception as e:
-            logger.error(f"Syntax check failed: {e}")
+            logger.error("sandbox_syntax_check_failed", error=str(e))
             return SandboxResult(stdout="", stderr=str(e))
 
     async def run_rendering(
@@ -134,7 +138,7 @@ class LocalSandbox:
                     "--userns=keep-id",
                     "-v",
                     f"{job_dir.absolute()}:/manim",
-                    "docker.io/manimcommunity/manim:latest",
+                    MANIM_IMAGE,
                     "manim",
                     quality_flag,
                     "--media_dir",
@@ -145,7 +149,11 @@ class LocalSandbox:
             else:
                 cmd = ["manim", quality_flag, "--media_dir", ".", code_file, scene_name]
 
-            logger.info(f"Sandbox executing: {' '.join(cmd)}")
+            logger.info(
+                "sandbox_render_execution_started",
+                command=" ".join(cmd),
+                use_podman=self.use_podman,
+            )
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 cwd=job_dir if not self.use_podman else None,
@@ -192,12 +200,16 @@ class LocalSandbox:
                     stderr_str = stderr.decode("utf-8", errors="replace")
             except TimeoutError:
                 process.kill()
-                logger.error(f"Rendering timed out after {timeout}s")
+                logger.error("sandbox_render_timeout", timeout_seconds=timeout)
                 raise RuntimeError(f"Rendering timed out after {timeout}s") from None
 
             if process.returncode != 0:
                 err_msg = stderr_str or stdout_str
-                logger.error(f"Rendering failed (code {process.returncode}): {err_msg}")
+                logger.error(
+                    "sandbox_render_failed",
+                    return_code=process.returncode,
+                    error_message=err_msg,
+                )
                 raise RuntimeError(f"Rendering failed: {err_msg}")
 
             return SandboxResult(stdout=stdout_str, stderr=stderr_str)
@@ -205,7 +217,7 @@ class LocalSandbox:
         except Exception as e:
             if isinstance(e, RuntimeError):
                 raise
-            logger.error(f"Execution failed: {e}")
+            logger.error("sandbox_execution_failed", error=str(e))
             raise RuntimeError(f"Execution failed: {str(e)}") from e
 
 

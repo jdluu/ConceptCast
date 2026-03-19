@@ -6,10 +6,12 @@ and resource lifecycle management.
 
 import json
 import shutil
+import time
 import uuid
 from collections.abc import AsyncGenerator, Callable
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
+import structlog
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -19,7 +21,6 @@ from fastapi import (
     status,
 )
 from fastapi.responses import StreamingResponse
-from loguru import logger
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,7 +42,22 @@ from services.jobs.serialization import (
 )
 from services.workflow.orchestrator import prepare_job_for_retry, process_job_logic
 
+logger = structlog.get_logger(__name__)
+
 router = APIRouter()
+
+
+def _plan_structural_ok(plan: dict[str, Any] | None) -> bool:
+    if not isinstance(plan, dict):
+        return False
+    concept = str(plan.get("concept_title") or "").strip().lower()
+    audience = str(plan.get("target_audience") or "").strip().lower()
+    if concept in {"", "__missing__", "missing", "tbd", "n/a", "..."}:
+        return False
+    if audience in {"", "__missing__", "missing", "tbd", "n/a", "..."}:
+        return False
+    steps = plan.get("teaching_steps")
+    return isinstance(steps, list) and len(steps) > 0
 
 
 async def _stream_job_events(
@@ -57,9 +73,13 @@ async def _stream_job_events(
         SSE events as strings formatted for the client.
     """
     last_status = None
-    last_updated = None
+    last_step = None
     last_thought_count = 0
+    last_thought_content_len = 0
+    last_artifact_state: tuple[bool, bool, bool, bool, bool, int] | None = None
     first_emit = True
+    last_emit_monotonic = 0.0
+    min_emit_interval_seconds = 0.35
 
     while True:
         async with db_session_factory() as db:
@@ -73,18 +93,60 @@ async def _stream_job_events(
                 break
 
             thoughts = getattr(job, "streamed_thoughts", None) or []
+            current_thought_content_len = (
+                len(thoughts[-1].get("content", "")) if thoughts else 0
+            )
 
-            if (
+            status_changed = job.status != last_status
+            step_changed = job.current_step != last_step
+            thought_count_changed = len(thoughts) != last_thought_count
+            thought_content_changed = (
+                current_thought_content_len != last_thought_content_len
+            )
+            artifact_state = (
+                job.plan is not None,
+                _plan_structural_ok(job.plan),
+                job.storyboard is not None,
+                bool(job.manim_code),
+                bool(job.error),
+                int(job.render_progress or 0),
+            )
+            artifact_changed = artifact_state != last_artifact_state
+
+            should_emit = (
                 first_emit
-                or job.status != last_status
-                or job.updated_at != last_updated
-                or len(thoughts) != last_thought_count
+                or status_changed
+                or step_changed
+                or artifact_changed
+                or thought_count_changed
+                or thought_content_changed
+            )
+
+            # Throttle noisy high-frequency thought-content-only updates.
+            now_monotonic = time.monotonic()
+            only_content_delta = (
+                not first_emit
+                and not status_changed
+                and not step_changed
+                and not artifact_changed
+                and not thought_count_changed
+                and thought_content_changed
+            )
+            if only_content_delta and (
+                now_monotonic - last_emit_monotonic < min_emit_interval_seconds
             ):
-                yield f"data: {map_job_record_to_status(job).model_dump_json()}\n\n"
+                should_emit = False
+
+            if should_emit:
+                status_payload = map_job_record_to_status(job)
+                yield f"data: {status_payload.model_dump_json()}\n\n"
                 last_status = job.status
-                last_updated = job.updated_at
+                last_step = job.current_step
                 last_thought_count = len(thoughts)
+                last_thought_content_len = current_thought_content_len
+                last_artifact_state = artifact_state
                 first_emit = False
+                last_emit_monotonic = now_monotonic
 
             if job.status in ["completed", "failed"]:
                 break
@@ -136,7 +198,6 @@ async def create_job(
             provider=request.provider,
             model_id=request.model_id,
             analyst_model=request.analyst_model,
-            validator_model=request.validator_model,
             architect_model=request.architect_model,
             animator_model=request.animator_model,
         )
@@ -189,8 +250,16 @@ async def review_job(
         # Apply edits if provided
         if review.edited_plan:
             job.plan = review.edited_plan.model_dump()
+            # Edited plan invalidates all downstream artifacts.
+            job.storyboard = None
+            job.manim_code = None
+            job.video_url = None
+            job.thumbnail_url = None
+            job.video_metadata = None
+            job.render_progress = 0
 
-        job.status = "validating"  # Transition to next step
+        job.status = "architecting"
+        job.current_step = "planning_complete"
         await db.commit()
         await db.refresh(job)
 
@@ -205,7 +274,6 @@ async def review_job(
                 model_id=job.model_id,
                 hitl_enabled=job.hitl_enabled,
                 analyst_model=job.analyst_model,
-                validator_model=job.validator_model,
                 architect_model=job.architect_model,
                 animator_model=job.animator_model,
             ),
@@ -213,8 +281,14 @@ async def review_job(
         )
 
     elif review.action == "regenerate":
-        # Reset plan and status to trigger regeneration with feedback
+        # Reset plan and downstream artifacts to trigger full regeneration.
         job.plan = None
+        job.storyboard = None
+        job.manim_code = None
+        job.video_url = None
+        job.thumbnail_url = None
+        job.video_metadata = None
+        job.render_progress = 0
         job.status = "planning"
 
         await db.commit()
@@ -232,7 +306,6 @@ async def review_job(
                 model_id=job.model_id,
                 hitl_enabled=job.hitl_enabled,
                 analyst_model=job.analyst_model,
-                validator_model=job.validator_model,
                 architect_model=job.architect_model,
                 animator_model=job.animator_model,
             ),
@@ -342,7 +415,7 @@ async def list_jobs(
         for job in jobs:
             summary_list.append(map_job_record_to_summary(job))
     except Exception as e:
-        logger.error(f"Error serializing job: {e}")
+        logger.error("jobs_serialization_error", error=str(e))
         raise HTTPException(status_code=500, detail=f"Serialization error: {e}") from e
 
     return JobListResponse(jobs=summary_list)
@@ -378,7 +451,6 @@ async def retry_job(
         model_id=job.model_id,
         hitl_enabled=job.hitl_enabled,
         analyst_model=job.analyst_model,
-        validator_model=job.validator_model,
         architect_model=job.architect_model,
         animator_model=job.animator_model,
     )
@@ -411,7 +483,11 @@ async def delete_job(job_id: str, db: Annotated[AsyncSession, Depends(get_db)]) 
         try:
             shutil.rmtree(job_dir)
         except Exception as e:
-            logger.warning(f"Error deleting job artifacts for {job_id}: {e}")
+            logger.warning(
+                "job_artifacts_delete_failed",
+                job_id=job_id,
+                error=str(e),
+            )
 
     await db.delete(job)
     await db.commit()
@@ -445,7 +521,11 @@ async def delete_all_jobs(
                 try:
                     shutil.rmtree(jdir)
                 except Exception as e:
-                    logger.warning(f"Error deleting job artifacts for {jid}: {e}")
+                    logger.warning(
+                        "job_artifacts_delete_failed",
+                        job_id=jid,
+                        error=str(e),
+                    )
     else:
         await db.execute(delete(JobRecord))
         await db.commit()
@@ -456,4 +536,8 @@ async def delete_all_jobs(
                     try:
                         shutil.rmtree(item)
                     except Exception as e:
-                        logger.warning(f"Error deleting job dir {item}: {e}")
+                        logger.warning(
+                            "job_dir_delete_failed",
+                            path=str(item),
+                            error=str(e),
+                        )

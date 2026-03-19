@@ -9,12 +9,12 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from loguru import logger
+import structlog
 from pydantic_ai.usage import RunUsage
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.schemas import CurriculumPlan, JobRequest, Storyboard, ValidationResult
+from api.schemas import CurriculumPlan, JobRequest, Storyboard
 from domain.models.workflow import GlobalContext
 from infra.database import AsyncSessionLocal
 from infra.exceptions import (
@@ -39,7 +39,35 @@ from ..jobs.thoughts import append_job_thought
 from .steps.animating import step_animating
 from .steps.architecting import step_architecting
 from .steps.planning import step_planning
-from .steps.validating import step_validating
+
+logger = structlog.get_logger(__name__)
+
+
+def _structural_validate_curriculum(plan: CurriculumPlan) -> list[str]:
+    """Deterministic, non-LLM checks to avoid endless AI validator loops."""
+    issues: list[str] = []
+    concept = (plan.concept_title or "").strip().lower()
+    audience = (plan.target_audience or "").strip().lower()
+    if concept in {"", "__missing__", "missing", "tbd", "n/a", "..."}:
+        issues.append("concept_title is empty")
+    if audience in {"", "__missing__", "missing", "tbd", "n/a", "..."}:
+        issues.append("target_audience is empty")
+    if not plan.teaching_steps:
+        issues.append("teaching_steps is empty")
+    else:
+        if not 5 <= len(plan.teaching_steps) <= 10:
+            issues.append(
+                "teaching_steps length must be between 5 and 10 "
+                f"(got {len(plan.teaching_steps)})"
+            )
+        for i, step in enumerate(plan.teaching_steps, start=1):
+            if not step.concept or not step.concept.strip():
+                issues.append(f"teaching_steps[{i}].concept is empty")
+            if not step.visual_metaphor or not step.visual_metaphor.strip():
+                issues.append(f"teaching_steps[{i}].visual_metaphor is empty")
+            if not step.narration or not step.narration.strip():
+                issues.append(f"teaching_steps[{i}].narration is empty")
+    return issues
 
 
 async def prepare_job_for_retry(
@@ -75,7 +103,7 @@ async def process_job_logic(
         request: The initial user request details.
         db_session_factory: Factory function for database sessions.
     """
-    logger.info(f"Starting background orchestration for job {job_id}")
+    logger.info("workflow_background_started", job_id=job_id)
 
     async with db_session_factory() as session:
         lock = asyncio.Lock()
@@ -115,15 +143,19 @@ async def process_job_logic(
             )
         except ExceptionGroup as eg:
             # Parallel tasks (Validation + Architecting) might fail together
-            logger.error(f"Parallel workflow error: {eg}")
+            logger.error("workflow_parallel_error", job_id=job_id, error=str(eg))
             for exc in eg.exceptions:
-                logger.error(f"  Sub-exception: {exc}")
+                logger.error(
+                    "workflow_parallel_sub_exception",
+                    job_id=job_id,
+                    error=str(exc),
+                )
 
             # Use the first exception for the user-facing error message
             first_err = eg.exceptions[0]
             await _update_job_callback({"status": "failed", "error": str(first_err)})
         except Exception as e:
-            logger.error(f"Background job {job_id} failed: {e}")
+            logger.error("workflow_background_failed", job_id=job_id, error=str(e))
 
 
 async def _handle_planning_step(
@@ -135,7 +167,7 @@ async def _handle_planning_step(
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
 ) -> tuple[CurriculumPlan, RunUsage | None]:
-    """Handles Step 1 (Planning) including checkpoint skip logic.
+    """Handles Step 1 (Planning) including deterministic structural retries.
 
     Args:
         job_id: The unique identifier for the job.
@@ -147,10 +179,10 @@ async def _handle_planning_step(
         ctx: The Global Context Object (GCO) for the workflow.
 
     Returns:
-        tuple: (The generated or cached CurriculumPlan, RunUsage data or None).
+        tuple: (CurriculumPlan, Total RunUsage).
 
     Raises:
-        PlanGenerationError: If the planning step fails to produce a curriculum.
+        PlanGenerationError: If planning fails to produce a valid curriculum after retries.
     """
     await update_job(
         {
@@ -160,20 +192,111 @@ async def _handle_planning_step(
         }
     )
 
+    plan: CurriculumPlan | None = None
     if job_state.plan:
-        logger.info(f"Job {job_id}: Found existing plan, skipping planning step.")
+        logger.info("planning_cached_plan_reused", job_id=job_id)
         await on_thought("system", "status", "Using cached pedagogical plan...")
-        plan = parse_job_artifact(job_state.plan, CurriculumPlan)
+        cached_plan = parse_job_artifact(job_state.plan, CurriculumPlan)
+        ctx.plan = cached_plan
+        return cached_plan, None
+
+    total_usage = RunUsage()
+    max_retries = 3
+    current_attempt = 0
+    last_feedback = ""
+
+    while current_attempt < max_retries:
+        current_attempt += 1
+        attempt_prefix = f"[Attempt {current_attempt}/{max_retries}] "
+        attempt_prefix_local = attempt_prefix
+
+        async def _on_thought_attempt(
+            agent: str,
+            phase: str,
+            content: str,
+            attempt_prefix_local: str = attempt_prefix_local,
+        ) -> None:
+            if phase == "structured_output" and agent == "analyst":
+                await on_thought(agent, phase, f"{attempt_prefix_local}{content}")
+                return
+            await on_thought(agent, phase, content)
+
+        await on_thought(
+            "system",
+            "status",
+            f"{attempt_prefix}Generating curriculum for: {request.topic}",
+        )
+
+        try:
+            plan, p_usage = await step_planning(
+                request,
+                job_state,
+                update_job,
+                _on_thought_attempt,
+                ctx,
+                force_generate=current_attempt > 1,
+                retry_hint=last_feedback or None,
+            )
+        except PlanGenerationError as e:
+            last_feedback = str(e)
+            await on_thought(
+                "system",
+                "status",
+                f"{attempt_prefix}Curriculum generation failed structural checks:\n{last_feedback}",
+            )
+            logger.warning(
+                "planning_attempt_failed",
+                job_id=job_id,
+                attempt=current_attempt,
+                max_retries=max_retries,
+                feedback=last_feedback,
+            )
+            if current_attempt >= max_retries:
+                raise
+            continue
+
+        total_usage = merge_usage(total_usage, p_usage)
         ctx.plan = plan
-        return plan, None
+        break
 
-    await on_thought("system", "status", f"Generating curriculum for: {request.topic}")
-    plan, usage = await step_planning(request, job_state, update_job, on_thought, ctx)
     if not plan:
-        raise PlanGenerationError("Planning failed to produce curriculum.")
+        raise PlanGenerationError(
+            "Failed to generate any curriculum plan after retries."
+        )
 
-    ctx.plan = plan
-    return plan, usage
+    # Deterministic curriculum preflight pass after a structurally valid plan exists.
+    await update_job({"status": "planning", "current_step": "curriculum_preflight"})
+    await on_thought(
+        "system",
+        "status",
+        f"[Attempt {current_attempt}/{max_retries}] Structural preflight check for curriculum...",
+    )
+    issues = _structural_validate_curriculum(plan)
+    if issues:
+        await on_thought(
+            "system",
+            "status",
+            f"[Attempt {current_attempt}/{max_retries}] Structural preflight issues:\n- "
+            + "\n- ".join(issues),
+        )
+        logger.warning(
+            "planning_structural_issues_after_retries",
+            job_id=job_id,
+            issues=issues,
+        )
+        raise PlanGenerationError(
+            "Structural preflight failed and cannot proceed.\n- " + "\n- ".join(issues)
+        )
+
+    # Persist the final state.
+    await update_job(
+        {
+            "plan": plan.model_dump() if plan else None,
+            "current_step": "planning_complete",
+        }
+    )
+
+    return plan, total_usage
 
 
 async def _handle_architecting_steps(
@@ -185,97 +308,48 @@ async def _handle_architecting_steps(
     update_job: Callable[[dict[str, Any]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
-) -> tuple[ValidationResult, Storyboard, RunUsage | None]:
-    """Handles Steps 2 & 3 (Validating and Architecting) concurrently.
-
-    Includes checkpoint skip logic if foundational artifacts already exist.
+) -> tuple[Storyboard, RunUsage | None]:
+    """Handles Step 3 (Architecting) to produce the visual storyboard.
 
     Args:
         job_id: The unique identifier for the job.
         job_state: The current database record for the job.
         request: The initial user request.
-        plan: The pedagogically validated curriculum plan.
+        plan: The structurally valid curriculum plan.
         _provider: The AI provider to use.
         update_job: Callback for persisting job state updates.
         on_thought: Callback for streaming agent thoughts.
         ctx: The Global Context Object (GCO) for the workflow.
 
     Returns:
-        tuple: (ValidationResult, Storyboard, Combined RunUsage or None).
+        tuple: (Storyboard, RunUsage or None).
 
     Raises:
-        ExceptionGroup: If either the validation or architecting tasks fail.
+        StoryboardGenerationError: If architecting fails to produce a valid storyboard.
     """
-    if job_state.validation and job_state.storyboard:
-        logger.info(
-            f"Job {job_id}: Found existing validation and storyboard, skipping."
-        )
-        await on_thought(
-            "system", "status", "Using cached validation and storyboard..."
-        )
-        val = parse_job_artifact(job_state.validation, ValidationResult)
+    if job_state.storyboard:
+        logger.info("architecting_cached_storyboard_reused", job_id=job_id)
+        await on_thought("system", "status", "Using cached storyboard...")
         arch = parse_job_artifact(job_state.storyboard, Storyboard)
         ctx.storyboard = arch
-        return (val, arch, None)
+        return arch, None
 
-    await on_thought(
-        "system", "status", "Starting parallel validation and visual architecting..."
+    await on_thought("system", "status", "Starting visual architecting...")
+    await update_job(
+        {"status": "architecting", "current_step": "storyboard_generation"}
     )
-    await update_job({"status": "architecting", "current_step": "parallel_execution"})
 
-    async def run_validating() -> tuple[ValidationResult, RunUsage | None]:
-        """Internal helper to execute validation in a TaskGroup.
+    storyboard, a_usage = await step_architecting(
+        plan, request, job_state, update_job, on_thought, ctx, persist=True
+    )
 
-        Returns:
-            tuple: (The ValidationResult, RunUsage from the AI).
-        """
-        try:
-            return await step_validating(
-                plan, request, job_state, update_job, on_thought, ctx, persist=False
-            )
-        except Exception as e:
-            ctx.add_error("validator", "parallel_execution", e)
-            logger.error(f"Validation step failed: {e}")
-            raise
-
-    async def run_architecting() -> tuple[Storyboard, RunUsage | None]:
-        """Internal helper to execute visual architecting in a TaskGroup.
-
-        Returns:
-            tuple: (The generated Storyboard, RunUsage from the AI).
-        """
-        try:
-            res = await step_architecting(
-                plan, request, job_state, update_job, on_thought, ctx, persist=False
-            )
-            if not res[0] or not res[0].scenes:
-                raise StoryboardGenerationError(
-                    "Architecting failed to produce a valid storyboard with scenes."
-                )
-            return res
-        except Exception as e:
-            ctx.add_error("architect", "parallel_execution", e)
-            logger.error(f"Architecting step failed: {e}")
-            raise
-
-    async with asyncio.TaskGroup() as tg:
-        val_task = tg.create_task(run_validating())
-        arch_task = tg.create_task(run_architecting())
-
-    validation, v_usage = val_task.result()
-    storyboard, a_usage = arch_task.result()
+    if not storyboard or not storyboard.scenes:
+        raise StoryboardGenerationError(
+            "Architecting failed to produce a valid storyboard with scenes."
+        )
 
     ctx.storyboard = storyboard
-
-    # Final sync for this block
-    await update_job(
-        {
-            "validation": validation.model_dump(),
-            "storyboard": storyboard.model_dump(),
-        }
-    )
-
-    return validation, storyboard, merge_usage(v_usage, a_usage)
+    return storyboard, a_usage
 
 
 async def _handle_animating_step(
@@ -287,6 +361,7 @@ async def _handle_animating_step(
     update_job: Callable[[dict[str, Any]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
     ctx: GlobalContext,
+    retry_hint: str | None = None,
 ) -> tuple[str, RunUsage | None]:
     """Handles Step 4 (Animating) including iterative code generation.
 
@@ -307,7 +382,7 @@ async def _handle_animating_step(
         AnimationGenerationError: If the animation step fails to produce valid code.
     """
     if job_state.manim_code:
-        logger.info(f"Job {job_id}: Found existing Manim code, skipping.")
+        logger.info("animating_cached_code_reused", job_id=job_id)
         await on_thought("system", "status", "Using cached Manim code...")
         ctx.manim_code = job_state.manim_code
         return job_state.manim_code, None
@@ -316,7 +391,13 @@ async def _handle_animating_step(
     await update_job({"status": "animating", "current_step": "animating_start"})
 
     code, m_usage = await step_animating(
-        storyboard, request, job_state, update_job, on_thought, ctx
+        storyboard,
+        request,
+        job_state,
+        update_job,
+        on_thought,
+        ctx,
+        initial_hint=retry_hint,
     )
     if not code:
         raise AnimationGenerationError("Animating failed to produce code.")
@@ -326,7 +407,7 @@ async def _handle_animating_step(
     return code, m_usage
 
 
-async def execute_workflow(
+async def execute_workflow(  # noqa: PLR0915
     session: AsyncSession,
     job_id: str,
     topic: str,
@@ -336,9 +417,9 @@ async def execute_workflow(
     update_job: Callable[[dict[str, Any]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> None:
-    """Executes the 4-step pedagogical video generation workflow.
+    """Executes the pedagogical video generation workflow.
 
-    Coordinates between planning, validating, architecting, and animating agents,
+    Coordinates between planning, architecting, and animating agents,
     managing state updates and usage tracking throughout the lifecycle.
 
     Args:
@@ -367,13 +448,18 @@ async def execute_workflow(
         nonlocal total_usage
         total_usage = merge_usage(total_usage, u)
 
+    async def sync_cost() -> None:
+        """Calculates and persists current cumulative cost."""
+        current_cost = calculate_job_cost(total_usage)
+        await update_job({"cost": current_cost})
+
     # 1. Fetch Job State
     stmt = select(JobRecord).where(JobRecord.job_id == job_id)
     res = await session.execute(stmt)
     job_state = res.scalar_one_or_none()
 
     if not job_state:
-        logger.error(f"Job {job_id} not found in database.")
+        logger.error("workflow_job_not_found", job_id=job_id)
         return
 
     # 2. Re-construct Request for agents (used for getting models)
@@ -384,7 +470,6 @@ async def execute_workflow(
         model_id=model_id,
         hitl_enabled=job_state.hitl_enabled,
         analyst_model=job_state.analyst_model,
-        validator_model=job_state.validator_model,
         architect_model=job_state.architect_model,
         animator_model=job_state.animator_model,
     )
@@ -393,24 +478,82 @@ async def execute_workflow(
     ctx = GlobalContext(topic=topic, target_audience=audience)
 
     try:
+        if (
+            job_state.current_step == "rendering_failed_needs_fix"
+            and job_state.storyboard
+        ):
+            await on_thought(
+                "system",
+                "status",
+                "Resuming from rendering failure: regenerating animation code with render-error hints.",
+            )
+            storyboard = parse_job_artifact(job_state.storyboard, Storyboard)
+            ctx.storyboard = storyboard
+            repair_hint = job_state.error or "Previous rendering attempt failed."
+            # Force regeneration instead of reusing the known-bad code.
+            job_state.manim_code = None
+            await update_job(
+                {
+                    "status": "animating",
+                    "current_step": "rendering_repair_regenerate_code",
+                    "manim_code": None,
+                }
+            )
+            code, usage_repair = await _handle_animating_step(
+                job_id,
+                job_state,
+                request,
+                storyboard,
+                provider,
+                update_job,
+                on_thought,
+                ctx,
+                retry_hint=(
+                    "Repair this render failure. "
+                    f"Previous failure details: {repair_hint}"
+                ),
+            )
+            add_usage(usage_repair)
+            await render_video_task.kiq(
+                job_id=job_id,
+                code=code,
+                storyboard_dict=storyboard.model_dump(),
+                request_dict=request.model_dump(),
+            )
+            await update_job(
+                {
+                    "status": "rendering",
+                    "current_step": "rendering_repair_retry_dispatched",
+                    "error": None,
+                }
+            )
+            logger.info("workflow_repair_render_dispatched", job_id=job_id)
+            return
+
         plan, usage_1 = await _handle_planning_step(
             job_id, job_state, request, provider, update_job, on_thought, ctx
         )
         add_usage(usage_1)
 
+        # Hard gate: never proceed when curriculum is empty/invalid structurally.
+        if not plan.teaching_steps:
+            raise PlanGenerationError(
+                "Curriculum generation produced no teaching steps after retries."
+            )
+
         # --- Human in the Loop (HITL) Check ---
-        if request.hitl_enabled and job_state.status == "planning":
-            logger.info(f"Job {job_id}: HITL enabled. Pausing for review.")
+        if request.hitl_enabled:
+            logger.info("workflow_hitl_paused_for_review", job_id=job_id)
             await update_job(
                 {"status": "awaiting_review", "current_step": "planning_complete"}
             )
             return
         # ---------------------------------------
 
-        validation, storyboard, usage_23 = await _handle_architecting_steps(
+        storyboard, usage_3 = await _handle_architecting_steps(
             job_id, job_state, request, plan, provider, update_job, on_thought, ctx
         )
-        add_usage(usage_23)
+        add_usage(usage_3)
 
         code, usage_4 = await _handle_animating_step(
             job_id,
@@ -431,8 +574,11 @@ async def execute_workflow(
             storyboard_dict=storyboard.model_dump(),
             request_dict=request.model_dump(),
         )
+        await update_job(
+            {"status": "rendering", "current_step": "rendering_dispatched"}
+        )
 
-        logger.info(f"Job {job_id}: Rendering dispatched to Taskiq worker.")
+        logger.info("workflow_render_dispatched", job_id=job_id)
 
         # Update cumulative processing time on success (before final rendering)
         if job_state.started_at:
@@ -448,7 +594,7 @@ async def execute_workflow(
             )
 
     except Exception as e:
-        logger.exception(f"Workflow failed for job {job_id}: {e}")
+        logger.exception("workflow_execution_failed", job_id=job_id, error=str(e))
         final_cost = calculate_job_cost(total_usage)
         session_duration = 0.0
         if job_state.started_at:
@@ -463,7 +609,8 @@ async def execute_workflow(
             job_id,
             {
                 "status": "failed",
-                "error": str(e),
+                "current_step": job_state.current_step or "workflow_failed",
+                "error": f"{type(e).__name__}: {e}",
                 "cost": final_cost,
                 "finished_at": datetime.now(UTC),
                 "total_execution_time": job_state.total_execution_time

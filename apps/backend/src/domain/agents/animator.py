@@ -49,7 +49,23 @@ async def generate_manim_code(
         deps_type=GlobalContext,
         retries=3,
     )
-    animator_agent.tool(search_manim_docs, prepare=prepare_manim_docs)  # type: ignore
+    docs_lookup_needed = False
+    if retry_hint:
+        normalized_hint = retry_hint.lower()
+        docs_lookup_needed = any(
+            marker in normalized_hint
+            for marker in (
+                "attributeerror",
+                "typeerror",
+                "nameerror",
+                "manim api",
+                "unknown",
+                "constructor",
+                "parameter",
+            )
+        )
+    if docs_lookup_needed:
+        animator_agent.tool(search_manim_docs, prepare=prepare_manim_docs)  # type: ignore
 
     if ctx:
         prompt = extract_animator_context(ctx)

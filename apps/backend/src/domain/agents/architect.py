@@ -23,6 +23,7 @@ async def generate_storyboard(
     model: BaseConceptModel,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
     ctx: GlobalContext | None = None,
+    retry_hint: str | None = None,
 ) -> tuple[Storyboard, RunUsage]:
     """Translates a curriculum plan into a visual storyboard.
 
@@ -47,6 +48,11 @@ async def generate_storyboard(
         prompt = extract_architect_context(ctx)
     else:
         prompt = f"Create a storyboard for the following curriculum:\n{plan.model_dump_json()}"
+
+    if retry_hint:
+        # Keep repair instructions explicit and compact, so models
+        # focus on meeting storyboard structural requirements.
+        prompt = f"{prompt}\n\nREPAIR INSTRUCTIONS:\n{retry_hint}"
 
     result, usage = await run_agent_streamed(
         "architect", agent, prompt, on_thought=on_thought, deps=ctx

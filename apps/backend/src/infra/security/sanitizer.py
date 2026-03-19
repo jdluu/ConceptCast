@@ -1,4 +1,5 @@
 import ast
+import json
 import re
 
 # Opening code fence (optional "python" / "py")
@@ -46,10 +47,23 @@ _DANGEROUS_ATTRIBUTES = {
     "__dict__",
 }
 
+_LEGACY_MANIM_METHOD_FIXES = {
+    "fade_in": "Use self.play(FadeIn(mobject)) for Manim Community v0.20.1.",
+    "fade_out": "Use self.play(FadeOut(mobject)) for Manim Community v0.20.1.",
+}
+
+_DISALLOWED_MANIM_CLASSES = {
+    "ImageMobject",
+    "SVGMobject",
+}
+
 # Regex to detect lowercase color kwarg values, e.g. color="red" which
 # will raise at runtime. Manim constants are always CAPS (RED, BROWN, etc.).
 _LOWERCASE_COLOR_RE = re.compile(
     r'(?:color|fill_color|stroke_color)\s*=\s*["\']([a-z]+)["\']'
+)
+_CODE_FENCE_BLOCK_RE = re.compile(
+    r"```(?:python|py)?\s*\n(.*?)```", re.IGNORECASE | re.DOTALL
 )
 
 
@@ -110,6 +124,19 @@ class ASTSanitizer(ast.NodeVisitor):
         """
         if isinstance(node.func, ast.Name) and node.func.id in _BANNED_BUILTINS:
             raise RuntimeError(f"Call to unsafe builtin '{node.func.id}' is forbidden.")
+        if (
+            isinstance(node.func, ast.Name)
+            and node.func.id in _DISALLOWED_MANIM_CLASSES
+        ):
+            raise RuntimeError(
+                f"Use of '{node.func.id}' is disallowed in ConceptCast policy."
+            )
+        if isinstance(node.func, ast.Attribute):
+            legacy_method = _LEGACY_MANIM_METHOD_FIXES.get(node.func.attr)
+            if legacy_method:
+                raise RuntimeError(
+                    f"Unsupported Manim call '.{node.func.attr}()'. {legacy_method}"
+                )
         self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
@@ -128,16 +155,16 @@ class ASTSanitizer(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-def sanitize_manim_code(code: str) -> str:
+def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
     """Extracts, parses, and sanitizes AI-generated Manim Python code.
 
-    This function strips markdown code fences, parses the code into an AST,
-    runs the ASTSanitizer, and verifies the presence of the required
-    'SceneGen' class.
+    This function strips markdown code fences (even with prefix/suffix chatter),
+    parses the code into an AST, runs the ASTSanitizer, and verifies the
+    presence of the required 'SceneGen' class.
 
     Args:
         code (str): Raw output from the AI animator, potentially containing
-            markdown code fences.
+            markdown code fences and conversational filler.
 
     Returns:
         str: Cleaned and sanitized Python code ready for rendering.
@@ -147,12 +174,33 @@ def sanitize_manim_code(code: str) -> str:
             security validation, or lacks the mandatory 'SceneGen' class.
     """
     cleaned = code.strip()
-    # Strip opening fence
-    if _CODE_FENCE_START.match(cleaned):
-        cleaned = _CODE_FENCE_START.sub("", cleaned, count=1)
-    # Strip trailing fence
-    if cleaned.endswith("```"):
-        cleaned = cleaned[: cleaned.rfind("```")].rstrip()
+
+    # Some providers wrap code as a JSON string with escaped newlines.
+    if (
+        len(cleaned) >= 2
+        and cleaned[0] == '"'
+        and cleaned[-1] == '"'
+        and "\\n" in cleaned
+    ):
+        try:
+            loaded = json.loads(cleaned)
+            if isinstance(loaded, str):
+                cleaned = loaded.strip()
+        except Exception:
+            pass
+
+    # Handle markdown code fences with potential prefix/suffix text
+    if "```" in cleaned:
+        match = _CODE_FENCE_BLOCK_RE.search(cleaned)
+        if match:
+            cleaned = match.group(1).strip()
+        else:
+            # If only one fence exists, take everything after first fence line.
+            start_idx = cleaned.find("```")
+            line_end = cleaned.find("\n", start_idx)
+            content_start = line_end + 1 if line_end != -1 else start_idx + 3
+            cleaned = cleaned[content_start:].strip()
+
     cleaned = cleaned.strip()
 
     if not cleaned:
@@ -180,5 +228,35 @@ def sanitize_manim_code(code: str) -> str:
     )
     if not has_scene_gen:
         raise RuntimeError("Required 'SceneGen' class missing.")
+
+    scene_gen_classes = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef) and node.name == "SceneGen"
+    ]
+    if len(scene_gen_classes) != 1:
+        raise RuntimeError("Exactly one class named 'SceneGen' is required.")
+    scene_gen = scene_gen_classes[0]
+
+    def _base_name(base: ast.expr) -> str | None:
+        if isinstance(base, ast.Name):
+            return base.id
+        if isinstance(base, ast.Attribute):
+            return base.attr
+        return None
+
+    base_names = {_base_name(base) for base in scene_gen.bases}
+    if "Scene" not in base_names:
+        raise RuntimeError("SceneGen must inherit from Scene.")
+
+    has_construct = any(
+        isinstance(node, ast.FunctionDef)
+        and node.name == "construct"
+        and len(node.args.args) >= 1
+        and node.args.args[0].arg == "self"
+        for node in scene_gen.body
+    )
+    if not has_construct:
+        raise RuntimeError("SceneGen must define construct(self).")
 
     return cleaned

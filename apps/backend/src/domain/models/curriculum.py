@@ -6,7 +6,10 @@ of pedagogical audits.
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+_PLACEHOLDER_TEXT = {"", "__missing__", "missing", "tbd", "n/a", "..."}
+_MAX_NARRATION_CHARS = 700
 
 
 class TeachingStep(BaseModel):
@@ -24,6 +27,25 @@ class TeachingStep(BaseModel):
     visual_metaphor: str = Field(..., description="Visual analogy")
     narration: str = Field(..., description="Voiceover script for this step")
 
+    @field_validator("concept", "visual_metaphor", "narration")
+    @classmethod
+    def validate_non_placeholder_text(cls, value: str) -> str:
+        normalized = value.strip()
+        if normalized.lower() in _PLACEHOLDER_TEXT:
+            raise ValueError(
+                "TeachingStep fields must be non-empty and non-placeholder."
+            )
+        return normalized
+
+    @field_validator("narration")
+    @classmethod
+    def validate_narration_length(cls, value: str) -> str:
+        if len(value) > _MAX_NARRATION_CHARS:
+            raise ValueError(
+                f"TeachingStep narration must be <= {_MAX_NARRATION_CHARS} characters."
+            )
+        return value
+
 
 class CurriculumPlan(BaseModel):
     """A structured educational roadmap for a complex topic.
@@ -37,6 +59,32 @@ class CurriculumPlan(BaseModel):
     concept_title: str = Field(..., description="Title of the main concept")
     target_audience: str = Field(..., description="Level (e.g., 'Undergraduate CS')")
     teaching_steps: list[TeachingStep] = Field(..., description="Ordered steps")
+
+
+class TeachingStepsDraft(BaseModel):
+    """Analyst output focused only on pedagogical step generation.
+
+    Top-level curriculum metadata is deterministic and injected by the workflow.
+    """
+
+    teaching_steps: list[TeachingStep] = Field(
+        ...,
+        description="Ordered steps (5-10 items)",
+        min_length=5,
+        max_length=10,
+    )
+
+    @model_validator(mode="after")
+    def validate_step_sequence(self) -> "TeachingStepsDraft":
+        expected = 1
+        for step in self.teaching_steps:
+            if step.step_id != expected:
+                raise ValueError(
+                    "TeachingStep.step_id must be sequential starting at 1 "
+                    f"(expected {expected}, got {step.step_id})."
+                )
+            expected += 1
+        return self
 
 
 class ValidationResult(BaseModel):
@@ -59,3 +107,11 @@ class ValidationResult(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     scores: dict[str, Any] = Field(default_factory=dict)
     issues: list[dict[str, str]] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_consistency(self) -> "ValidationResult":
+        if not self.is_valid and not self.suggestions and not self.issues:
+            raise ValueError(
+                "ValidationResult with is_valid=False must include suggestions or issues."
+            )
+        return self

@@ -2,9 +2,11 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 
+import structlog
 from fastapi import Request, Response
-from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
+
+logger = structlog.get_logger(__name__)
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -12,7 +14,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     Middleware for structured request logging and tracing.
 
     Assigns a unique X-Request-ID to every request and logs the
-    method, path, status code, and latency using loguru.
+    method, path, status code, and latency with structured logs.
     """
 
     async def dispatch(
@@ -34,29 +36,33 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         start_time = time.perf_counter()
 
-        # Add context to all loguru logs in this task
-        with logger.contextualize(request_id=request_id):
-            logger.info(f"REQ START: {request.method} {request.url.path}")
+        request_logger = logger.bind(request_id=request_id)
+        request_logger.info(
+            "request_start", method=request.method, path=request.url.path
+        )
 
-            try:
-                response = await call_next(request)
-            except Exception as e:
-                process_time = (time.perf_counter() - start_time) * 1000
-                logger.error(
-                    f"REQ FAIL: {request.method} {request.url.path} - "
-                    f"Error: {e} - Latency: {process_time:.2f}ms"
-                )
-                raise
-
+        try:
+            response = await call_next(request)
+        except Exception as e:
             process_time = (time.perf_counter() - start_time) * 1000
-
-            # Log completion
-            logger.info(
-                f"REQ END: {request.method} {request.url.path} "
-                f"Status: {response.status_code} "
-                f"Latency: {process_time:.2f}ms"
+            request_logger.exception(
+                "request_fail",
+                method=request.method,
+                path=request.url.path,
+                latency_ms=round(process_time, 2),
+                error=str(e),
             )
+            raise
 
-            # Inject Request ID into response headers
-            response.headers["X-Request-ID"] = request_id
-            return response
+        process_time = (time.perf_counter() - start_time) * 1000
+        request_logger.info(
+            "request_end",
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            latency_ms=round(process_time, 2),
+        )
+
+        # Inject Request ID into response headers
+        response.headers["X-Request-ID"] = request_id
+        return response

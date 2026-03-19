@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from domain.models.curriculum import CurriculumPlan, ValidationResult
+from domain.models.curriculum import CurriculumPlan
 from domain.models.storyboard import Storyboard
 
 from .common import ThoughtLog
@@ -29,7 +29,6 @@ class JobSummary(BaseModel):
     provider: str | None = None
     model_id: str | None = None
     analyst_model: str | None = None
-    validator_model: str | None = None
     architect_model: str | None = None
     animator_model: str | None = None
     target_audience: str | None = None
@@ -41,6 +40,9 @@ class JobSummary(BaseModel):
     video_url: str | None = None
     video_metadata: dict[str, Any] | None = None
     render_progress: int = 0
+    failure_stage: str | None = None
+    failure_type: str | None = None
+    failure_summary: str | None = None
 
 
 class JobListResponse(BaseModel):
@@ -57,7 +59,6 @@ class JobStatus(BaseModel):
     streamed_thoughts: list[ThoughtLog] = Field(default_factory=list)
     status: Literal[
         "planning",
-        "validating",
         "architecting",
         "animating",
         "rendering",
@@ -69,7 +70,6 @@ class JobStatus(BaseModel):
     ]
     current_step: str | None = None
     plan: CurriculumPlan | None = None
-    validation: ValidationResult | None = None
     storyboard: Storyboard | None = None
     manim_code: str | None = None
     video_url: str | None = None
@@ -80,7 +80,6 @@ class JobStatus(BaseModel):
 
     model_id: str | None = None
     analyst_model: str | None = None
-    validator_model: str | None = None
     architect_model: str | None = None
     animator_model: str | None = None
     target_audience: str | None = None
@@ -92,18 +91,20 @@ class JobStatus(BaseModel):
     thumbnail_url: str | None = None
     video_metadata: dict[str, Any] | None = None
     render_progress: int = 0
+    failure_stage: str | None = None
+    failure_type: str | None = None
+    failure_summary: str | None = None
 
 
 class JobRequest(BaseModel):
     """Parameters for a new generation job."""
 
     topic: str = Field(..., description="Concept to explain")
-    target_audience: str = "Undergraduate CS"
+    target_audience: str = "General Audience"
     provider: str | None = None
     model_id: str | None = None
     hitl_enabled: bool = False
     analyst_model: str | None = None
-    validator_model: str | None = None
     architect_model: str | None = None
     animator_model: str | None = None
 

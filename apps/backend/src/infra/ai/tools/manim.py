@@ -1,11 +1,15 @@
 import json
+from collections import OrderedDict
 
+import structlog
 from pydantic_ai import RunContext, ToolDefinition
 
 from domain.models.workflow import GlobalContext
 from infra.settings import get_settings
 
 from .docs_client import get_manim_docs_context
+
+logger = structlog.get_logger(__name__)
 
 # Curated fallback when CONTEXT7_API_KEY is not set. With Context7 we use
 # Manim Community docs at /websites/manim_community_en_stable instead.
@@ -140,6 +144,24 @@ MANIM_DOCS: dict[str, str] = {
     ),
 }
 
+_DOC_QUERY_CACHE: OrderedDict[str, str] = OrderedDict()
+_DOC_QUERY_CACHE_MAX = 128
+
+
+def _cache_get(query: str) -> str | None:
+    value = _DOC_QUERY_CACHE.get(query)
+    if value is None:
+        return None
+    _DOC_QUERY_CACHE.move_to_end(query)
+    return value
+
+
+def _cache_set(query: str, content: str) -> None:
+    _DOC_QUERY_CACHE[query] = content
+    _DOC_QUERY_CACHE.move_to_end(query)
+    if len(_DOC_QUERY_CACHE) > _DOC_QUERY_CACHE_MAX:
+        _DOC_QUERY_CACHE.popitem(last=False)
+
 
 async def prepare_manim_docs(
     ctx: RunContext[GlobalContext], tool_def: ToolDefinition
@@ -157,7 +179,12 @@ async def prepare_manim_docs(
     Returns:
         The modified ToolDefinition with an contextually relevant description.
     """
-    storyboard = ctx.deps.storyboard
+    deps = getattr(ctx, "deps", None)
+    if deps is None:
+        logger.debug("prepare_manim_docs_missing_deps")
+        return tool_def
+
+    storyboard = deps.storyboard
     if not storyboard or not storyboard.scenes:
         return tool_def
 
@@ -187,6 +214,11 @@ async def search_manim_docs(_ctx: RunContext[GlobalContext], query: str) -> str:
     Returns:
         JSON string containing the retrieved documentation.
     """
+    normalized_query = " ".join(query.strip().split()).lower()
+    cached = _cache_get(normalized_query)
+    if cached is not None:
+        return json.dumps({"documentation": cached, "source": "cache"})
+
     api_key = get_settings().context7_api_key
     if api_key:
         content = await get_manim_docs_context(query, api_key=api_key)
@@ -194,11 +226,12 @@ async def search_manim_docs(_ctx: RunContext[GlobalContext], query: str) -> str:
         matches = [
             f"{k}: {v}"
             for k, v in MANIM_DOCS.items()
-            if query.lower() in k.lower() or query.lower() in v.lower()
+            if normalized_query in k.lower() or normalized_query in v.lower()
         ]
         content = (
             "\n".join(matches)
             if matches
             else "No specific matches found. Use standard Manim Community syntax."
         )
-    return json.dumps({"documentation": content})
+    _cache_set(normalized_query, content)
+    return json.dumps({"documentation": content, "source": "live"})

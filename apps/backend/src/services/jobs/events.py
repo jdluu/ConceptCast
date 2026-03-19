@@ -1,7 +1,9 @@
 import asyncio
 from collections import defaultdict
 
-from loguru import logger
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 class JobEventManager:
@@ -19,7 +21,7 @@ class JobEventManager:
         condition = self._conditions[job_id]
         async with condition:
             condition.notify_all()
-            logger.trace(f"Notified subscribers for job {job_id}")
+            logger.debug("job_subscribers_notified", job_id=job_id)
 
     async def wait_for_update(self, job_id: str, timeout: float = 30.0) -> bool:
         """

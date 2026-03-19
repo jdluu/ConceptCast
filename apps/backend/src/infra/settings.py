@@ -66,9 +66,13 @@ class Settings(BaseSettings):
     nano_model_name: str = "openai/gpt-oss-120b"
     render_quality: str = "ql"
     streamed_thoughts_max_entries: int = 500
-    animation_review_max_iterations: int = 3
+    # Max outer-loop attempts for animator self-correction (preview + review loop).
+    animation_review_max_iterations: int = 6
+    # Max attempts to repair Manim code after a render failure (patch-first loop).
+    render_repair_max_attempts: int = 6
     animation_review_enabled: bool = True
     hitl_enabled: bool = False
+    curriculum_validation_enabled: bool = False
     database_url: str = "sqlite:///" + str(PROJECT_ROOT / "conceptcast.db")
     redis_url: str = "redis://localhost:6379"
     cors_origins: str = "http://localhost:5173"

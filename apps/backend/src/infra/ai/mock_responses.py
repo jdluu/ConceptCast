@@ -8,8 +8,9 @@ from api.schemas import (
     Scene,
     Storyboard,
     TeachingStep,
-    ValidationResult,
+    TeachingStepsDraft,
 )
+from domain.models.curriculum import ValidationResult
 from infra.settings import get_settings
 
 settings = get_settings()
@@ -81,6 +82,10 @@ MOCK_PLANS = {
             ),
         ],
     )
+}
+
+MOCK_TEACHING_STEPS_DRAFTS = {
+    "default": TeachingStepsDraft(teaching_steps=MOCK_PLANS["default"].teaching_steps)
 }
 
 MOCK_VALIDATIONS = {
@@ -263,6 +268,12 @@ def get_realistic_response(
         if topic:
             plan = inject_topic_recursively(plan, topic)
         return plan.model_dump_json()
+
+    if output_type == TeachingStepsDraft:
+        draft = MOCK_TEACHING_STEPS_DRAFTS["default"].model_copy(deep=True)
+        if topic:
+            draft = inject_topic_recursively(draft, topic)
+        return draft.model_dump_json()
 
     if output_type == ValidationResult:
         return MOCK_VALIDATIONS["default"].model_dump_json()

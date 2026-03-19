@@ -6,11 +6,10 @@ dependency graph is logical and effective for the target audience.
 
 from collections.abc import Awaitable, Callable
 
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent
 from pydantic_ai.usage import RunUsage
 
-from api.schemas import CurriculumPlan, ValidationResult
-from domain.agents.validator import validate_curriculum
+from domain.models.curriculum import TeachingStepsDraft
 from domain.models.workflow import GlobalContext
 from infra.ai.base import BaseConceptModel, load_prompt
 from infra.ai.streaming import run_agent_streamed
@@ -24,8 +23,9 @@ async def generate_curriculum(
     audience: str,
     model: BaseConceptModel,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
+    retry_hint: str | None = None,
     ctx: GlobalContext | None = None,
-) -> tuple[CurriculumPlan, RunUsage]:
+) -> tuple[TeachingStepsDraft, RunUsage]:
     """Generates a pedagogical curriculum plan for a given topic.
 
     Args:
@@ -36,41 +36,23 @@ async def generate_curriculum(
         ctx: The Global Context Object (GCO) for the workflow.
 
     Returns:
-        tuple: (The structured CurriculumPlan, RunUsage data).
+        tuple: (Generated teaching steps draft, RunUsage data).
     """
     agent = Agent(
         model.model,
         system_prompt=system_prompt,
-        output_type=CurriculumPlan,
+        output_type=TeachingStepsDraft,
         deps_type=GlobalContext,
         retries=3,
     )
 
-    @agent.tool
-    async def consult_critic(
-        _ctx: RunContext[GlobalContext], plan: CurriculumPlan
-    ) -> ValidationResult:
-        """Consults the Validator Agent to review the generated curriculum plan.
-
-        Args:
-            _ctx: The run context containing global workflow state.
-            plan: The curriculum plan to validate.
-
-        Returns:
-            The validation result from the reviewer.
-        """
-        res, _ = await validate_curriculum(
-            plan, model, on_thought=on_thought, ctx=_ctx.deps
-        )
-        return res
-
     if ctx:
         prompt = extract_analyst_context(ctx)
     else:
-        prompt = (
-            f"Explain '{topic}' to a '{audience}' audience. "
-            "Remember to consult the critic before finalizing your output."
-        )
+        prompt = f"Explain '{topic}' to a '{audience}' audience."
+
+    if retry_hint:
+        prompt = f"{prompt}\n\nREPAIR INSTRUCTIONS:\n{retry_hint}"
 
     result, usage = await run_agent_streamed(
         "analyst", agent, prompt, on_thought=on_thought, deps=ctx

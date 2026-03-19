@@ -7,7 +7,6 @@ from api.schemas import (
     Scene,
     Storyboard,
     TeachingStep,
-    ValidationResult,
     VisualObject,
 )
 
@@ -58,29 +57,12 @@ async def run_mock_flow(
         await update_job(
             {
                 "plan": plan.model_dump(),
-                "status": "validating",
+                "status": "architecting",
                 "current_step": "planning_complete",
             }
         )
 
-        # Step 2: Validating
-        await on_thought(
-            "validator",
-            "Validation",
-            "Reviewing curriculum plan against pedagogical standards...",
-        )
-        await asyncio.sleep(1.5 * sleep_mult)
-
-        validation = generate_mock_validation()
-        await update_job(
-            {
-                "validation": validation.model_dump(),
-                "status": "architecting",
-                "current_step": "validating_complete",
-            }
-        )
-
-        # Step 3: Architecting
+        # Step 2: Architecting
         await on_thought(
             "architect", "Visual Design", "Translate concepts into visual metaphors..."
         )
@@ -102,7 +84,7 @@ async def run_mock_flow(
             }
         )
 
-        # Step 4: Animating (Simulated Loop)
+        # Step 3: Animating (Simulated Loop)
         await on_thought("animator", "Code Generation", "Initializing Manim scene...")
         await asyncio.sleep(1.5 * sleep_mult)
 
@@ -125,7 +107,7 @@ async def run_mock_flow(
 
         await update_job({"status": "rendering", "current_step": "animating_complete"})
 
-        # Step 5: Rendering
+        # Step 4: Rendering
         await on_thought("system", "Rendering", "Starting render process...")
         await asyncio.sleep(2.0 * sleep_mult)
 
@@ -212,6 +194,7 @@ def generate_mock_storyboard(plan: CurriculumPlan) -> Storyboard:
                         position="ORIGIN",
                         label=plan.concept_title,
                         color="WHITE",
+                        parameters={"font_size": 48},
                     )
                 ],
             ),
@@ -245,15 +228,3 @@ class SceneGen(Scene):
         self.play(Write(text))
         self.wait(1)
 """
-
-
-def generate_mock_validation() -> ValidationResult:
-    """Produces a passing pedagogical validation result for testing."""
-    return ValidationResult(
-        is_valid=True,
-        feedback="Mock: Curriculum plan is pedagogically sound.",
-        suggestions=["Everything looks great!"],
-        metadata={},
-        scores={},
-        issues=[],
-    )

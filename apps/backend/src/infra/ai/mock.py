@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from loguru import logger
+import structlog
 from pydantic_ai import RunContext
 from pydantic_ai.messages import (
     ModelMessage,
@@ -32,11 +32,14 @@ from api.schemas import (
     AnimationReview,
     CurriculumPlan,
     Storyboard,
-    ValidationResult,
+    TeachingStepsDraft,
 )
+from domain.models.curriculum import ValidationResult
 
 from .base import BaseConceptModel, BaseProvider
 from .mock_responses import get_realistic_response
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -195,12 +198,14 @@ class RealisticMockModel(Model):
             "Analyst" if is_analyst else "Animator" if is_animator else "Other"
         )
         logger.info(
-            f"Mock Request: agent={agent_label}, "
-            f"turn={'1' if is_first_turn else 'N'}, topic={user_topic}"
+            "mock_model_request",
+            agent=agent_label,
+            turn="1" if is_first_turn else "N",
+            topic=user_topic,
         )
 
         if is_analyst and is_first_turn:
-            response_json = get_realistic_response("", CurriculumPlan, user_topic)
+            response_json = get_realistic_response("", TeachingStepsDraft, user_topic)
             return ModelResponse(
                 parts=[
                     ThinkingPart(
@@ -223,8 +228,8 @@ class RealisticMockModel(Model):
         target_type: type | None = None
         if output_object:
             name = output_object.name
-            if name in ("CurriculumPlan", "final_result") and is_analyst:
-                target_type = CurriculumPlan
+            if name in ("TeachingStepsDraft", "final_result") and is_analyst:
+                target_type = TeachingStepsDraft
             elif name in ("Storyboard", "final_result") and "Architect" in system_text:
                 target_type = Storyboard
             elif (
@@ -237,6 +242,8 @@ class RealisticMockModel(Model):
                 and "Reviewer" in system_text
             ):
                 target_type = AnimationReview
+            elif name == "TeachingStepsDraft":
+                target_type = TeachingStepsDraft
             elif name == "CurriculumPlan":
                 target_type = CurriculumPlan
             elif name == "Storyboard":

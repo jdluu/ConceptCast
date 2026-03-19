@@ -2,6 +2,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +10,8 @@ from api.schemas import JobRequest
 from infra.models.job import JobRecord
 from infra.settings import get_settings
 from services.jobs.events import job_event_manager
+
+logger = structlog.get_logger(__name__)
 
 
 def determine_execution_mode(request: JobRequest) -> bool:
@@ -107,19 +110,75 @@ async def _perform_retry_prep(db: AsyncSession, job_id: str) -> JobRecord:
     if not job:
         raise ValueError(f"Job {job_id} not found")
 
+    is_render_repair = (
+        job.status == "awaiting_review"
+        and job.current_step == "rendering_failed_needs_fix"
+    )
+    current_step = (job.current_step or "").lower()
+    error_text = (job.error or "").lower()
+
+    failure_stage = "unknown"
+    if is_render_repair:
+        failure_stage = "rendering_repair"
+    elif (
+        "animat" in current_step
+        or "preview" in current_step
+        or "manim" in current_step
+        or "animation" in error_text
+        or "preview" in error_text
+        or "syntax error" in error_text
+        or "indentationerror" in error_text
+    ):
+        failure_stage = "animating"
+    elif "render" in current_step or "render" in error_text:
+        failure_stage = "rendering"
+    elif "architect" in current_step or "storyboard" in current_step:
+        failure_stage = "architecting"
+    elif "plan" in current_step or "curriculum" in current_step:
+        failure_stage = "planning"
+
+    keep_storyboard = bool(job.storyboard) and (
+        is_render_repair or failure_stage == "animating"
+    )
+
     updates: dict[str, Any] = {
         "status": "pending_retry",
-        "error": None,
-        "current_step": "retrying",
+        # Keep the render error message as retry hint when repairing.
+        "error": job.error if is_render_repair else None,
+        "current_step": "rendering_failed_needs_fix"
+        if is_render_repair
+        else "retrying",
         "retry_count": job.retry_count + 1,
         "streamed_thoughts": [],
         "render_progress": 0,
         "started_at": None,
         "finished_at": None,
+        # Keep the plan checkpoint always; keep storyboard when retrying
+        # from animating/render-repair checkpoints.
+        "storyboard": job.storyboard if keep_storyboard else None,
+        "manim_code": None,
+        "video_url": None,
+        "thumbnail_url": None,
+        "video_metadata": None,
     }
 
     for key, value in updates.items():
         setattr(job, key, value)
+
+    logger.info(
+        "retry_prep",
+        job_id=job_id,
+        stage=failure_stage,
+        kept_plan=bool(job.plan),
+        kept_storyboard=keep_storyboard,
+        cleared_artifacts=[
+            "manim_code",
+            "video_url",
+            "thumbnail_url",
+            "video_metadata",
+        ],
+        current_step=updates["current_step"],
+    )
 
     job.updated_at = datetime.now(UTC)
     await job_event_manager.notify(job_id)

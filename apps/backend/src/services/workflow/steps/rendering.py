@@ -1,15 +1,58 @@
 from collections.abc import Callable
+from difflib import SequenceMatcher
 from typing import Any
-
-from loguru import logger
 
 from api.schemas import JobRequest, Storyboard
 from domain.agents.animator import generate_manim_code
+from domain.models.workflow import GlobalContext
 from infra.engines.video import render_storyboard
 from infra.models.job import JobRecord
 from infra.security.sanitizer import sanitize_manim_code
+from infra.settings import get_settings
 from services.workflow.base import get_step_model
-from services.workflow.utils import calculate_job_cost
+from services.workflow.utils import calculate_job_cost, merge_usage
+
+
+class RenderRepairRequiredError(RuntimeError):
+    """Raised when rendering fails and requires manual/agent code repair."""
+
+    def __init__(self, message: str, *, suggestion: str, error_type: str) -> None:
+        super().__init__(message)
+        self.suggestion = suggestion
+        self.error_type = error_type
+
+
+def _is_recoverable_render_error(message: str) -> bool:
+    lower = message.lower()
+    return any(
+        token in lower
+        for token in (
+            "rendering failed",
+            "typeerror",
+            "attributeerror",
+            "python syntax error",
+            "indentationerror",
+            "syntaxerror",
+        )
+    )
+
+
+def _render_error_hint(message: str, logs: str | None = None) -> str:
+    log_tail = ""
+    if logs:
+        tail_lines = logs.splitlines()[-12:]
+        if tail_lines:
+            log_tail = "\n".join(tail_lines)
+    if log_tail:
+        return f"{message}\nRecent logs:\n{log_tail}"
+    return message
+
+
+def _looks_like_large_rewrite(old: str, new: str) -> bool:
+    if not old.strip() or not new.strip():
+        return False
+    ratio = SequenceMatcher(a=old, b=new).ratio()
+    return ratio < 0.55
 
 
 async def step_rendering(
@@ -44,91 +87,125 @@ async def step_rendering(
         RuntimeError: If rendering fails and cannot be recovered via retry.
     """
     await update_job({"status": "rendering", "current_step": "rendering"})
-    try:
-        # We always attempt a real render now, even in mock mode,
-        # because the mock Manim code is actually valid.
-        render_result = await render_storyboard(
-            code,
-            job_id,
-            update_job=update_job,
-            resolution="1080p",
-            frame_rate=60,
-        )
 
-        total_cost = calculate_job_cost(
-            render_duration=render_result.metadata.get("duration", 0)
-            if render_result.metadata
-            else 0
-        )
+    current_code = sanitize_manim_code(code)
+    await update_job({"manim_code": current_code})
 
-        await update_job(
-            {
-                "video_url": render_result.video_url,
-                "thumbnail_url": render_result.thumbnail_url,
-                "video_metadata": render_result.metadata,
-                "cost": total_cost,
-                "status": "completed",
-                "current_step": "rendering_complete",
-            }
-        )
-    except RuntimeError as e:
-        error_msg = str(e)
-        if (
-            "Rendering failed" in error_msg
-            or "TypeError" in error_msg
-            or "AttributeError" in error_msg
-        ):
-            logger.warning(
-                f"Rendering failed, retrying animator with error feedback: {error_msg}"
+    max_repair_attempts = get_settings().render_repair_max_attempts
+    repair_attempt = 0
+    total_usage = None
+
+    while True:
+        try:
+            # We always attempt a real render now, even in mock mode,
+            # because the mock Manim code is actually valid.
+            render_result = await render_storyboard(
+                current_code,
+                job_id,
+                update_job=update_job,
+                resolution="1080p",
+                frame_rate=60,
             )
-            anim_model = get_step_model(request, job)
-            if anim_model:
-                retry_code, retry_usage = await generate_manim_code(
-                    storyboard,
-                    model=anim_model,
-                    on_thought=on_thought,
-                    retry_hint=(
-                        f"Rendering failed with error: {error_msg}. "
-                        "Fix the Manim API usage - check parameter names and use "
-                        ".set_*() methods for styling instead of constructor kwargs."
+
+            total_cost = calculate_job_cost(
+                usage=total_usage,
+                render_duration=render_result.metadata.get("duration", 0)
+                if render_result.metadata
+                else 0,
+            )
+
+            await update_job(
+                {
+                    "video_url": render_result.video_url,
+                    "thumbnail_url": render_result.thumbnail_url,
+                    "video_metadata": render_result.metadata,
+                    "cost": total_cost,
+                    "status": "completed",
+                    "current_step": "rendering_complete",
+                }
+            )
+            return
+        except Exception as e:
+            error_msg = str(e)
+            if not _is_recoverable_render_error(error_msg):
+                raise RenderRepairRequiredError(
+                    f"Unrecoverable rendering error: {error_msg}",
+                    suggestion=(
+                        "Inspect sanitization/preview logs and regenerate working "
+                        "Manim code before rendering again."
                     ),
-                )
-                retry_code = sanitize_manim_code(retry_code)
-                await update_job(
-                    {
-                        "manim_code": retry_code,
-                        "status": "rendering",
-                        "current_step": "rendering_retry",
-                    }
-                )
-                render_result = await render_storyboard(
-                    retry_code,
-                    job_id,
-                    update_job=update_job,
-                    resolution="1080p",
-                    frame_rate=60,
-                )
+                    error_type=type(e).__name__,
+                ) from e
 
-                duration = (
-                    render_result.metadata.get("duration", 0)
-                    if render_result.metadata
-                    else 0
-                )
-                total_cost = calculate_job_cost(
-                    usage=retry_usage, render_duration=duration
-                )
+            if repair_attempt >= max_repair_attempts:
+                raise RenderRepairRequiredError(
+                    f"Render repair attempts exhausted. Last error: {error_msg}",
+                    suggestion=(
+                        "Patch failed repeatedly. Pause for review, then retry with "
+                        "more targeted API/syntax fixes."
+                    ),
+                    error_type=type(e).__name__,
+                ) from e
 
-                await update_job(
-                    {
-                        "video_url": render_result.video_url,
-                        "thumbnail_url": render_result.thumbnail_url,
-                        "video_metadata": render_result.metadata,
-                        "cost": total_cost,
-                        "status": "completed",
-                        "current_step": "rendering_complete",
-                    }
+            repair_attempt += 1
+            await on_thought(
+                "system",
+                "status",
+                (
+                    "Rendering failed; routing back to animator for targeted patch "
+                    f"(attempt {repair_attempt}/{max_repair_attempts})."
+                ),
+            )
+
+            anim_model = get_step_model(request, job, agent_id="animator")
+            if not anim_model:
+                raise RenderRepairRequiredError(
+                    f"Rendering failed and no animator model available: {error_msg}",
+                    suggestion=(
+                        "Regenerate Manim code with targeted syntax/API fixes, "
+                        "then retry rendering."
+                    ),
+                    error_type=type(e).__name__,
+                ) from e
+
+            retry_ctx = GlobalContext(
+                topic=request.topic,
+                target_audience=request.target_audience,
+                storyboard=storyboard,
+                manim_code=current_code,
+            )
+            retry_hint = (
+                "PATCH MODE: Apply minimal edits to current_manim_code in context. "
+                "Do not rewrite unrelated scenes. "
+                f"Repair target: {_render_error_hint(error_msg)}"
+            )
+            retry_code, retry_usage = await generate_manim_code(
+                storyboard,
+                model=anim_model,
+                on_thought=on_thought,
+                ctx=retry_ctx,
+                retry_hint=retry_hint,
+            )
+            total_usage = merge_usage(total_usage, retry_usage)
+            if _looks_like_large_rewrite(current_code, retry_code):
+                await on_thought(
+                    "system",
+                    "status",
+                    "Patch attempt produced a large rewrite; retrying with stricter patch-only guidance.",
                 )
-            else:
-                raise
-        else:
-            raise
+                continue
+            current_code = sanitize_manim_code(retry_code)
+            await update_job(
+                {
+                    "manim_code": current_code,
+                    "status": "animating",
+                    "current_step": f"rendering_repair_attempt_{repair_attempt}",
+                    "error": None,
+                }
+            )
+            await update_job(
+                {
+                    "status": "rendering",
+                    "current_step": f"rendering_retry_{repair_attempt}",
+                }
+            )

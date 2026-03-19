@@ -7,8 +7,11 @@ configuration of LLMs across different backends.
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+import structlog
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
+
+logger = structlog.get_logger(__name__)
 
 
 class BaseConceptModel(ABC):
@@ -99,7 +102,10 @@ def load_prompt(name: str) -> str:
     try:
         return path.read_text(encoding="utf-8").strip()
     except Exception as e:
-        from loguru import logger
-
-        logger.warning(f"Failed to load prompt '{name}' from {path}: {e}")
+        logger.warning(
+            "prompt_load_failed",
+            prompt_name=name,
+            prompt_path=str(path),
+            error=str(e),
+        )
         return f"You are the {name} agent."

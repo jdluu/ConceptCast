@@ -12,7 +12,7 @@ from domain.models.curriculum import (
     TeachingStep as TeachingStep,
 )
 from domain.models.curriculum import (
-    ValidationResult as ValidationResult,
+    TeachingStepsDraft as TeachingStepsDraft,
 )
 from domain.models.review import AnimationReview as AnimationReview
 from domain.models.storyboard import (

@@ -10,7 +10,7 @@ import sys
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-from loguru import logger
+import structlog
 from pydantic_ai import Agent
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,13 +18,14 @@ from api.schemas import (
     AnimationReview,
     CurriculumPlan,
     Storyboard,
-    ValidationResult,
 )
 from domain.models.workflow import GlobalContext
 from infra.ai.mock import MockConceptModel, RealisticMockModel
 from infra.ai.streaming import run_agent_streamed
 from infra.models.job import JobRecord
 from services.workflow.orchestrator import execute_workflow
+
+logger = structlog.get_logger(__name__)
 
 
 async def test_agent_logic(  # noqa: C901, PLR0912
@@ -34,7 +35,7 @@ async def test_agent_logic(  # noqa: C901, PLR0912
     topic: str = "Linear Algebra",
 ) -> bool:
     """Simulates a single agent run and validates the event stream."""
-    logger.info(f"--- Testing {agent_name.upper()} Agent ---")
+    logger.info("diagnostic_agent_test_started", agent=agent_name.upper())
 
     concept_model = MockConceptModel(RealisticMockModel(), f"mock-{agent_name}")
     agent = Agent(
@@ -61,7 +62,7 @@ async def test_agent_logic(  # noqa: C901, PLR0912
 
     # Add dependencies if needed by the agent
     kwargs: dict[str, Any] = {}
-    if agent_name in {"validator", "architect"}:
+    if agent_name == "architect":
         kwargs["deps"] = CurriculumPlan(
             concept_title=topic, target_audience="Beginner", teaching_steps=[]
         )
@@ -115,25 +116,30 @@ async def test_agent_logic(  # noqa: C901, PLR0912
 
     # Assertions
     if not captured_thoughts:
-        logger.error(f"FAIL: {agent_name} emitted NO thinking parts.")
+        logger.error(
+            "diagnostic_agent_test_failed_no_thinking_parts",
+            agent=agent_name,
+        )
         return False
 
     if not result:
-        logger.error(f"FAIL: {agent_name} produced NO final result.")
+        logger.error("diagnostic_agent_test_failed_no_result", agent=agent_name)
         return False
 
     # Structural Validation
-    if agent_name == "validator" and not isinstance(result, ValidationResult):
-        logger.error(f"FAIL: {agent_name} result is not a ValidationResult.")
-        return False
     if agent_name == "architect" and (
         not isinstance(result, Storyboard) or len(result.scenes) == 0
     ):
-        logger.error(f"FAIL: {agent_name} produced an empty or invalid Storyboard.")
+        logger.error(
+            "diagnostic_agent_test_failed_invalid_storyboard",
+            agent=agent_name,
+        )
         return False
 
-    logger.success(
-        f"PASS: {agent_name} verified. ({len(captured_thoughts)} thought blocks)"
+    logger.info(
+        "diagnostic_agent_test_passed",
+        agent=agent_name,
+        thought_blocks=len(captured_thoughts),
     )
     return True
 
@@ -147,7 +153,7 @@ async def test_full_workflow(topic: str = "Quantum Entanglement") -> bool:
     from datetime import UTC, datetime
     from unittest.mock import patch
 
-    logger.info(f"--- Testing FULL WORKFLOW Integration for '{topic}' ---")
+    logger.info("diagnostic_workflow_test_started", topic=topic)
 
     # 1. Setup Mock JobRecord
     job_id = "test-workflow-uuid"
@@ -198,36 +204,36 @@ async def test_full_workflow(topic: str = "Quantum Entanglement") -> bool:
                 on_thought=on_thought,
             )
         except Exception as e:
-            logger.error(f"FAIL: Workflow execution crashed: {e}")
+            logger.error("diagnostic_workflow_test_crashed", error=str(e))
             return False
 
         # 5. Assertions
         if not job.plan:
-            logger.error("FAIL: Workflow finished but JobRecord has NO plan.")
+            logger.error("diagnostic_workflow_test_failed_missing_plan")
             return False
         if not job.storyboard:
-            logger.error("FAIL: Workflow finished but JobRecord has NO storyboard.")
+            logger.error("diagnostic_workflow_test_failed_missing_storyboard")
             return False
         if not job.manim_code:
-            logger.error("FAIL: Workflow finished but JobRecord has NO manim_code.")
+            logger.error("diagnostic_workflow_test_failed_missing_manim_code")
             return False
 
         # Verify renderer was dispatched
         mock_render_task.kiq.assert_called_once()
 
-        logger.success(
-            f"PASS: Full Workflow Integration verified. (Captured {len(captured_thoughts)} thoughts)"
+        logger.info(
+            "diagnostic_workflow_test_passed",
+            thoughts_captured=len(captured_thoughts),
         )
         return True
 
 
 async def run_diagnostics() -> None:
     """Runs a full suite of agent diagnostics."""
-    logger.info("Starting Council Intelligence Diagnostics...")
+    logger.info("diagnostic_suite_started")
 
     tests = [
         ("analyst", "Analyst Agent", CurriculumPlan),
-        ("validator", "Validator Agent", ValidationResult),
         ("architect", "Architect Agent", Storyboard),
         ("animator", "Animator Agent", str),
         ("reviewer", "Reviewer Agent", AnimationReview),
@@ -244,9 +250,9 @@ async def run_diagnostics() -> None:
     results.append(workflow_success)
 
     if all(results):
-        logger.success("\nAll Agent Intelligence Tests Passed!")
+        logger.info("diagnostic_suite_passed")
     else:
-        logger.error("\nSome diagnostic tests failed. Check logs above.")
+        logger.error("diagnostic_suite_failed")
         sys.exit(1)
 
 

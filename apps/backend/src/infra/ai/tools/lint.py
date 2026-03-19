@@ -2,11 +2,13 @@ import re
 import tempfile
 from pathlib import Path
 
-from loguru import logger
+import structlog
 from pydantic_ai import RunContext
 
 from domain.models.workflow import GlobalContext
 from infra.engines.sandbox import local_sandbox
+
+logger = structlog.get_logger(__name__)
 
 _LOWERCASE_COLOR_RE = re.compile(
     r'(?:color|fill_color|stroke_color)\s*=\s*["\']([a-z]+)["\']'
@@ -26,7 +28,7 @@ async def lint_manim_code(_ctx: RunContext[GlobalContext], code: str) -> str:
     Returns:
         A diagnostic report detailing any errors found, or 'Passed' if clean.
     """
-    logger.info("Executing sandbox linting...")
+    logger.info("lint_manim_code_started")
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)

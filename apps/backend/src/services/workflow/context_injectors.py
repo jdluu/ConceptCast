@@ -23,20 +23,6 @@ def extract_analyst_context(ctx: GlobalContext) -> str:
     return f"WORKFLOW_CONTEXT:\n{json.dumps(context, indent=2)}"
 
 
-def extract_validator_context(ctx: GlobalContext) -> str:
-    """Extracts relevant context for the Validator Agent.
-
-    Provides the plan to be audited along with the target audience and style
-    constraints to ensure pedagogical and visual alignment.
-    """
-    context = {
-        "target_audience": ctx.target_audience,
-        "style_guidelines": ctx.style.model_dump(),
-        "curriculum_plan_to_audit": ctx.plan.model_dump() if ctx.plan else None,
-    }
-    return f"WORKFLOW_CONTEXT:\n{json.dumps(context, indent=2)}"
-
-
 def extract_architect_context(ctx: GlobalContext) -> str:
     """Extracts relevant context for the Visual Architect.
 
@@ -64,6 +50,7 @@ def extract_animator_context(ctx: GlobalContext) -> str:
     context = {
         "style_guidelines": ctx.style.model_dump(),
         "visual_storyboard": ctx.storyboard.model_dump() if ctx.storyboard else None,
+        "current_manim_code": ctx.manim_code,
         "visual_lexicon": {k: v.model_dump() for k, v in ctx.lexicon.items()},
         "previous_errors_to_avoid": [
             e.model_dump() for e in ctx.error_buffer if e.agent == "animator"

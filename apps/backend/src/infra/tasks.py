@@ -6,6 +6,7 @@ Utilizes taskiq for distributed task execution and long-running job processing.
 import asyncio
 from typing import Any
 
+import structlog
 from sqlalchemy import select
 from taskiq_redis import ListQueueBroker
 
@@ -15,7 +16,9 @@ from infra.models.job import JobRecord
 from infra.settings import get_settings
 from services.jobs.manager import update_job_status
 from services.jobs.thoughts import append_job_thought
-from services.workflow.steps.rendering import step_rendering
+from services.workflow.steps.rendering import RenderRepairRequiredError, step_rendering
+
+logger = structlog.get_logger(__name__)
 
 settings = get_settings()
 
@@ -71,12 +74,54 @@ async def render_video_task(
         )
         job = result.scalar_one()
 
-        await step_rendering(
-            code=code,
-            job_id=job_id,
-            storyboard=storyboard,
-            request=request,
-            job=job,
-            update_job=update_job,
-            on_thought=on_thought,
-        )
+        try:
+            await step_rendering(
+                code=code,
+                job_id=job_id,
+                storyboard=storyboard,
+                request=request,
+                job=job,
+                update_job=update_job,
+                on_thought=on_thought,
+            )
+        except RenderRepairRequiredError as e:
+            logger.error(
+                "render_repair_required",
+                job_id=job_id,
+                exception_type=type(e).__name__,
+                error_type=e.error_type,
+                error=str(e),
+            )
+            details = f"{e.error_type}: {e}. Suggested action: {e.suggestion}"
+            await update_job(
+                {
+                    "status": "awaiting_review",
+                    "current_step": "rendering_failed_needs_fix",
+                    "error": details,
+                }
+            )
+            await on_thought(
+                "system",
+                "status",
+                f"Rendering failed and paused for repair.\n{details}",
+            )
+        except Exception as e:
+            logger.exception(
+                "render_task_unexpected_failure",
+                job_id=job_id,
+                exception_type=type(e).__name__,
+                error=str(e),
+            )
+            details = f"{type(e).__name__}: {e}"
+            await update_job(
+                {
+                    "status": "awaiting_review",
+                    "current_step": "rendering_failed_needs_fix",
+                    "error": details,
+                }
+            )
+            await on_thought(
+                "system",
+                "status",
+                f"Rendering failed unexpectedly and paused for repair.\n{details}",
+            )

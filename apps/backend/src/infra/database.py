@@ -6,12 +6,14 @@ database initialization and health checks.
 
 from collections.abc import AsyncGenerator
 
-from loguru import logger
+import structlog
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from infra.settings import get_settings
+
+logger = structlog.get_logger(__name__)
 
 DATABASE_URL = get_settings().database_url.replace("sqlite://", "sqlite+aiosqlite://")
 
@@ -49,7 +51,7 @@ async def check_db_health() -> bool:
             await conn.execute(text("SELECT 1"))
             return True
     except Exception as e:
-        logger.error(f"Database health check failed: {e}")
+        logger.error("database_health_check_failed", error=str(e))
         return False
 
 

@@ -7,7 +7,7 @@ correctness, readability, and alignment with pedagogical goals.
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
-from loguru import logger
+import structlog
 from pydantic_ai import Agent
 from pydantic_ai.messages import BinaryContent, ModelRequestPart, UserPromptPart
 from pydantic_ai.usage import RunUsage
@@ -16,8 +16,10 @@ from api.schemas import AnimationReview, Storyboard
 from domain.models.workflow import GlobalContext
 from infra.ai.base import BaseConceptModel, load_prompt
 from infra.ai.streaming import run_agent_streamed
-from infra.ai.tools import lint_manim_code, prepare_manim_docs, search_manim_docs
+from infra.ai.tools import prepare_manim_docs, search_manim_docs
 from services.workflow.context_injectors import extract_reviewer_context
+
+logger = structlog.get_logger(__name__)
 
 system_prompt = load_prompt("reviewer")
 
@@ -32,7 +34,7 @@ async def review_animation(
 ) -> tuple[AnimationReview, RunUsage]:
     """Compares rendered output against the storyboard for visual fidelity.
 
-    Uses sandbox-based linting and vision/log analysis to approve or request
+    Uses vision/log analysis (and docs lookup when needed) to approve or request
     revisions for generated animations.
 
     Args:
@@ -53,8 +55,21 @@ async def review_animation(
         deps_type=GlobalContext,
         retries=3,
     )
-    agent.tool(lint_manim_code)
-    agent.tool(search_manim_docs, prepare=prepare_manim_docs)  # type: ignore
+    log_text = execution_logs.lower()
+    docs_lookup_needed = any(
+        marker in log_text
+        for marker in (
+            "attributeerror",
+            "typeerror",
+            "nameerror",
+            "unexpected keyword",
+            "manim",
+            "fadein",
+            "fade_out",
+        )
+    )
+    if docs_lookup_needed:
+        agent.tool(search_manim_docs, prepare=prepare_manim_docs)  # type: ignore
 
     prompt_parts = [
         "**Perform a Visual QA Review**",
@@ -92,7 +107,11 @@ async def review_animation(
                 ),
             ]
         except Exception as e:
-            logger.warning(f"Failed to read frame image for vision: {e}")
+            logger.warning(
+                "frame_image_read_failed",
+                error=str(e),
+                frame_path=str(frame_path),
+            )
 
     result, usage = await run_agent_streamed(
         "reviewer",

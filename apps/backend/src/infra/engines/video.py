@@ -6,11 +6,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from loguru import logger
+import structlog
 
 from infra.engines.sandbox import local_sandbox
 from infra.exceptions import AnimationGenerationError
 from infra.media.processor import generate_thumbnail, get_video_metadata
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -47,6 +49,38 @@ class PreviewResult:
 
 SCENE_NAME = "SceneGen"
 CODE_FILENAME = "scene.py"
+
+
+async def _extract_preview_frame(video_path: Path, output_path: Path) -> Path | None:
+    """Extracts a representative frame from a preview video using ffmpeg."""
+    try:
+        process = await asyncio.create_subprocess_exec(
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video_path),
+            "-frames:v",
+            "1",
+            str(output_path),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await process.communicate()
+        if process.returncode == 0 and output_path.exists():
+            return output_path
+        logger.debug(
+            "preview_frame_extraction_failed",
+            stderr=stderr.decode("utf-8", errors="replace"),
+            output_path=str(output_path),
+        )
+        return None
+    except Exception as e:
+        logger.debug(
+            "preview_frame_extraction_error",
+            error=str(e),
+            output_path=str(output_path),
+        )
+        return None
 
 
 def _prepare_render_environment(code: str, job_id: str) -> tuple[Path, Path | None]:
@@ -114,7 +148,7 @@ async def render_storyboard(
     job_dir, host_job_dir = _prepare_render_environment(code, job_id)
 
     # 3. Execute in Sandbox
-    logger.info(f"Starting render for job {job_id}")
+    logger.info("render_storyboard_started", job_id=job_id, resolution=resolution)
 
     # Retry logic for transient rendering issues
     max_retries = 2
@@ -138,7 +172,12 @@ async def render_storyboard(
                                 )
                                 loop.create_task(coro)
                         except Exception as e:
-                            logger.debug(f"Progress update failed: {e}")
+                            logger.debug(
+                                "render_progress_update_failed",
+                                error=str(e),
+                                job_id=job_id,
+                                progress=progress,
+                            )
 
             result = await local_sandbox.run_rendering(
                 job_dir=job_dir,
@@ -155,7 +194,9 @@ async def render_storyboard(
             video_files = list(job_dir.glob("**/*.mp4"))
             if not video_files:
                 logger.error(
-                    f"Manim finished but no video found. Logs:\n{result.stderr}"
+                    "render_completed_without_video",
+                    job_id=job_id,
+                    stderr=result.stderr,
                 )
                 raise AnimationGenerationError("Manim produced no video file.")
 
@@ -173,7 +214,13 @@ async def render_storyboard(
             )
 
         except RuntimeError as e:
-            logger.warning(f"Render attempt {attempt + 1} failed: {e}")
+            logger.warning(
+                "render_attempt_failed",
+                job_id=job_id,
+                attempt=attempt + 1,
+                max_attempts=max_retries + 1,
+                error=str(e),
+            )
             last_error = e
             if attempt < max_retries:
                 continue
@@ -226,11 +273,16 @@ async def render_preview(code: str, job_id: str) -> PreviewResult:
         video_files = list(job_dir.glob("**/*.mp4"))
         success = len(video_files) > 0
         combined_logs = f"STDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
+        frame_path: Path | None = None
+        if success:
+            frame_path = await _extract_preview_frame(
+                video_files[0], job_dir / "preview_frame.png"
+            )
 
         return PreviewResult(
             success=success,
             logs=combined_logs,
-            frame_path=None,
+            frame_path=frame_path,
             error=None if success else "No video output produced",
         )
 

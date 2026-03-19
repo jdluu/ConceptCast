@@ -17,8 +17,11 @@ from fastapi.staticfiles import StaticFiles
 from api.middleware.logging import LoggingMiddleware
 from api.routes import ai_models, health, jobs
 from infra.database import AsyncSessionLocal, init_db
+from infra.logging import configure_logging
 from infra.settings import get_settings
 from infra.tasks import broker
+
+configure_logging()
 
 
 @asynccontextmanager

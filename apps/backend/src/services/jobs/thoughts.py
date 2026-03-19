@@ -51,6 +51,27 @@ async def _perform_thought_append(
     if not job:
         return
 
+    def _merge_thought_content(existing: str, incoming: str) -> str:
+        """Merges streaming thought content without duplicating cumulative chunks.
+
+        Different providers may emit pure deltas or resend the full cumulative
+        text. We normalize both behaviors into a monotonic thought body.
+        """
+        if not incoming:
+            return existing
+        if not existing:
+            return incoming
+        if incoming == existing:
+            return existing
+        # Provider resent cumulative content: replace with the latest full text.
+        if incoming.startswith(existing):
+            return incoming
+        # Exact duplicate snippet already captured.
+        if incoming in existing:
+            return existing
+        # Rare reset / alternative chunking: append as best effort.
+        return existing + incoming
+
     thoughts = list(getattr(job, "streamed_thoughts", None) or [])
     now = datetime.now(UTC)
 
@@ -64,6 +85,7 @@ async def _perform_thought_append(
             if (
                 last.get("agent") == agent
                 and last.get("phase") == phase
+                and phase != "structured_output"
                 and time_diff < aggregation_window
             ):
                 should_aggregate = True
@@ -71,7 +93,8 @@ async def _perform_thought_append(
             pass
 
     if should_aggregate:
-        thoughts[-1]["content"] += content
+        existing_content = str(thoughts[-1].get("content", ""))
+        thoughts[-1]["content"] = _merge_thought_content(existing_content, content)
         thoughts[-1]["ts"] = now.isoformat()
     else:
         entry = ThoughtLog(
@@ -86,9 +109,4 @@ async def _perform_thought_append(
     job.streamed_thoughts = thoughts[-max_entries:]
     job.updated_at = now
 
-    # Reduce UI noise: only notify if the chunk indicates a logical pause
-    is_boundary = any(content.endswith(c) for c in (".", "!", "?", "\n", ":", ";"))
-    is_long = len(content) > 100
-
-    if not should_aggregate or is_boundary or is_long:
-        await job_event_manager.notify(job_id)
+    await job_event_manager.notify(job_id)
