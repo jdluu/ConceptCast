@@ -3,8 +3,10 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from loguru import logger
+import structlog
 from pydantic import BaseModel
+
+logger = structlog.get_logger(__name__)
 
 
 class VideoMetadata(BaseModel):
