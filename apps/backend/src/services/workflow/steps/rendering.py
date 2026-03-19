@@ -1,6 +1,5 @@
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from difflib import SequenceMatcher
-from typing import Any
 
 from api.schemas import JobRequest, Storyboard
 from domain.agents.animator import generate_manim_code
@@ -61,8 +60,8 @@ async def step_rendering(
     storyboard: Storyboard,
     request: JobRequest,
     job: JobRecord,
-    update_job: Callable[[dict[str, Any]], Any],
-    on_thought: Callable[[str, str, str], Any],
+    update_job: Callable[[dict[str, object]], Awaitable[None]],
+    on_thought: Callable[[str, str, str], Awaitable[None]],
 ) -> None:
     """Executes the final Rendering step of the workflow.
 
@@ -107,11 +106,18 @@ async def step_rendering(
                 frame_rate=60,
             )
 
+            raw_duration = (
+                render_result.metadata.get("duration", 0.0)
+                if render_result.metadata
+                else 0.0
+            )
+            render_duration = (
+                float(raw_duration) if isinstance(raw_duration, int | float) else 0.0
+            )
+
             total_cost = calculate_job_cost(
                 usage=total_usage,
-                render_duration=render_result.metadata.get("duration", 0)
-                if render_result.metadata
-                else 0,
+                render_duration=render_duration,
             )
 
             await update_job(

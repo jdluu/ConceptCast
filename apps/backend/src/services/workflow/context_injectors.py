@@ -6,6 +6,7 @@ maintaining visual and pedagogical consistency.
 
 import json
 
+from api.schemas import Scene, Storyboard
 from domain.models.workflow import GlobalContext
 
 
@@ -18,7 +19,7 @@ def extract_analyst_context(ctx: GlobalContext) -> str:
     context = {
         "topic": ctx.topic,
         "target_audience": ctx.target_audience,
-        "style_guidelines": ctx.style.model_dump(),
+        "style_guidelines": ctx.style.model_dump() if ctx.style else None,
     }
     return f"WORKFLOW_CONTEXT:\n{json.dumps(context, indent=2)}"
 
@@ -32,7 +33,7 @@ def extract_architect_context(ctx: GlobalContext) -> str:
     context = {
         "topic": ctx.topic,
         "target_audience": ctx.target_audience,
-        "style_guidelines": ctx.style.model_dump(),
+        "style_guidelines": ctx.style.model_dump() if ctx.style else None,
         "pedagogical_plan": ctx.plan.model_dump() if ctx.plan else None,
         "existing_visual_lexicon": {k: v.model_dump() for k, v in ctx.lexicon.items()},
         "recent_decisions": [d.model_dump() for d in ctx.decisions[-5:]],
@@ -40,16 +41,18 @@ def extract_architect_context(ctx: GlobalContext) -> str:
     return f"WORKFLOW_CONTEXT:\n{json.dumps(context, indent=2)}"
 
 
-def extract_animator_context(ctx: GlobalContext) -> str:
+def extract_animator_context(
+    ctx: GlobalContext, target_scene: Scene | Storyboard | None = None
+) -> str:
     """Extracts relevant context for the Animator Agent.
 
-    Focuses on the visual storyboard, branding, and specific lexicon entries
+    Focuses on the target scene, branding, and specific lexicon entries
     for the objects being rendered. Includes the error buffer to prevent
     repeated syntax or logic errors.
     """
     context = {
-        "style_guidelines": ctx.style.model_dump(),
-        "visual_storyboard": ctx.storyboard.model_dump() if ctx.storyboard else None,
+        "style_guidelines": ctx.style.model_dump() if ctx.style else None,
+        "target_scene": target_scene.model_dump() if target_scene else None,
         "current_manim_code": ctx.manim_code,
         "visual_lexicon": {k: v.model_dump() for k, v in ctx.lexicon.items()},
         "previous_errors_to_avoid": [

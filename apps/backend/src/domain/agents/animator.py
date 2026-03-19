@@ -10,7 +10,7 @@ from collections.abc import Awaitable, Callable
 from pydantic_ai import Agent
 from pydantic_ai.usage import RunUsage
 
-from api.schemas import Storyboard
+from api.schemas import Scene, Storyboard
 from domain.models.workflow import GlobalContext
 from infra.ai.base import BaseConceptModel, load_prompt
 from infra.ai.streaming import run_agent_streamed
@@ -21,7 +21,7 @@ system_prompt = load_prompt("animator")
 
 
 async def generate_manim_code(
-    storyboard: Storyboard,
+    target_scene: Scene | Storyboard,
     model: BaseConceptModel,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
     retry_hint: str | None = None,
@@ -30,7 +30,7 @@ async def generate_manim_code(
     """Generates Manim Python code derived from a visual storyboard.
 
     Args:
-        storyboard: The visual storyboard containing animation steps.
+        target_scene: The specific scene or full storyboard to generate code for.
         model: The ConceptCast model to use for generation.
         on_thought: Optional callback for streaming agent thoughts.
         retry_hint: Optional feedback for iterative improvement.
@@ -39,9 +39,6 @@ async def generate_manim_code(
     Returns:
         tuple: (The generated Manim Python code, RunUsage data).
     """
-    if not storyboard.scenes:
-        raise ValueError("Cannot animate an empty storyboard (no scenes found).")
-
     animator_agent = Agent(
         model.model,
         system_prompt=system_prompt,
@@ -68,9 +65,9 @@ async def generate_manim_code(
         animator_agent.tool(search_manim_docs, prepare=prepare_manim_docs)  # type: ignore
 
     if ctx:
-        prompt = extract_animator_context(ctx)
+        prompt = extract_animator_context(ctx, target_scene)
     else:
-        prompt = f"Write Manim code for: {json.dumps(storyboard.model_dump())}"
+        prompt = f"Write Manim code for scene: {json.dumps(target_scene.model_dump())}"
 
     if retry_hint:
         prompt = f"{prompt}\n\nIMPORTANT REVISION FEEDBACK: {retry_hint}"
