@@ -47,7 +47,7 @@ PROVIDER_REGISTRY: tuple[ProviderEntry, ...] = (
             "deepseek/deepseek-v3.2-speciale",
             "nvidia/nemotron-3-super-120b-a12b:thinking",
             "minimax/minimax-m2.7",
-            "qwen/qwen3.5-397b-a17b-thinking",
+            "qwen/qwen3.5-122b-a10b:thinking",
             "zai-org/glm-5:thinking",
             "moonshotai/kimi-k2.5:thinking",
         ),
