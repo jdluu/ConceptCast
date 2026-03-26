@@ -19,6 +19,7 @@ class JobRecord(Base):
 
     job_id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     topic: Mapped[str] = mapped_column(String, index=True)
+    user_prompt: Mapped[str | None] = mapped_column(String, nullable=True)
     target_audience: Mapped[str] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, default="planning", index=True)
     current_step: Mapped[str | None] = mapped_column(String, nullable=True)

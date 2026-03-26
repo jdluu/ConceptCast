@@ -407,6 +407,8 @@ export interface components {
             job_id: string;
             /** Topic */
             topic?: string | null;
+            /** User Prompt */
+            user_prompt?: string | null;
             /** Streamed Thoughts */
             streamed_thoughts?: components["schemas"]["ThoughtLog"][];
             /**
@@ -490,6 +492,8 @@ export interface components {
             job_id: string;
             /** Topic */
             topic: string;
+            /** User Prompt */
+            user_prompt?: string | null;
             /** Status */
             status: string;
             /** Current Step */

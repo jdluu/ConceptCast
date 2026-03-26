@@ -84,6 +84,7 @@ class GlobalContext(BaseModel):
 
     # 1. Semantic Intent & Branding
     topic: str
+    user_prompt: str | None = None
     target_audience: str
     style: GlobalStyle = Field(default_factory=GlobalStyle)
     key_takeaways: list[str] = Field(default_factory=list)

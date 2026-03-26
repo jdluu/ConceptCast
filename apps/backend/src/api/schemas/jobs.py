@@ -19,6 +19,7 @@ class JobSummary(BaseModel):
 
     job_id: str
     topic: str
+    user_prompt: str | None = None
     status: str
     current_step: str | None = None
     mode: str
@@ -56,6 +57,7 @@ class JobStatus(BaseModel):
 
     job_id: str
     topic: str | None = None
+    user_prompt: str | None = None
     streamed_thoughts: list[ThoughtLog] = Field(default_factory=list)
     status: Literal[
         "planning",

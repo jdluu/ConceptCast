@@ -139,6 +139,7 @@ async def process_job_logic(
                 model_id=request.model_id or "default",
                 update_job=_update_job_callback,
                 on_thought=_on_thought_callback,
+                user_prompt=job_state.user_prompt,
             )
         except ExceptionGroup as eg:
             # Parallel tasks (Validation + Architecting) might fail together
@@ -415,6 +416,7 @@ async def execute_workflow(  # noqa: PLR0915
     model_id: str,
     update_job: Callable[[dict[str, object]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
+    user_prompt: str | None = None,
 ) -> None:
     """Executes the pedagogical video generation workflow.
 
@@ -430,6 +432,7 @@ async def execute_workflow(  # noqa: PLR0915
         model_id: The specific model to use (e.g., 'nvidia/nemotron-3-super-120b-a12b:thinking').
         update_job: Async callback for persisting job state changes.
         on_thought: Async callback for streaming agent thoughts to the UI.
+        user_prompt: The original raw prompt from the user.
 
     Raises:
         PlanGenerationError: If the curriculum planning phase fails.
@@ -474,7 +477,7 @@ async def execute_workflow(  # noqa: PLR0915
     )
 
     # 3. Initialize Global Context (GCO)
-    ctx = GlobalContext(topic=topic, target_audience=audience)
+    ctx = GlobalContext(topic=topic, user_prompt=user_prompt, target_audience=audience)
 
     try:
         if (

@@ -34,12 +34,14 @@ from api.schemas import (
 from infra.database import AsyncSessionLocal, get_db
 from infra.models.job import JobRecord
 from infra.settings import get_settings
+from infra.ai.factory import get_concept_model
 from services.jobs.events import job_event_manager
 from services.jobs.manager import determine_execution_mode
 from services.jobs.serialization import (
     map_job_record_to_status,
     map_job_record_to_summary,
 )
+from services.jobs.topic import refine_topic
 from services.workflow.orchestrator import prepare_job_for_retry, process_job_logic
 
 logger = structlog.get_logger(__name__)
@@ -184,13 +186,25 @@ async def create_job(
         is_mock = determine_execution_mode(request)
         mode = "mock" if is_mock else "live"
 
-        # If in mock mode, we always use the canonical mock topic to ensure
-        # alignment between the UI, agents, and the Manim renderer.
-        effective_topic = settings.mock_topic if is_mock else request.topic
+        # If in mock mode, we always use the canonical mock topic.
+        # Otherwise, we use an LLM to refine the user's prompt into a concise topic.
+        user_prompt = request.topic
+        if is_mock:
+            effective_topic = settings.mock_topic
+        else:
+            # Resolve the model to use for topic refinement
+            refinement_model = get_concept_model(
+                request.provider or "nano", request.model_id
+            )
+            if refinement_model:
+                effective_topic = await refine_topic(user_prompt, refinement_model)
+            else:
+                effective_topic = user_prompt
 
         new_job = JobRecord(
             job_id=job_id,
             topic=effective_topic,
+            user_prompt=user_prompt,
             target_audience=request.target_audience,
             status="planning",
             mode=mode,
@@ -210,7 +224,8 @@ async def create_job(
             req.app.state, "db_session_factory", AsyncSessionLocal
         )
 
-        # Ensure the orchestrator also uses the effective topic
+        # Ensure the orchestrator uses the refined topic but keep raw prompt if needed.
+        # We pass the refined topic as the primary 'topic' for the workflow.
         background_tasks.add_task(
             process_job_logic,
             job_id,

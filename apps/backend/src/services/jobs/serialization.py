@@ -125,6 +125,7 @@ def map_job_record_to_status(job: JobRecord) -> JobStatus:
     return JobStatus(
         job_id=job.job_id,
         topic=job.topic,
+        user_prompt=job.user_prompt,
         status=status_literal,
         current_step=job.current_step,
         plan=CurriculumPlan.model_validate(job.plan) if job.plan else None,
@@ -181,6 +182,7 @@ def map_job_record_to_summary(job: JobRecord) -> JobSummary:
     return JobSummary(
         job_id=job.job_id,
         topic=job.topic,
+        user_prompt=job.user_prompt,
         status=job.status,
         current_step=job.current_step,
         mode=job.mode,
