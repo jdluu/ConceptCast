@@ -88,8 +88,10 @@ export function JobRow({
             )}
           </div>
         </td>
-        <td className="min-w-[200px] px-4 py-5">
-          <span className="text-foreground block leading-snug font-semibold">{job.topic}</span>
+        <td className="max-w-[300px] px-4 py-5">
+          <span className="text-foreground block truncate leading-snug font-semibold" title={job.topic}>
+            {job.topic}
+          </span>
           <span className="text-text-muted mt-1 block font-mono text-[10px] tracking-tight uppercase opacity-50">
             ID_{job.job_id.split('-')[0]}
           </span>
@@ -136,7 +138,7 @@ export function JobRow({
           </span>
           <span className="text-tiny text-text-muted block">{formatTime(job.created_at)}</span>
         </td>
-        <td className="py-5 pr-6 pl-4 text-right" onClick={(e) => e.stopPropagation()}>
+        <td className="w-[160px] py-5 pr-6 pl-4 text-right" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-end gap-1 px-1">
             {job.status === 'completed' && (
               <ActionButton icon={<Play className="h-3.5 w-3.5" />} title="Play" onClick={onPlay} />

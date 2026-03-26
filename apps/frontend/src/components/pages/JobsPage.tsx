@@ -219,7 +219,7 @@ export function JobsPage() {
               <th className="px-4 py-4">Format</th>
               <th className="px-4 py-4 text-right">Model</th>
               <th className="px-4 py-4 text-right">Timestamp</th>
-              <th className="py-4 pr-6 pl-4 text-right">Actions</th>
+              <th className="w-[160px] py-4 pr-6 pl-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-surface-border/50 divide-y">
