@@ -3,16 +3,16 @@
 
 .PHONY: \
 	help \
-	redis-up redis-down \
-	setup update clean clean-dev \
-	dev dev-backend dev-frontend dev-worker worker wait-for-backend gen-api \
+	setup update clean \
+	dev dev-backend dev-frontend dev-worker \
+	wait-for-backend gen-api \
 	lint lint-frontend lint-backend \
 	format format-frontend format-backend \
 	typecheck typecheck-frontend typecheck-backend \
+	test test-backend test-agents e2e \
 	build build-frontend build-backend \
 	db-migrate db-generate db-status db-rollback \
-	test-agents \
-	e2e
+	redis-up redis-down
 
 # --- Common configuration ---
 
@@ -27,11 +27,28 @@ BACKEND_SH := cd "$(BACKEND_DIR)" &&
 # --- Help ---
 
 help: ## Show this help message
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@printf "\033[1mConceptCast Management Commands\033[0m\n\n"
+	@printf "\033[1mOrchestration & Infrastructure\033[0m\n"
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ORCH ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## ORCH "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@printf "\n\033[1mDevelopment & Running\033[0m\n"
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## DEV ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## DEV "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@printf "\n\033[1mTesting & Quality\033[0m\n"
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## QA ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## QA "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@printf "\n\033[1mDatabase Management\033[0m\n"
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## DB ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## DB "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@printf "\n\033[1mMaintenance\033[0m\n"
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## MAINT ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## MAINT "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-# --- Infrastructure ---
+# --- Orchestration & Infrastructure ---
 
-redis-up: ## Start Redis container using Podman
+setup: ## ORCH Install all dependencies and run initial migrations
+	@echo "Installing frontend dependencies..."
+	pnpm install
+	@echo "Installing backend dependencies..."
+	$(BACKEND_SH) uv sync
+	@$(MAKE) db-migrate
+
+redis-up: ## ORCH Start Redis container using Podman
 	@if ! podman ps --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
 		if podman ps -a --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
 			echo "Starting existing Redis container..."; \
@@ -44,51 +61,17 @@ redis-up: ## Start Redis container using Podman
 		echo "Redis container is already running."; \
 	fi
 
-redis-down: ## Stop Redis container
+redis-down: ## ORCH Stop Redis container
 	@if podman ps --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
 		echo "Stopping Redis container..."; \
 		podman stop conceptcast-redis; \
 	fi
 
-# --- Setup & Maintenance ---
+# --- Development & Running ---
 
-setup: ## Install all dependencies and run initial migrations
-	@echo "Installing frontend dependencies..."
-	pnpm install
-	@echo "Installing backend dependencies..."
-	$(BACKEND_SH) uv sync
-	@$(MAKE) db-migrate
-
-update: ## Update all dependencies to latest versions
-	@echo "Updating frontend..."
-	pnpm update
-	@echo "Updating backend..."
-	$(BACKEND_SH) uv sync --upgrade
-
-clean: ## Remove build artifacts, node_modules, and virtual environments
-	rm -rf node_modules
-	rm -rf apps/*/node_modules
-	rm -rf apps/backend/.venv
-	rm -rf .turbo
-	rm -rf apps/frontend/dist
-	rm -rf apps/backend/e2e_reports/*.txt
-	rm -rf apps/backend/e2e_reports/*.json
-
-test-agents: ## Run agent intelligence and streaming diagnostics
-	$(INFISICAL) bash -c '$(BACKEND_SH) uv run python src/scripts/test_agents.py'
-
-# --- Development ---
-
-wait-for-backend: ## Internal: Wait for backend to be ready
-	@echo "Waiting for backend to be ready..."
-	@until curl -s "$(BASE_URL)/openapi.json" > /dev/null; do sleep 1; done
-	@echo "Backend is ready."
-
-dev: redis-up ## Run full stack in dev mode with automatic API generation
+dev: redis-up ## DEV Run full stack in dev mode
 	@if ss -ltn | rg -q ":8000[[:space:]]"; then \
 		echo "Port 8000 is already in use (backend likely already running)."; \
-		echo "Stop the existing backend process first, then run 'make dev'."; \
-		echo "If you want to keep the current backend, run 'make dev-frontend' in another terminal."; \
 		exit 1; \
 	fi
 	@$(INFISICAL) bash -lc 'set -euo pipefail; root_dir="$$(pwd)"; \
@@ -99,12 +82,6 @@ dev: redis-up ## Run full stack in dev mode with automatic API generation
 			for pid in "$$worker_pid" "$$backend_pid"; do \
 				if [ -n "$$pid" ] && kill -0 "$$pid" 2>/dev/null; then \
 					kill -TERM -- "-$$pid" 2>/dev/null || kill -TERM "$$pid" 2>/dev/null || true; \
-				fi; \
-			done; \
-			sleep 1; \
-			for pid in "$$worker_pid" "$$backend_pid"; do \
-				if [ -n "$$pid" ] && kill -0 "$$pid" 2>/dev/null; then \
-					kill -KILL -- "-$$pid" 2>/dev/null || kill -KILL "$$pid" 2>/dev/null || true; \
 				fi; \
 			done; \
 			wait "$$worker_pid" 2>/dev/null || true; \
@@ -123,81 +100,94 @@ dev: redis-up ## Run full stack in dev mode with automatic API generation
 		if [ "$$status" -eq 130 ] || [ "$$status" -eq 143 ]; then exit 0; fi; \
 		exit "$$status"'
 
-dev-backend: ## Run backend application only
+dev-backend: ## DEV Run backend application only
 	$(INFISICAL) pnpm turbo run dev --filter=$(BACKEND_FILTER)
 
-dev-frontend: ## Run frontend application only
+dev-frontend: ## DEV Run frontend application only
 	$(INFISICAL) pnpm turbo run dev --filter=$(FRONTEND_FILTER)
 
-dev-worker: ## Run background worker only
+dev-worker: ## DEV Run background worker only
 	$(INFISICAL) pnpm turbo run worker --filter=$(BACKEND_FILTER)
 
-worker: dev-worker ## Alias for dev-worker
-
-gen-api: ## Generate frontend API types from backend schema
+gen-api: ## DEV Generate frontend API types from backend schema
 	pnpm turbo run generate:api --filter=$(FRONTEND_FILTER)
 
-# --- Quality & Build ---
+wait-for-backend: 
+	@echo "Waiting for backend to be ready..."
+	@until curl -s "$(BASE_URL)/openapi.json" > /dev/null; do sleep 1; done
+	@echo "Backend is ready."
 
-lint: lint-frontend lint-backend ## Run all linters
-lint-frontend: ## Run frontend linter (oxlint)
+# --- Testing & Quality ---
+
+test: test-backend ## QA Run all automated tests (backend)
+
+test-backend: ## QA Run backend unit and integration tests (pytest). args="-k my_test"
+	$(BACKEND_SH) uv run pytest $(args)
+
+test-agents: ## QA Run agent diagnostics. Default args="--no-mock" to test real providers.
+	@args="$${args:---no-mock}"; \
+	$(INFISICAL) bash -c '$(BACKEND_SH) uv run python src/scripts/test_agents.py $$args'
+
+e2e: ## QA Run E2E simulation. topic="derivatives" audience="Students" args="--no-mock".
+	@topic="$${topic:-derivatives}"; \
+	audience="$${audience:-General Audience}"; \
+	$(INFISICAL) bash -c '$(BACKEND_SH) uv run python src/scripts/e2e_cli.py --topic "$$topic" --audience "$$audience" $(args)'
+
+lint: lint-frontend lint-backend ## QA Run all linters
+lint-frontend: ## QA Run frontend linter (oxlint)
 	pnpm turbo run lint --filter=$(FRONTEND_FILTER)
-lint-backend: ## Run backend linter (ruff)
+lint-backend: ## QA Run backend linter (ruff)
 	pnpm turbo run lint --filter=$(BACKEND_FILTER)
 
-format: format-frontend format-backend ## Run all formatters
-format-frontend: ## Format frontend code (prettier)
+format: format-frontend format-backend ## QA Run all formatters
+format-frontend: ## QA Format frontend code (prettier)
 	pnpm turbo run format --filter=$(FRONTEND_FILTER)
-format-backend: ## Format backend code (ruff)
+format-backend: ## QA Format backend code (ruff)
 	$(BACKEND_SH) uv run ruff format .
 
-typecheck: typecheck-frontend typecheck-backend ## Run all type checks
-typecheck-frontend: ## Run frontend type check (tsc)
+typecheck: typecheck-frontend typecheck-backend ## QA Run all type checks
+typecheck-frontend: ## QA Run frontend type check (tsc)
 	pnpm turbo run typecheck --filter=$(FRONTEND_FILTER)
-typecheck-backend: ## Run backend type check (mypy)
+typecheck-backend: ## QA Run backend type check (mypy)
 	$(BACKEND_SH) uv run mypy .
 
-build: build-frontend build-backend ## Build all applications
-build-frontend: ## Build frontend application
+build: build-frontend build-backend ## QA Build all applications
+build-frontend: ## QA Build frontend application
 	pnpm turbo run build --filter=$(FRONTEND_FILTER)
-build-backend: ## Build backend application
+build-backend: ## QA Build backend application
 	pnpm turbo run build --filter=$(BACKEND_FILTER)
 
 # --- Database Management (Backend) ---
 
-db-migrate: ## Run pending database migrations
+db-migrate: ## DB Run pending database migrations
 	@echo "Running backend migrations..."
 	$(INFISICAL) bash -c '$(BACKEND_SH) uv run alembic upgrade head'
 
-db-generate: ## Generate a new migration based on model changes
-	@read -p "Enter migration message: " msg; \
+db-generate: ## DB Generate migration. msg="message"
+	@msg="$${msg:-update}"; \
 	$(INFISICAL) bash -c '$(BACKEND_SH) uv run alembic revision --autogenerate -m "$$msg"'
 
-db-status: ## Show current database migration status
+db-status: ## DB Show current database migration status
 	$(INFISICAL) bash -c '$(BACKEND_SH) uv run alembic current'
 
-db-rollback: ## Roll back the last database migration
+db-rollback: ## DB Roll back the last database migration
 	$(INFISICAL) bash -c '$(BACKEND_SH) uv run alembic downgrade -1'
 
-e2e: ## E2E runner. mode=one|suite (default one). Example: make e2e mode=one provider=nano model=openai/gpt-oss-120b topic="Large Language Models"
-	@mode="$${mode:-one}"; \
-	topic="$${topic:-Large Language Models}"; \
-	audience="$${audience:-General Audience}"; \
-	if [ "$$mode" = "suite" ]; then \
-		$(INFISICAL) bash -c '$(BACKEND_SH) uv run python src/scripts/e2e_cli.py --topic "$$topic" --audience "$$audience"'; \
-	else \
-		provider="$${provider:-nano}"; \
-		model="$${model:-openai/gpt-oss-120b}"; \
-		hitl="$${hitl:-false}"; \
-		$(INFISICAL) bash -c '$(BACKEND_SH) PYTHONPATH=src uv run python -c "import asyncio; from scripts.e2e_cli import run_single_simulation; result=asyncio.run(run_single_simulation('\''$$provider'\'','\''$$model'\'','\''$$topic'\'','\''$$audience'\'',hitl_enabled=(\x27$$hitl\x27==\x27true\x27))); print(result)"'; \
-	fi
+# --- Maintenance ---
 
-clean-dev: ## Dev cleanup: jobs, job artifacts, debug logs, and E2E reports
-	@echo "Attempting DELETE /jobs on local backend (if running)..."
-	@curl -fsS -X DELETE "$(BASE_URL)/jobs" >/dev/null 2>&1 || true
-	@echo "Removing local job artifacts under data/jobs..."
+update: ## MAINT Update all dependencies to latest versions
+	@echo "Updating frontend..."
+	pnpm update
+	@echo "Updating backend..."
+	$(BACKEND_SH) uv sync --upgrade
+
+clean: ## MAINT Remove build artifacts, node_modules, and job data
+	rm -rf node_modules
+	rm -rf apps/*/node_modules
+	rm -rf apps/backend/.venv
+	rm -rf .turbo
+	rm -rf apps/frontend/dist
 	rm -rf data/jobs/*
-	@echo "Removing debug logs and E2E reports..."
+	rm -rf apps/backend/e2e_reports/*
 	rm -f .cursor/debug-*.log
-	rm -rf apps/backend/e2e_reports/*.txt
-	rm -rf apps/backend/e2e_reports/*.json
+	rm -f .cursor/worker-dev.log
