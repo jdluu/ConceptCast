@@ -1,3 +1,4 @@
+import textwrap
 from collections.abc import Awaitable, Callable
 
 import structlog
@@ -131,16 +132,38 @@ async def step_animating(  # noqa: PLR0912, PLR0915
 
                 # Cleanup potential boilerplate the model might have still generated
                 scene_code = scene_code.strip()
-                if scene_code.startswith("def construct(self):"):
-                    scene_code = scene_code[len("def construct(self):") :].strip()
+                
+                # 1. Remove optional markdown fences if present
+                if scene_code.startswith("```"):
+                    lines = scene_code.splitlines()
+                    if lines and lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines and lines[-1].startswith("```"):
+                        lines = lines[:-1]
+                    scene_code = "\n".join(lines).strip()
 
-                # Indent scene code to match the master structure
-                indented_scene_code = ""
-                for line in scene_code.splitlines():
-                    if line.strip():
-                        indented_scene_code += f"        {line}\n"
-                    else:
-                        indented_scene_code += "\n"
+                # 2. Strip imports, class definitions, and method headers
+                lines = scene_code.splitlines()
+                filtered_lines = []
+                for line in lines:
+                    stripped = line.strip()
+                    if stripped.startswith(("from manim import", "import manim", "import ")):
+                        continue
+                    if stripped.startswith(("class SceneGen", "class ")):
+                        continue
+                    if stripped.startswith("def construct(self"):
+                        continue
+                    filtered_lines.append(line)
+                
+                # Normalize base indentation to 0
+                scene_code = textwrap.dedent("\n".join(filtered_lines)).strip()
+
+                # Indent scene code to exactly 8 spaces to match master structure
+                indented_scene_code = textwrap.indent(scene_code, "        ")
+                
+                # Ensure trailing newline
+                if indented_scene_code and not indented_scene_code.endswith("\n"):
+                    indented_scene_code += "\n"
 
                 proposed_code = (
                     master_code

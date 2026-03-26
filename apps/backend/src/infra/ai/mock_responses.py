@@ -180,23 +180,19 @@ MOCK_STORYBOARDS = {
 }
 
 MOCK_MANIM_CODE = """
-from manim import *
+# Concept: {{concept_title}}
+# Create components
+p1 = Circle(color=BLUE, fill_opacity=0.5).shift(LEFT * 2)
+p2 = Circle(color=RED, fill_opacity=0.5).shift(RIGHT * 2)
 
-class SceneGen(Scene):
-    def construct(self):
-        # Concept: {{concept_title}}
-        # Create particles
-        p1 = Circle(color=BLUE, fill_opacity=0.5).shift(LEFT * 2)
-        p2 = Circle(color=RED, fill_opacity=0.5).shift(RIGHT * 2)
-        
-        # Animations
-        self.play(Create(p1), Create(p2))
-        self.wait(1)
-        
-        # Narration transition
-        title = Text("{{concept_title}}", font_size=36).to_edge(UP)
-        self.play(Write(title))
-        self.wait(2)
+# Animations
+self.play(Create(p1), Create(p2))
+self.wait(1)
+
+# Narration transition
+title = Text("{{concept_title}}", font_size=36).to_edge(UP)
+self.play(Write(title))
+self.wait(2)
 """
 
 MOCK_REVIEWS = {
