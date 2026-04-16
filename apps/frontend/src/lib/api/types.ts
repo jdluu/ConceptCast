@@ -16,12 +16,14 @@ export type JobStatus = Omit<components['schemas']['JobStatus'], 'status'> & {
   status: components['schemas']['JobStatus']['status'] | 'queued';
   cost?: number;
   thumbnail_url?: string | null;
+  preview_url?: string | null;
   video_metadata?: VideoMetadata | null;
   render_progress?: number;
 };
 export type JobSummary = components['schemas']['JobSummary'] & {
   cost?: number;
   thumbnail_url?: string | null;
+  preview_url?: string | null;
   video_url?: string | null;
   video_metadata?: VideoMetadata | null;
   render_progress?: number;
