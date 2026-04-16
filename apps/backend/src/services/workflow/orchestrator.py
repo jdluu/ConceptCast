@@ -130,6 +130,9 @@ async def process_job_logic(
                 await session.commit()
 
         try:
+            # Re-fetch just user_prompt for execute_workflow if needed, 
+            # or just let execute_workflow handle it all.
+            # Actually, let's keep it simple and just pass topic from request.
             await execute_workflow(
                 session=session,
                 job_id=job_id,
@@ -139,7 +142,6 @@ async def process_job_logic(
                 model_id=request.model_id or "default",
                 update_job=_update_job_callback,
                 on_thought=_on_thought_callback,
-                user_prompt=job_state.user_prompt,
             )
         except ExceptionGroup as eg:
             # Parallel tasks (Validation + Architecting) might fail together
@@ -179,7 +181,7 @@ async def _handle_planning_step(
         ctx: The Global Context Object (GCO) for the workflow.
 
     Returns:
-        tuple: (CurriculumPlan, Total RunUsage).
+        tuple[CurriculumPlan, RunUsage | None]: The generated plan and total token usage.
 
     Raises:
         PlanGenerationError: If planning fails to produce a valid curriculum after retries.
@@ -322,7 +324,7 @@ async def _handle_architecting_steps(
         ctx: The Global Context Object (GCO) for the workflow.
 
     Returns:
-        tuple: (Storyboard, RunUsage or None).
+        tuple[Storyboard, RunUsage | None]: The generated storyboard and total token usage.
 
     Raises:
         StoryboardGenerationError: If architecting fails to produce a valid storyboard.
@@ -376,7 +378,7 @@ async def _handle_animating_step(
         ctx: The Global Context Object (GCO) for the workflow.
 
     Returns:
-        tuple: (The generated Manim Python code, RunUsage data or None).
+        tuple[str, RunUsage | None]: The generated Manim code and total token usage.
 
     Raises:
         AnimationGenerationError: If the animation step fails to produce valid code.
@@ -407,7 +409,18 @@ async def _handle_animating_step(
     return code, m_usage
 
 
-async def execute_workflow(  # noqa: PLR0915
+async def _load_job_record(session: AsyncSession, job_id: str) -> JobRecord:
+    """Helper to fetch a JobRecord or raise a descriptive error."""
+    stmt = select(JobRecord).where(JobRecord.job_id == job_id)
+    res = await session.execute(stmt)
+    job = res.scalar_one_or_none()
+    if not job:
+        logger.error("workflow_job_not_found", job_id=job_id)
+        raise RuntimeError(f"Job {job_id} not found in database.")
+    return job
+
+
+async def execute_workflow(  # noqa: PLR0915, PLR0913
     session: AsyncSession,
     job_id: str,
     topic: str,
@@ -416,53 +429,16 @@ async def execute_workflow(  # noqa: PLR0915
     model_id: str,
     update_job: Callable[[dict[str, object]], Awaitable[None]],
     on_thought: Callable[[str, str, str], Awaitable[None]],
-    user_prompt: str | None = None,
 ) -> None:
-    """Executes the pedagogical video generation workflow.
-
-    Coordinates between planning, architecting, and animating agents,
-    managing state updates and usage tracking throughout the lifecycle.
-
-    Args:
-        session: Active persistent database session.
-        job_id: The unique identifier for the job.
-        topic: The complex technical topic to explain.
-        audience: The target knowledge level.
-        provider: The selected AI provider (e.g., 'nano').
-        model_id: The specific model to use (e.g., 'nvidia/nemotron-3-super-120b-a12b:thinking').
-        update_job: Async callback for persisting job state changes.
-        on_thought: Async callback for streaming agent thoughts to the UI.
-        user_prompt: The original raw prompt from the user.
-
-    Raises:
-        PlanGenerationError: If the curriculum planning phase fails.
-        StoryboardGenerationError: If the visual architecting phase fails.
-        AnimationGenerationError: If the Manim code generation or rendering fails.
-    """
+    """Executes the pedagogical video generation workflow."""
     total_usage: RunUsage | None = None
 
     def add_usage(u: RunUsage | None) -> None:
-        """Helper to accumulate token usage across multiple workflow steps.
-
-        Args:
-            u: Usage information from a completed AI run.
-        """
         nonlocal total_usage
         total_usage = merge_usage(total_usage, u)
 
-    async def sync_cost() -> None:
-        """Calculates and persists current cumulative cost."""
-        current_cost = calculate_job_cost(total_usage)
-        await update_job({"cost": current_cost})
-
     # 1. Fetch Job State
-    stmt = select(JobRecord).where(JobRecord.job_id == job_id)
-    res = await session.execute(stmt)
-    job_state = res.scalar_one_or_none()
-
-    if not job_state:
-        logger.error("workflow_job_not_found", job_id=job_id)
-        return
+    job_state = await _load_job_record(session, job_id)
 
     # 2. Re-construct Request for agents (used for getting models)
     request = JobRequest(
@@ -477,7 +453,9 @@ async def execute_workflow(  # noqa: PLR0915
     )
 
     # 3. Initialize Global Context (GCO)
-    ctx = GlobalContext(topic=topic, user_prompt=user_prompt, target_audience=audience)
+    ctx = GlobalContext(
+        topic=topic, user_prompt=job_state.user_prompt, target_audience=audience
+    )
 
     try:
         if (
@@ -493,7 +471,6 @@ async def execute_workflow(  # noqa: PLR0915
             ctx.storyboard = storyboard
             repair_hint = job_state.error or "Previous rendering attempt failed."
             # Force regeneration instead of reusing the known-bad code.
-            job_state.manim_code = None
             await update_job(
                 {
                     "status": "animating",
