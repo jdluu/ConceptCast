@@ -114,8 +114,10 @@ def _prepare_render_environment(code: str, job_id: str) -> tuple[Path, Path | No
     code_file = job_dir / CODE_FILENAME
     code_file.write_text(sanitized_code, encoding="utf-8")
 
-    # Host path is relevant only if we are using Podman
-    host_job_dir = settings.jobs_dir / job_id if local_sandbox.use_podman else None
+    # Host path is relevant only if we are using a container tool
+    host_job_dir = (
+        settings.jobs_dir / job_id if local_sandbox.container_tool else None
+    )
 
     return job_dir, host_job_dir
 
@@ -191,6 +193,8 @@ async def render_storyboard(
             if not result:
                 raise AnimationGenerationError("Rendering sandbox unavailable")
 
+            combined_logs = f"STDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
+
             video_files = list(job_dir.glob("**/*.mp4"))
             if not video_files:
                 logger.error(
@@ -198,7 +202,9 @@ async def render_storyboard(
                     job_id=job_id,
                     stderr=result.stderr,
                 )
-                raise AnimationGenerationError("Manim produced no video file.")
+                raise AnimationGenerationError(
+                    "Manim produced no video file.", logs=combined_logs
+                )
 
             video_path = video_files[0]
             final_video_path = job_dir / "video.mp4"

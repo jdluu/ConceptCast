@@ -4,7 +4,7 @@ from difflib import SequenceMatcher
 from api.schemas import JobRequest, Storyboard
 from domain.agents.animator import generate_manim_code
 from domain.models.workflow import GlobalContext
-from infra.engines.video import render_storyboard
+from infra.engines.video import render_preview, render_storyboard
 from infra.models.job import JobRecord
 from infra.security.sanitizer import sanitize_manim_code
 from infra.settings import get_settings
@@ -15,10 +15,18 @@ from services.workflow.utils import calculate_job_cost, merge_usage
 class RenderRepairRequiredError(RuntimeError):
     """Raised when rendering fails and requires manual/agent code repair."""
 
-    def __init__(self, message: str, *, suggestion: str, error_type: str) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        suggestion: str,
+        error_type: str,
+        logs: str | None = None,
+    ) -> None:
         super().__init__(message)
         self.suggestion = suggestion
         self.error_type = error_type
+        self.logs = logs
 
 
 def _is_recoverable_render_error(message: str) -> bool:
@@ -85,10 +93,25 @@ async def step_rendering(
     Raises:
         RuntimeError: If rendering fails and cannot be recovered via retry.
     """
-    await update_job({"status": "rendering", "current_step": "rendering"})
+    await update_job({"status": "rendering", "current_step": "rendering_start"})
 
     current_code = sanitize_manim_code(code)
     await update_job({"manim_code": current_code})
+
+    # Trigger a fast preview to give immediate visual feedback
+    try:
+        await on_thought("system", "status", "Generating quick visual preview...")
+        preview = await render_preview(current_code, job_id)
+        if preview.success and preview.frame_path:
+            await update_job(
+                {"preview_url": f"/jobs/artifacts/{job_id}/preview_frame.png"}
+            )
+            await on_thought("system", "status", "Visual preview ready.")
+    except Exception as e:
+        import structlog
+        structlog.get_logger(__name__).debug("automatic_preview_failed", job_id=job_id, error=str(e))
+
+    await update_job({"status": "rendering", "current_step": "rendering_full"})
 
     max_repair_attempts = get_settings().render_repair_max_attempts
     repair_attempt = 0
@@ -133,6 +156,8 @@ async def step_rendering(
             return
         except Exception as e:
             error_msg = str(e)
+            logs = getattr(e, "logs", None)
+
             if not _is_recoverable_render_error(error_msg):
                 raise RenderRepairRequiredError(
                     f"Unrecoverable rendering error: {error_msg}",
@@ -141,6 +166,7 @@ async def step_rendering(
                         "Manim code before rendering again."
                     ),
                     error_type=type(e).__name__,
+                    logs=logs,
                 ) from e
 
             if repair_attempt >= max_repair_attempts:
@@ -151,6 +177,7 @@ async def step_rendering(
                         "more targeted API/syntax fixes."
                     ),
                     error_type=type(e).__name__,
+                    logs=logs,
                 ) from e
 
             repair_attempt += 1
@@ -172,6 +199,7 @@ async def step_rendering(
                         "then retry rendering."
                     ),
                     error_type=type(e).__name__,
+                    logs=logs,
                 ) from e
 
             retry_ctx = GlobalContext(
@@ -183,7 +211,7 @@ async def step_rendering(
             retry_hint = (
                 "PATCH MODE: Apply minimal edits to current_manim_code in context. "
                 "Do not rewrite unrelated scenes. "
-                f"Repair target: {_render_error_hint(error_msg)}"
+                f"Repair target: {_render_error_hint(error_msg, logs)}"
             )
             retry_code, retry_usage = await generate_manim_code(
                 storyboard,

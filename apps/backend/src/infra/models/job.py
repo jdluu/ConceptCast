@@ -28,6 +28,7 @@ class JobRecord(Base):
     storyboard: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     manim_code: Mapped[str | None] = mapped_column(String, nullable=True)
     video_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    preview_url: Mapped[str | None] = mapped_column(String, nullable=True)
     error: Mapped[str | None] = mapped_column(String, nullable=True)
     mode: Mapped[str] = mapped_column(String, default="live")
     retry_count: Mapped[int] = mapped_column(Integer, default=0)

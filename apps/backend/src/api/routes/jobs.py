@@ -31,10 +31,10 @@ from api.schemas import (
     JobReviewRequest,
     JobStatus,
 )
+from infra.ai.factory import get_concept_model
 from infra.database import AsyncSessionLocal, get_db
 from infra.models.job import JobRecord
 from infra.settings import get_settings
-from infra.ai.factory import get_concept_model
 from services.jobs.events import job_event_manager
 from services.jobs.manager import determine_execution_mode
 from services.jobs.serialization import (
@@ -325,6 +325,58 @@ async def review_job(
                 animator_model=job.animator_model,
             ),
             session_factory,
+        )
+
+    return map_job_record_to_status(job)
+
+
+@router.get("/{job_id}/preview", response_model=JobStatus)
+async def get_job_preview(
+    job_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> JobStatus:
+    """Triggers or retrieves a low-quality preview frame for a job.
+
+    If a preview frame already exists in the job's artifact directory, its URL
+    is returned immediately. Otherwise, it triggers a fast, low-resolution
+    Manim render to extract a representative frame for the current code.
+
+    Args:
+        job_id: The unique identifier of the job.
+        db: The active database session.
+
+    Returns:
+        JobStatus: The updated job status record containing the `preview_url`.
+
+    Raises:
+        HTTPException: If the job is not found or code hasn't been generated yet.
+    """
+    from infra.engines.video import render_preview
+
+    result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
+    job = result.scalar_one_or_none()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.preview_url:
+        return map_job_record_to_status(job)
+
+    if not job.manim_code:
+        raise HTTPException(
+            status_code=400, detail="Manim code not yet generated for this job."
+        )
+
+    # Trigger fast preview render
+    preview = await render_preview(job.manim_code, job_id)
+    if preview.success and preview.frame_path:
+        # Map local path to accessible URL
+        job.preview_url = f"/jobs/artifacts/{job_id}/preview_frame.png"
+        await db.commit()
+        await db.refresh(job)
+    else:
+        logger.warning(
+            "preview_generation_failed", job_id=job_id, error=preview.error
         )
 
     return map_job_record_to_status(job)
