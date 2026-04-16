@@ -17,9 +17,15 @@ class GlobalStyle(BaseModel):
     """Defines the visual 'brand' and stylistic constraints of the video."""
 
     primary_font: str = "Sans"
-    background_color: str = "BLACK"
+    background_color: str = "#181825"  # Catppuccin Mocha Mantle
     default_stroke_width: float = 2.0
-    color_palette: list[str] = ["BLUE", "GOLD", "RED", "GREEN", "TEAL"]
+    color_palette: list[str] = [
+        "#89b4fa",  # Blue
+        "#fab387",  # Peach
+        "#f38ba8",  # Maroon
+        "#a6e3a1",  # Green
+        "#94e2d5",  # Teal
+    ]
     theme: Literal["standard", "dark", "light", "high_contrast"] = "standard"
 
 
