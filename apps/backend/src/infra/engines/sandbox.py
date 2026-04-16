@@ -1,7 +1,9 @@
 import asyncio
+import platform
+import shutil
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import structlog
 from pydantic import BaseModel
@@ -12,12 +14,7 @@ MANIM_IMAGE = "docker.io/manimcommunity/manim:v0.20.1"
 
 
 class SandboxResult(BaseModel):
-    """Encapsulates the execution output from a sandboxed Manim run.
-
-    Attributes:
-        stdout: Standard output from the execution process.
-        stderr: Standard error or diagnostic information from the process.
-    """
+    """Encapsulates the execution output from a sandboxed Manim run."""
 
     stdout: str
     stderr: str
@@ -26,28 +23,52 @@ class SandboxResult(BaseModel):
 class LocalSandbox:
     """Isolated execution environment for Manim animations.
 
-    By default, it uses Podman to run a sandboxed container.
-    If Podman is not available, it logs a warning and falls back
-    to the local Manim installation.
+    Supports Podman, Docker, or local Manim installation.
     """
 
     def __init__(self) -> None:
         """Initializes the sandbox execution strategy."""
-        import shutil
+        self.container_tool: Literal["podman", "docker"] | None = None
+        if shutil.which("podman"):
+            self.container_tool = "podman"
+        elif shutil.which("docker"):
+            self.container_tool = "docker"
 
-        self.use_podman = shutil.which("podman") is not None
+        self.is_linux = platform.system().lower() == "linux"
 
     def is_healthy(self) -> bool:
-        """Verifies if either Podman or local Manim is available."""
-        try:
-            import shutil
+        """Verifies if a container tool or local Manim installation is available.
 
-            if shutil.which("podman") is not None:
-                return True
-            return shutil.which("manim") is not None
-        except Exception as e:
-            logger.error("sandbox_engine_health_check_failed", error=str(e))
-            return False
+        Returns:
+            bool: True if the environment is capable of rendering animations.
+        """
+        return self.container_tool is not None or shutil.which("manim") is not None
+
+    def _get_base_cmd(self, job_dir: Path) -> list[str]:
+        """Constructs the base container command with platform-specific optimizations.
+
+        Handles volume mounting using POSIX-compliant paths and applies Linux-specific
+        permission flags for Podman.
+
+        Args:
+            job_dir: The directory containing the Manim code and assets.
+
+        Returns:
+            list[str]: The command prefix for running a container, or empty if using local Manim.
+        """
+        if not self.container_tool:
+            return []
+
+        cmd = [self.container_tool, "run", "--rm"]
+
+        # Linux-specific Podman optimization for permission handling in shared volumes
+        if self.container_tool == "podman" and self.is_linux:
+            cmd.append("--userns=keep-id")
+
+        # Map volume. Use as_posix() for cross-platform path strings.
+        cmd.extend(["-v", f"{job_dir.absolute().as_posix()}:/manim"])
+        cmd.append(MANIM_IMAGE)
+        return cmd
 
     async def run_check(
         self,
@@ -55,28 +76,28 @@ class LocalSandbox:
         code_file: str,
         timeout: int = 30,
     ) -> SandboxResult:
-        """Performs a lightweight syntax and integrity check on the code."""
+        """Performs a lightweight syntax and integrity check on the generated code.
+
+        Uses py_compile to catch basic syntax errors before attempting full rendering.
+
+        Args:
+            job_dir: Root directory for the rendering job.
+            code_file: The name of the Python file to check.
+            timeout: Maximum allowed check duration in seconds.
+
+        Returns:
+            SandboxResult: The stdout and stderr from the check.
+        """
         try:
-            if self.use_podman:
-                cmd = [
-                    "podman",
-                    "run",
-                    "--rm",
-                    "--userns=keep-id",
-                    "-v",
-                    f"{job_dir.absolute()}:/manim",
-                    MANIM_IMAGE,
-                    "python3",
-                    "-m",
-                    "py_compile",
-                    code_file,
-                ]
+            base_cmd = self._get_base_cmd(job_dir)
+            if base_cmd:
+                cmd = base_cmd + ["python3", "-m", "py_compile", code_file]
             else:
                 cmd = ["python3", "-m", "py_compile", code_file]
 
             process = await asyncio.create_subprocess_exec(
                 *cmd,
-                cwd=job_dir if not self.use_podman else None,
+                cwd=job_dir if not base_cmd else None,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -112,33 +133,24 @@ class LocalSandbox:
         """Executes full Manim rendering for a specified scene.
 
         Orchestrates the rendering process, capturing live logs and handling
-        process timeouts/errors. Supports both containerized and local modes.
+        process timeouts. Supports both containerized and local execution.
 
         Args:
             job_dir: Root directory for the rendering job.
             code_file: Python file containing the Scene definitions.
             scene_name: The specific Scene class to render.
-            host_job_dir: Optional host-relative path for volume mounting.
+            host_job_dir: Legacy parameter for host-relative pathing (unused).
             quality_flag: Manim quality flag (e.g., -ql, -qm, -qh).
-            log_callback: Optional function to receive live log lines.
+            log_callback: Optional function to receive live log lines for progress tracking.
             timeout: Maximum allowed rendering duration in seconds.
 
         Returns:
-            A SandboxResult on success.
-
-        Raises:
-            RuntimeError: If rendering fails or times out.
+            SandboxResult | None: The execution results, or None if the tool is unavailable.
         """
         try:
-            if self.use_podman:
-                cmd = [
-                    "podman",
-                    "run",
-                    "--rm",
-                    "--userns=keep-id",
-                    "-v",
-                    f"{job_dir.absolute()}:/manim",
-                    MANIM_IMAGE,
+            base_cmd = self._get_base_cmd(job_dir)
+            if base_cmd:
+                cmd = base_cmd + [
                     "manim",
                     quality_flag,
                     "--media_dir",
@@ -152,11 +164,11 @@ class LocalSandbox:
             logger.info(
                 "sandbox_render_execution_started",
                 command=" ".join(cmd),
-                use_podman=self.use_podman,
+                tool=self.container_tool or "local",
             )
             process = await asyncio.create_subprocess_exec(
                 *cmd,
-                cwd=job_dir if not self.use_podman else None,
+                cwd=job_dir if not base_cmd else None,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
