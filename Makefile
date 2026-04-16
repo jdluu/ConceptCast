@@ -21,6 +21,12 @@ FRONTEND_FILTER := concept-cast-frontend
 BACKEND_FILTER := backend
 BASE_URL := http://localhost:8000
 
+# Container engine detection (Podman preferred, Docker fallback)
+CONTAINER_TOOL := $(shell which podman 2>/dev/null || which docker 2>/dev/null)
+ifeq ($(CONTAINER_TOOL),)
+$(warning "No container engine (podman or docker) found. Redis will not be started automatically.")
+endif
+
 INFISICAL := infisical run --path=/ai --
 BACKEND_SH := cd "$(BACKEND_DIR)" &&
 
@@ -48,32 +54,37 @@ setup: ## ORCH Install all dependencies and run initial migrations
 	$(BACKEND_SH) uv sync
 	@$(MAKE) db-migrate
 
-redis-up: ## ORCH Start Redis container using Podman
-	@if ! podman ps --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
-		if podman ps -a --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
-			echo "Starting existing Redis container..."; \
-			podman start conceptcast-redis; \
+redis-up: ## ORCH Start Redis container
+	@if [ -n "$(CONTAINER_TOOL)" ]; then \
+		engine=$$(basename "$(CONTAINER_TOOL)"); \
+		if ! $$engine ps --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
+			if $$engine ps -a --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
+				echo "Starting existing Redis container using $$engine..."; \
+				$$engine start conceptcast-redis; \
+			else \
+				echo "Creating and starting new Redis container using $$engine..."; \
+				$$engine run -d --name conceptcast-redis -p 6379:6379 docker.io/library/redis:alpine; \
+			fi; \
 		else \
-			echo "Creating and starting new Redis container..."; \
-			podman run -d --name conceptcast-redis -p 6379:6379 docker.io/library/redis:alpine; \
+			echo "Redis container is already running ($$engine)."; \
 		fi; \
 	else \
-		echo "Redis container is already running."; \
+		echo "Skipping Redis startup (no container tool found)."; \
 	fi
 
 redis-down: ## ORCH Stop Redis container
-	@if podman ps --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
-		echo "Stopping Redis container..."; \
-		podman stop conceptcast-redis; \
+	@if [ -n "$(CONTAINER_TOOL)" ]; then \
+		engine=$$(basename "$(CONTAINER_TOOL)"); \
+		if $$engine ps --format "{{.Names}}" | grep -q "^conceptcast-redis$$"; then \
+			echo "Stopping Redis container ($$engine)..."; \
+			$$engine stop conceptcast-redis; \
+		fi; \
 	fi
 
 # --- Development & Running ---
 
 dev: redis-up ## DEV Run full stack in dev mode
-	@if ss -ltn | rg -q ":8000[[:space:]]"; then \
-		echo "Port 8000 is already in use (backend likely already running)."; \
-		exit 1; \
-	fi
+	@python3 -c "import socket; s = socket.socket(); s.settimeout(0.1); s.connect(('localhost', 8000))" 2>/dev/null && (echo "Error: Port 8000 is already in use."; exit 1) || true
 	@$(INFISICAL) bash -lc 'set -euo pipefail; root_dir="$$(pwd)"; \
 		backend_pid=""; worker_pid=""; \
 		cleanup() { \

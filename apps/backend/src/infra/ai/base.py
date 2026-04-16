@@ -5,7 +5,6 @@ configuration of LLMs across different backends.
 """
 
 from abc import ABC, abstractmethod
-from pathlib import Path
 
 import structlog
 from pydantic_ai.models import Model
@@ -90,15 +89,20 @@ class BaseProvider(ABC):
 
 
 def load_prompt(name: str) -> str:
-    """Loads a system prompt from the src/prompts/ directory.
+    """Loads a system prompt from the source prompts directory.
+
+    Heuristically locates the prompt file using the global PROJECT_ROOT to ensure
+    consistency across different execution environments (local vs container).
 
     Args:
-        name: The filename without extension (e.g., 'analyst').
+        name: The base filename of the prompt (without the .txt extension).
 
     Returns:
-        The content of the prompt file as a string.
+        str: The full text of the prompt file, or a minimal fallback if not found.
     """
-    path = Path(__file__).parent.parent.parent / "prompts" / f"{name}.txt"
+    from infra.settings import PROJECT_ROOT
+
+    path = PROJECT_ROOT / "apps" / "backend" / "src" / "prompts" / f"{name}.txt"
     try:
         return path.read_text(encoding="utf-8").strip()
     except Exception as e:
