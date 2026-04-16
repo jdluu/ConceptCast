@@ -9,21 +9,44 @@ from infra.settings import Settings
 from .base import BaseConceptModel, BaseProvider
 
 
+def is_thinking_model(model_id: str) -> bool:
+    """Designates models that support native reasoning or 'thinking' fields.
+
+    Matches against known thinking-capable models including OpenAI o1/o3,
+    DeepSeek R1, and designated :thinking variants in the Nano GPT catalog.
+
+    Args:
+        model_id: The model identifier to check.
+
+    Returns:
+        bool: True if the model should be treated as a reasoning model.
+    """
+    mid = model_id.lower()
+    return (
+        ":thinking" in mid
+        or "r1" in mid
+        or "thought" in mid
+        or "gpt-5" in mid
+        or "o1" in mid
+        or "o3" in mid
+    )
+
+
 class NanoConceptModel(BaseConceptModel):
-    """Nano GPT model wrapper for ConceptCast."""
+    """Nano GPT model wrapper for the ConceptCast system.
+
+    Provides metadata and configuration for models proxied through the
+    Nano GPT subscription service.
+    """
 
     @property
     def is_thinking(self) -> bool:
-        """Returns True if the model is one of the designated thinking models."""
-        mid = self._model_id.lower()
-        return (
-            ":thinking" in mid
-            or "r1" in mid
-            or "thought" in mid
-            or "gpt-5" in mid
-            or "o1" in mid
-            or "o3" in mid
-        )
+        """Determines if the underlying model emits a reasoning/thinking field.
+
+        Returns:
+            bool: True if the model is a reasoning-capable model.
+        """
+        return is_thinking_model(self._model_id)
 
 
 class NanoModelProvider(BaseProvider):
@@ -52,7 +75,7 @@ class NanoModelProvider(BaseProvider):
         # Nano GPT uses reasoning for models like DeepSeek-R1 and GPT-5.
         # We use the subscription-specific endpoint to stay within plan limits.
         profile = None
-        if self._is_thinking_model(model_id):
+        if is_thinking_model(model_id):
             profile = OpenAIModelProfile(
                 openai_supports_reasoning=True,
                 # Current Nano GPT API uses 'reasoning' by default in /api/v1 and /api/subscription/v1
@@ -84,14 +107,3 @@ class NanoModelProvider(BaseProvider):
             ModelSettings or None.
         """
         return None
-
-    def _is_thinking_model(self, model_id: str) -> bool:
-        mid = model_id.lower()
-        return (
-            ":thinking" in mid
-            or "r1" in mid
-            or "thought" in mid
-            or "gpt-5" in mid
-            or "o1" in mid
-            or "o3" in mid
-        )

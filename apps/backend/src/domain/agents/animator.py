@@ -37,7 +37,7 @@ async def generate_manim_code(
         ctx: The Global Context Object (GCO) for the workflow.
 
     Returns:
-        tuple: (The generated Manim Python code, RunUsage data).
+        tuple[str, RunUsage]: The generated Python code and token usage metadata.
     """
     animator_agent = Agent(
         model.model,
@@ -62,7 +62,8 @@ async def generate_manim_code(
             )
         )
     if docs_lookup_needed:
-        animator_agent.tool(search_manim_docs, prepare=prepare_manim_docs)  # type: ignore
+        # Dynamically attach documentation search tool if API errors are detected
+        animator_agent.tool(prepare=prepare_manim_docs)(search_manim_docs)
 
     if ctx:
         prompt = extract_animator_context(ctx, target_scene)

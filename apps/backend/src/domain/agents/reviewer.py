@@ -69,7 +69,8 @@ async def review_animation(
         )
     )
     if docs_lookup_needed:
-        agent.tool(search_manim_docs, prepare=prepare_manim_docs)  # type: ignore
+        # Dynamically attach documentation search tool if log analysis suggests API errors
+        agent.tool(prepare=prepare_manim_docs)(search_manim_docs)
 
     prompt_parts = [
         "**Perform a Visual QA Review**",

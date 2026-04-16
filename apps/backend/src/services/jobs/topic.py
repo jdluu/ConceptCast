@@ -14,22 +14,27 @@ system_prompt = load_prompt("topic_refiner")
 async def refine_topic(user_prompt: str, model: BaseConceptModel) -> str:
     """Uses an LLM to transform a raw user prompt into a concise topic title.
 
+    Standardizes disparate user inputs into a formal, logical title that guides
+    the subsequent pedagogical planning phase. Includes fallbacks for unusual
+    agent outputs or API failures.
+
     Args:
-        user_prompt: The raw prompt from the user.
-        model: The ConceptCast model to use for refinement.
+        user_prompt: The raw, potentially unstructured prompt from the user.
+        model: The ConceptCast model wrapper to use for refinement.
 
     Returns:
-        str: A concise, professional title.
+        str: A concise, professional title (e.g., "The Pythagorean Theorem").
     """
     try:
-        agent = Agent(
+        agent: Agent[None, str] = Agent(  # type: ignore[call-overload]
             model.model,
             system_prompt=system_prompt,
+            result_type=str,
             retries=2,
         )
 
         result = await agent.run(user_prompt)
-        refined = result.data.strip()
+        refined = str(result.data).strip()  # type: ignore[attr-defined]
 
         # Sanity check: if it's too long or empty, fallback to raw prompt
         if not refined or len(refined.split()) > 10:

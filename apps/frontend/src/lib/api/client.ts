@@ -64,15 +64,25 @@ export async function createJob(request: JobRequest): Promise<JobStatus> {
   return data as unknown as JobStatus;
 }
 
+/**
+ * Retries a failed or stuck job from the last successful checkpoint.
+ *
+ * @param jobId - The unique identifier of the job to retry.
+ * @returns The updated JobStatus after resetting for retry.
+ */
 export async function retryJob(jobId: string): Promise<JobStatus> {
-  // The endpoint might be /jobs/{job_id}/retry, checking assuming standard schema
-  const { data, error } = await apiClient.POST('/jobs/{job_id}/retry' as any, {
-    params: { path: { job_id: jobId } as any },
+  const { data, error } = await apiClient.POST('/jobs/{job_id}/retry', {
+    params: { path: { job_id: jobId } },
   });
   if (error) throw new Error('Failed to retry job');
   return data as unknown as JobStatus;
 }
 
+/**
+ * Deletes a job and its associated filesystem data.
+ *
+ * @param jobId - The unique identifier of the job to delete.
+ */
 export async function deleteJob(jobId: string): Promise<void> {
   const { error } = await apiClient.DELETE('/jobs/{job_id}', {
     params: { path: { job_id: jobId } },
@@ -80,15 +90,25 @@ export async function deleteJob(jobId: string): Promise<void> {
   if (error) throw new Error('Failed to delete job');
 }
 
+/**
+ * Deletes all jobs and clears the entire job history.
+ */
 export async function deleteAllJobs(): Promise<void> {
   const { error } = await apiClient.DELETE('/jobs');
   if (error) throw new Error('Failed to clear job history');
 }
 
+/**
+ * Handles human-in-the-loop review actions for a paused job.
+ *
+ * @param jobId - The unique identifier of the job being reviewed.
+ * @param review - The feedback and action (approve/regenerate) from the user.
+ * @returns The updated JobStatus after processing the review.
+ */
 export async function reviewJob(jobId: string, review: JobReviewRequest): Promise<JobStatus> {
-  const { data, error } = await apiClient.POST('/jobs/{job_id}/review' as any, {
-    params: { path: { job_id: jobId } as any },
-    body: review as any,
+  const { data, error } = await apiClient.POST('/jobs/{job_id}/review', {
+    params: { path: { job_id: jobId } },
+    body: review as components['schemas']['JobReviewRequest'],
   });
   if (error) throw new Error('Failed to submit review');
   return data as unknown as JobStatus;

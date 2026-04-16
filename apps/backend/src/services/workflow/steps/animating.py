@@ -52,7 +52,7 @@ def _enforce_code_budget(code: str) -> None:
         )
 
 
-async def step_animating(  # noqa: PLR0912, PLR0915
+async def step_animating(  # noqa: C901, PLR0912, PLR0915
     storyboard: Storyboard,
     request: JobRequest,
     job: JobRecord,

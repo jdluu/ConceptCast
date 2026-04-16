@@ -8,8 +8,8 @@ from collections.abc import AsyncGenerator
 
 import structlog
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase
 
 from infra.settings import get_settings
 
@@ -20,7 +20,11 @@ DATABASE_URL = get_settings().database_url.replace("sqlite://", "sqlite+aiosqlit
 engine = create_async_engine(
     DATABASE_URL, connect_args={"check_same_thread": False, "timeout": 30}
 )
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)  # type: ignore
+
+#: Factory for generating new asynchronous database sessions.
+AsyncSessionLocal = async_sessionmaker(
+    engine, class_=AsyncSession, expire_on_commit=False
+)
 
 
 class Base(DeclarativeBase):
