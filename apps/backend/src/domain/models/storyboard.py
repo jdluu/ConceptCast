@@ -17,6 +17,7 @@ class VisualObject(BaseModel):
         color: Visual color constant or hex string.
         label: Text label associated with the object.
         parameters: Optional dictionary of specific Manim parameters (e.g., {'radius': 1.0}).
+        bounding_box: Optional (width, height) of the object for spatial tracking.
     """
 
     name: str = Field(..., description="Internal name")
@@ -26,6 +27,9 @@ class VisualObject(BaseModel):
     label: str | None = Field(None, description="Associated text label")
     parameters: dict[str, object] = Field(
         default_factory=dict, description="Detailed Manim parameters"
+    )
+    bounding_box: tuple[float, float] | None = Field(
+        default=None, description="(width, height) of the object for spatial tracking"
     )
 
     @field_validator("name", "type", "position")
@@ -77,3 +81,37 @@ class Storyboard(BaseModel):
         if not v:
             raise ValueError("Storyboard must contain at least one scene.")
         return v
+
+    def is_structurally_valid(self) -> tuple[bool, list[str]]:
+        """Performs non-LLM structural validation of the storyboard.
+
+        Checks for sequential scene IDs, missing objects, and empty text fields.
+
+        Returns:
+            tuple: (is_valid: bool, issues: list[str])
+        """
+        issues: list[str] = []
+        if not self.scenes:
+            issues.append("Storyboard must contain at least one scene.")
+            return False, issues
+
+        scene_ids = [s.scene_id for s in self.scenes]
+        if scene_ids != sorted(scene_ids):
+            issues.append("Scene IDs must be strictly increasing.")
+        if scene_ids and scene_ids[0] != 1:
+            issues.append("Scene IDs must start at 1.")
+        if len(set(scene_ids)) != len(scene_ids):
+            issues.append("Scene IDs must be unique.")
+
+        for scene in self.scenes:
+            prefix = f"Scene {scene.scene_id}:"
+            if not (scene.title or "").strip():
+                issues.append(f"{prefix} missing title.")
+            if not (scene.description or "").strip():
+                issues.append(f"{prefix} missing description.")
+            if not (scene.narration or "").strip():
+                issues.append(f"{prefix} missing narration.")
+            if not scene.objects:
+                issues.append(f"{prefix} missing visual objects.")
+
+        return len(issues) == 0, issues
