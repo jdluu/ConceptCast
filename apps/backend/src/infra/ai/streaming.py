@@ -9,6 +9,7 @@ import structlog
 from pydantic import BaseModel, ValidationError
 from pydantic_ai import Agent, AgentRunResultEvent, exceptions
 from pydantic_ai.messages import (
+    ModelMessage,
     PartDeltaEvent,
     PartStartEvent,
     TextPart,
@@ -30,6 +31,7 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
     on_thought: Callable[[str, str, str], Awaitable[None]] | None,
     *,
     accumulated_usage: RunUsage | None = None,
+    message_history: list[ModelMessage] | None = None,
     **run_kwargs: Any,
 ) -> tuple[Any, RunUsage]:
     """Runs an agent and streams intermediate thoughts and final output.
@@ -84,7 +86,7 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
             return str(payload)
 
     try:
-        async for event in agent.run_stream_events(prompt, **run_kwargs):
+        async for event in agent.run_stream_events(prompt, message_history=message_history, **run_kwargs):
             logger.debug(
                 "agent_stream_event",
                 agent_name=agent_name,
