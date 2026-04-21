@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.schemas import CurriculumPlan, JobRequest, Storyboard
 from domain.models.workflow import GlobalContext
+from infra.ai.factory import get_concept_model
 from infra.database import AsyncSessionLocal
 from infra.exceptions import (
     AnimationGenerationError,
@@ -23,6 +24,7 @@ from infra.exceptions import (
 )
 from infra.models.job import JobRecord
 from infra.tasks import render_video_task
+from services.jobs.topic import refine_topic
 from services.workflow.utils import (
     calculate_job_cost,
     merge_usage,
@@ -40,33 +42,6 @@ from .steps.architecting import step_architecting
 from .steps.planning import step_planning
 
 logger = structlog.get_logger(__name__)
-
-
-def _structural_validate_curriculum(plan: CurriculumPlan) -> list[str]:
-    """Deterministic, non-LLM checks to avoid endless AI validator loops."""
-    issues: list[str] = []
-    concept = (plan.concept_title or "").strip().lower()
-    audience = (plan.target_audience or "").strip().lower()
-    if concept in {"", "__missing__", "missing", "tbd", "n/a", "..."}:
-        issues.append("concept_title is empty")
-    if audience in {"", "__missing__", "missing", "tbd", "n/a", "..."}:
-        issues.append("target_audience is empty")
-    if not plan.teaching_steps:
-        issues.append("teaching_steps is empty")
-    else:
-        if not 5 <= len(plan.teaching_steps) <= 10:
-            issues.append(
-                "teaching_steps length must be between 5 and 10 "
-                f"(got {len(plan.teaching_steps)})"
-            )
-        for i, step in enumerate(plan.teaching_steps, start=1):
-            if not step.concept or not step.concept.strip():
-                issues.append(f"teaching_steps[{i}].concept is empty")
-            if not step.visual_metaphor or not step.visual_metaphor.strip():
-                issues.append(f"teaching_steps[{i}].visual_metaphor is empty")
-            if not step.narration or not step.narration.strip():
-                issues.append(f"teaching_steps[{i}].narration is empty")
-    return issues
 
 
 async def prepare_job_for_retry(
@@ -130,7 +105,7 @@ async def process_job_logic(
                 await session.commit()
 
         try:
-            # Re-fetch just user_prompt for execute_workflow if needed, 
+            # Re-fetch just user_prompt for execute_workflow if needed,
             # or just let execute_workflow handle it all.
             # Actually, let's keep it simple and just pass topic from request.
             await execute_workflow(
@@ -273,8 +248,8 @@ async def _handle_planning_step(
         "status",
         f"[Attempt {current_attempt}/{max_retries}] Structural preflight check for curriculum...",
     )
-    issues = _structural_validate_curriculum(plan)
-    if issues:
+    is_valid, issues = plan.is_structurally_valid()
+    if not is_valid:
         await on_thought(
             "system",
             "status",
@@ -456,6 +431,20 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
     ctx = GlobalContext(
         topic=topic, user_prompt=job_state.user_prompt, target_audience=audience
     )
+
+    # 4. Refine Topic if needed
+    if job_state.topic == job_state.user_prompt:
+        await on_thought("system", "status", "Refining topic...")
+        await update_job({"current_step": "refining_topic"})
+        
+        model = get_concept_model(provider, model_id)
+        if model:
+            refined_topic = await refine_topic(job_state.user_prompt, model)
+            await update_job({"topic": refined_topic})
+            ctx.topic = refined_topic
+            topic = refined_topic
+        else:
+            logger.warning("refinement_model_unavailable", job_id=job_id)
 
     try:
         if (

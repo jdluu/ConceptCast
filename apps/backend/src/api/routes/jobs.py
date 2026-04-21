@@ -9,6 +9,7 @@ import shutil
 import time
 import uuid
 from collections.abc import AsyncGenerator, Callable
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 import structlog
@@ -23,6 +24,7 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from api.schemas import (
     CurriculumPlan,
@@ -31,35 +33,21 @@ from api.schemas import (
     JobReviewRequest,
     JobStatus,
 )
-from infra.ai.factory import get_concept_model
 from infra.database import AsyncSessionLocal, get_db
+from infra.database_utils import run_with_sqlite_retry
 from infra.models.job import JobRecord
 from infra.settings import get_settings
 from services.jobs.events import job_event_manager
-from services.jobs.manager import determine_execution_mode
+from services.jobs.manager import determine_execution_mode, get_job_summaries
 from services.jobs.serialization import (
     map_job_record_to_status,
     map_job_record_to_summary,
 )
-from services.jobs.topic import refine_topic
 from services.workflow.orchestrator import prepare_job_for_retry, process_job_logic
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
-
-
-def _plan_structural_ok(plan: dict[str, object] | None) -> bool:
-    if not isinstance(plan, dict):
-        return False
-    concept = str(plan.get("concept_title") or "").strip().lower()
-    audience = str(plan.get("target_audience") or "").strip().lower()
-    if concept in {"", "__missing__", "missing", "tbd", "n/a", "..."}:
-        return False
-    if audience in {"", "__missing__", "missing", "tbd", "n/a", "..."}:
-        return False
-    steps = plan.get("teaching_steps")
-    return isinstance(steps, list) and len(steps) > 0
 
 
 async def _stream_job_events(
@@ -86,7 +74,9 @@ async def _stream_job_events(
     while True:
         async with db_session_factory() as db:
             result = await db.execute(
-                select(JobRecord).where(JobRecord.job_id == job_id)
+                select(JobRecord)
+                .options(selectinload(JobRecord.thoughts))
+                .where(JobRecord.job_id == job_id)
             )
             job = result.scalar_one_or_none()
 
@@ -94,10 +84,8 @@ async def _stream_job_events(
                 yield f"data: {json.dumps({'error': 'Job not found'})}\n\n"
                 break
 
-            thoughts = getattr(job, "streamed_thoughts", None) or []
-            current_thought_content_len = (
-                len(thoughts[-1].get("content", "")) if thoughts else 0
-            )
+            thoughts = job.thoughts or []
+            current_thought_content_len = len(thoughts[-1].content) if thoughts else 0
 
             status_changed = job.status != last_status
             step_changed = job.current_step != last_step
@@ -107,7 +95,9 @@ async def _stream_job_events(
             )
             artifact_state = (
                 job.plan is not None,
-                _plan_structural_ok(job.plan),
+                CurriculumPlan.model_validate(job.plan).is_structurally_valid()[0]
+                if job.plan
+                else False,
                 job.storyboard is not None,
                 bool(job.manim_code),
                 bool(job.error),
@@ -165,7 +155,9 @@ async def create_job(
 ) -> JobStatus:
     """Initializes a new asynchronous video generation job.
 
-    Initializes the job record in the database and triggers background processing.
+    Implements idempotency: If a pending or completed job with the same topic
+    and target audience already exists (created within the last hour), that
+    existing job is returned instead of creating a new one.
 
     Args:
         request: The job creation configuration.
@@ -180,31 +172,45 @@ async def create_job(
         HTTPException: If an error occurs during job initialization.
     """
     try:
-        job_id = str(uuid.uuid4())
-        settings = get_settings()
-
         is_mock = determine_execution_mode(request)
         mode = "mock" if is_mock else "live"
 
-        # If in mock mode, we always use the canonical mock topic.
-        # Otherwise, we use an LLM to refine the user's prompt into a concise topic.
-        user_prompt = request.topic
-        if is_mock:
-            effective_topic = settings.mock_topic
-        else:
-            # Resolve the model to use for topic refinement
-            refinement_model = get_concept_model(
-                request.provider or "nano", request.model_id
+        # Check for existing job with same parameters (simple idempotency)
+        # We limit the search to the last hour to allow for fresh attempts if requested.
+        idempotency_stmt = (
+            select(JobRecord)
+            .where(
+                JobRecord.user_prompt == request.topic,
+                JobRecord.target_audience == request.target_audience,
+                JobRecord.mode == mode,
+                JobRecord.status != "failed",
             )
-            if refinement_model:
-                effective_topic = await refine_topic(user_prompt, refinement_model)
-            else:
-                effective_topic = user_prompt
+            .order_by(JobRecord.created_at.desc())
+            .limit(1)
+        )
+        existing_result = await db.execute(idempotency_stmt)
+        existing_job = existing_result.scalar_one_or_none()
 
+        if existing_job:
+            created_at = existing_job.created_at
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
+
+            if (datetime.now(UTC) - created_at).total_seconds() < 3600:
+                logger.info(
+                    "idempotency_match_found",
+                    job_id=existing_job.job_id,
+                    topic=request.topic,
+                )
+                return map_job_record_to_status(existing_job)
+
+        job_id = str(uuid.uuid4())
+        
+        # Initialize job with the raw prompt as the initial topic; orchestration will refine it.
         new_job = JobRecord(
             job_id=job_id,
-            topic=effective_topic,
-            user_prompt=user_prompt,
+            topic=request.topic,
+            user_prompt=request.topic,
             target_audience=request.target_audience,
             status="planning",
             mode=mode,
@@ -216,20 +222,35 @@ async def create_job(
             animator_model=request.animator_model,
         )
 
-        db.add(new_job)
-        await db.commit()
-        await db.refresh(new_job)
+        async def _save_job() -> None:
+            db.add(new_job)
+            await db.commit()
+            await db.refresh(new_job)
+
+        try:
+            await run_with_sqlite_retry(db, _save_job)
+        except Exception as e:
+            # The transaction was rolled back by run_with_sqlite_retry, 
+            # but we use a fresh session just in case to avoid any 'session is closed' or 'invalid' states.
+            async with AsyncSessionLocal() as fresh_db:
+                existing_result = await fresh_db.execute(idempotency_stmt)
+                existing_job = existing_result.scalar_one_or_none()
+                if existing_job:
+                    logger.info("race_condition_resolved", job_id=existing_job.job_id)
+                    return map_job_record_to_status(existing_job)
+            
+            logger.error("job_creation_db_error", error=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
         session_factory = getattr(
             req.app.state, "db_session_factory", AsyncSessionLocal
         )
 
-        # Ensure the orchestrator uses the refined topic but keep raw prompt if needed.
-        # We pass the refined topic as the primary 'topic' for the workflow.
+        # Enqueue with the original request, which will be refined in the orchestrator.
         background_tasks.add_task(
             process_job_logic,
             job_id,
-            request.model_copy(update={"topic": effective_topic}),
+            request,
             session_factory,
         )
 
@@ -375,9 +396,7 @@ async def get_job_preview(
         await db.commit()
         await db.refresh(job)
     else:
-        logger.warning(
-            "preview_generation_failed", job_id=job_id, error=preview.error
-        )
+        logger.warning("preview_generation_failed", job_id=job_id, error=preview.error)
 
     return map_job_record_to_status(job)
 
@@ -398,7 +417,11 @@ async def get_job_status(
     Raises:
         HTTPException: If the job is not found.
     """
-    result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
+    result = await db.execute(
+        select(JobRecord)
+        .options(selectinload(JobRecord.thoughts))
+        .where(JobRecord.job_id == job_id)
+    )
     job = result.scalar_one_or_none()
 
     if not job:
@@ -460,6 +483,8 @@ async def list_jobs(
 ) -> JobListResponse:
     """Lists all jobs sorted by creation date (newest first).
 
+    Uses an optimized query that defers heavy columns.
+
     Args:
         mode: Optional filter to return only 'live' or 'mock' jobs.
         db: The active database session.
@@ -470,12 +495,7 @@ async def list_jobs(
     Raises:
         HTTPException: If an error occurs during serialization.
     """
-    stmt = select(JobRecord).order_by(JobRecord.created_at.desc())
-    if mode:
-        stmt = stmt.where(JobRecord.mode == mode)
-
-    result = await db.execute(stmt)
-    jobs = result.scalars().all()
+    jobs = await get_job_summaries(db, mode)
 
     summary_list = []
     try:
