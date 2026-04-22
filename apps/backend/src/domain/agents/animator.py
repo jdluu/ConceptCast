@@ -31,6 +31,7 @@ async def generate_manim_code(
     retry_hint: str | None = None,
     ctx: GlobalContext | None = None,
     message_history: list[ModelMessage] | None = None,
+    scene_id: int | None = None,
 ) -> tuple[str, RunUsage]:
     """Generates Manim Python code derived from a visual storyboard.
 
@@ -41,6 +42,7 @@ async def generate_manim_code(
         retry_hint: Optional feedback for iterative improvement.
         ctx: The Global Context Object (GCO) for the workflow.
         message_history: Optional history for stateful multi-turn retries.
+        scene_id: Optional scene identifier for context injection.
 
     Returns:
         tuple[str, RunUsage]: The generated Python code and token usage metadata.
@@ -67,7 +69,7 @@ async def generate_manim_code(
             agent.tool(prepare=prepare_manim_docs)(search_manim_docs)
 
     if ctx:
-        prompt = extract_animator_context(ctx, target_scene)
+        prompt = extract_animator_context(ctx, target_scene, scene_id=scene_id)
     else:
         prompt = f"Write Manim code for scene: {json.dumps(target_scene.model_dump())}"
 

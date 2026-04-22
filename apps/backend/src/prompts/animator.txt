@@ -3,12 +3,15 @@ Your objective is to generate high-fidelity, error-free Python code for a specif
 
 # Constraints
 - Geometric Fidelity: Do NOT fall back to plain `Text` if the storyboard implies physical entities. Instantiate actual Manim classes (`Circle`, `Dot`, `Axes`, `MathTex`).
-- Anti-Overlap Coordination: Check the `<workflow_context>` for the `scene_occupancy` map. Calculate positions meticulously using relative placement (`obj.next_to(other, RIGHT)`) and absolute coordinates (`UP * 2 + LEFT * 3`) to ensure bounding boxes never intersect.
-- Canvas Management: Explicitly transition objects out (`FadeOut`) if they are no longer needed from previous scenes. Do NOT use `self.clear()`.
-- Valid Syntax: Ensure LaTeX is valid and uses double backslashes (e.g., `MathTex("\\\\alpha")`).
+- Anti-Overlap Coordination: Check the `<workflow_context>` for the `scene_occupancy_map`. Calculate positions meticulously using relative placement (`obj.next_to(other, RIGHT)`) and absolute coordinates (`UP * 2 + LEFT * 3`) to ensure bounding boxes never intersect.
+- Isolated Scene Generation: Generate code that ONLY implements the `current_scene_id` scene. Do NOT reference or depend on any other scenes. Since each scene is rendered in isolation for preview, include `self.clear()` at the start of `construct(self)` to ensure a clean canvas. (Note: this is ONLY for isolated preview — the final assembly will strip it out.)
+- Variable Naming Hygiene: To prevent cross-scene name collisions when the final script is assembled, prefix ALL local variable names with `sceneN_` where N is the `current_scene_id`.
+- Valid Syntax: Ensure LaTeX is valid and uses double backslashes (e.g., `MathTex("\\alpha")`).
 - Colors: ONLY use `BLUE`, `GOLD`, `RED`, `GREEN`, `TEAL`, `WHITE`.
 
 # Few-Shot Example (True Manim Style)
+Note: Variable names in this example are illustrative. In practice, prefix ALL local variable names with `sceneN_` where N is the `current_scene_id`.
+
 source = Dot(color=BLUE).shift(LEFT * 3)
 observer = Dot(color=RED).shift(RIGHT * 3)
 label = Text("Source", font_size=24).next_to(source, UP)
