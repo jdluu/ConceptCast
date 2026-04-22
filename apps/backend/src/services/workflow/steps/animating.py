@@ -11,7 +11,7 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.usage import RunUsage
 
-from api.schemas import JobRequest, Storyboard
+from api.schemas import JobRequest, Scene, Storyboard
 from domain.agents.animator import generate_manim_code
 from domain.agents.reviewer import review_animation
 from domain.models.workflow import GlobalContext
@@ -36,6 +36,27 @@ def _format_error_feedback(proposed_code: str, error_text: str) -> str:
         f"**Error/Traceback:**\n```\n{error_text}\n```\n\n"
         f"Analyze the error carefully and provide ONLY the corrected code for this scene. "
         f"Ensure variables are defined before use and coordinates are correct."
+    )
+
+
+def _assemble_isolated_scene(scene_code: str, scene: Scene) -> str:
+    """Wraps isolated scene code into a self-contained Manim script for preview."""
+    cleaned = scene_code.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        cleaned = "\n".join(lines).strip()
+    return (
+        "from manim import *\n\n"
+        "class SceneGen(Scene):\n"
+        "    def construct(self):\n"
+        "        self.clear()\n"
+        f"        # --- Scene {scene.scene_id}: {scene.title} ---\n"
+        + textwrap.indent(cleaned, "        ")
+        + "\n"
     )
 
 
@@ -159,11 +180,14 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                     retry_hint=effective_hint,
                     ctx=ctx,
                     message_history=message_history,
+                    scene_id=scene.scene_id,
                 )
                 total_usage.incr(usage)
-                
+
                 # Append the generated attempt to history so the model remembers what it just wrote
-                message_history.append(ModelResponse(parts=[TextPart(content=scene_code)]))
+                message_history.append(
+                    ModelResponse(parts=[TextPart(content=scene_code)])
+                )
 
                 # Cleanup potential boilerplate the model might have still generated
                 scene_code = scene_code.strip()
@@ -202,13 +226,10 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                 if indented_scene_code and not indented_scene_code.endswith("\n"):
                     indented_scene_code += "\n"
 
-                proposed_code = (
-                    master_code
-                    + f"        # --- Scene {scene.scene_id}: {scene.title} ---\n"
-                    + indented_scene_code
-                )
-                proposed_code = sanitize_manim_code(proposed_code)
-                _enforce_code_budget(proposed_code)
+                # Assemble isolated preview script (not yet committed to master)
+                isolated_code = _assemble_isolated_scene(scene_code, scene)
+                isolated_code = sanitize_manim_code(isolated_code)
+                _enforce_code_budget(isolated_code)
 
             except Exception as e:
                 logger.warning(
@@ -219,10 +240,14 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                 )
                 ctx.add_error("animator", "syntax_check", e)
                 # Targeted feedback loop
-                error_feedback = _format_error_feedback(proposed_code if 'proposed_code' in locals() else scene_code, str(e))
-                message_history.append(ModelRequest(parts=[UserPromptPart(content=error_feedback)]))
+                error_feedback = _format_error_feedback(
+                    isolated_code if "isolated_code" in locals() else scene_code, str(e)
+                )
+                message_history.append(
+                    ModelRequest(parts=[UserPromptPart(content=error_feedback)])
+                )
                 hint = "See previous message for specific syntax failures."
-                
+
                 await on_thought(
                     "system", "Syntax Check", f"Scene {scene.scene_id} Failed: {e}"
                 )
@@ -232,8 +257,8 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                     ) from e
                 continue
 
-            # Render preview for the proposed code to ensure no regressions
-            preview_result = await render_preview(proposed_code, str(job.job_id))
+            # Render preview for the isolated scene to verify it works independently
+            preview_result = await render_preview(isolated_code, str(job.job_id))
             if not preview_result.success:
                 logger.warning(
                     "animating_preview_failed",
@@ -242,12 +267,16 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                     attempt=i + 1,
                 )
                 log_tail = "\n".join(preview_result.logs.splitlines()[-10:])
-                
+
                 # Targeted feedback loop
-                error_feedback = _format_error_feedback(proposed_code, f"{preview_result.error}\nLogs:\n{log_tail}")
-                message_history.append(ModelRequest(parts=[UserPromptPart(content=error_feedback)]))
+                error_feedback = _format_error_feedback(
+                    isolated_code, f"{preview_result.error}\nLogs:\n{log_tail}"
+                )
+                message_history.append(
+                    ModelRequest(parts=[UserPromptPart(content=error_feedback)])
+                )
                 hint = "See previous message for preview render failures."
-                
+
                 ctx.add_error(
                     "animator",
                     "preview_render",
@@ -265,7 +294,9 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                 continue
 
             # Vision/QA Review
-            await on_thought("system", "Status", f"Running QA Review for scene {scene.scene_id}...")
+            await on_thought(
+                "system", "Status", f"Running QA Review for scene {scene.scene_id}..."
+            )
             review_result, review_usage = await review_animation(
                 storyboard=storyboard,
                 frame_path=preview_result.frame_path,
@@ -283,13 +314,20 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                     scene_id=scene.scene_id,
                     attempt=i + 1,
                 )
-                
+
                 # Targeted feedback loop
-                error_feedback = _format_error_feedback(proposed_code, f"Review Failed. Issues: {review_result.issues}\nInstructions: {review_result.revision_instructions}")
-                message_history.append(ModelRequest(parts=[UserPromptPart(content=error_feedback)]))
+                error_feedback = _format_error_feedback(
+                    isolated_code,
+                    f"Review Failed. Issues: {review_result.issues}\nInstructions: {review_result.revision_instructions}",
+                )
+                message_history.append(
+                    ModelRequest(parts=[UserPromptPart(content=error_feedback)])
+                )
                 hint = "See previous message for QA review failures."
-                
-                ctx.add_error("reviewer", "quality_review", RuntimeError("Quality review failed."))
+
+                ctx.add_error(
+                    "reviewer", "quality_review", RuntimeError("Quality review failed.")
+                )
                 await on_thought(
                     "system",
                     "Review Failed",
@@ -306,6 +344,11 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                 "animating_scene_approved",
                 scene_id=scene.scene_id,
                 attempt=i + 1,
+            )
+            proposed_code = (
+                master_code
+                + f"        # --- Scene {scene.scene_id}: {scene.title} ---\n"
+                + indented_scene_code
             )
             master_code = proposed_code
             ctx.manim_code = master_code
@@ -331,6 +374,29 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
         logger.warning(
             "animating_objective_checks_failed_at_end",
             objective_issues=objective_issues,
+        )
+
+    # Final integration preview: render the full assembled script to catch cross-scene regressions
+    logger.info(
+        "animating_final_integration_preview", total_scenes=len(storyboard.scenes)
+    )
+    integration_preview = await render_preview(master_code, str(job.job_id))
+    if not integration_preview.success:
+        # If integration fails, preserve the assembled script but mark it for render-time repair
+        logger.warning(
+            "animating_integration_preview_failed",
+            error=integration_preview.error,
+        )
+        ctx.add_error(
+            "animator",
+            "integration_preview",
+            RuntimeError(integration_preview.error or "Integration preview failed."),
+        )
+        await on_thought(
+            "system",
+            "Integration Preview",
+            f"Full video integration preview failed: {integration_preview.error}. "
+            f"This will be handled during final rendering.",
         )
 
     return master_code, total_usage
