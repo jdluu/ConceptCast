@@ -34,7 +34,7 @@ def _format_context(data: dict[str, Any]) -> str:
         return obj
 
     cleaned = {k: _dump(v) for k, v in data.items()}
-    return f"WORKFLOW_CONTEXT:\n{json.dumps(cleaned, indent=2)}"
+    return f"<workflow_context>\n{json.dumps(cleaned, indent=2)}\n</workflow_context>"
 
 
 def extract_analyst_context(ctx: GlobalContext) -> str:
@@ -84,17 +84,21 @@ def extract_architect_context(ctx: GlobalContext) -> str:
 
 
 def extract_animator_context(
-    ctx: GlobalContext, target_scene: Scene | Storyboard | None = None
+    ctx: GlobalContext,
+    target_scene: Scene | Storyboard | None = None,
+    scene_id: int | None = None,
 ) -> str:
     """Extracts relevant context for the Animator Agent.
 
     Focuses on the target scene, branding, and specific lexicon entries
-    for the objects being rendered. Includes the error buffer to prevent
-    repeated syntax or logic errors.
+    for the objects being rendered. Includes the scene occupancy map,
+    current scene ID, and the error buffer to prevent repeated syntax or
+    logic errors.
 
     Args:
         ctx: The shared Global Context Object.
         target_scene: The specific scene or storyboard to generate code for.
+        scene_id: The index of the scene currently being generated.
 
     Returns:
         str: The serialized context block for the Animator agent.
@@ -103,6 +107,8 @@ def extract_animator_context(
         {
             "style_guidelines": ctx.style,
             "target_scene": target_scene,
+            "current_scene_id": scene_id,
+            "scene_occupancy_map": ctx.scene_occupancy,
             "current_manim_code": ctx.manim_code,
             "visual_lexicon": ctx.lexicon,
             "previous_errors_to_avoid": [
@@ -129,9 +135,7 @@ def extract_reviewer_context(ctx: GlobalContext) -> str:
             "target_storyboard": ctx.storyboard,
             "visual_lexicon": ctx.lexicon,
             "revision_history": [
-                e
-                for e in ctx.error_buffer
-                if e.agent in ["animator", "reviewer"]
+                e for e in ctx.error_buffer if e.agent in ["animator", "reviewer"]
             ],
         }
     )

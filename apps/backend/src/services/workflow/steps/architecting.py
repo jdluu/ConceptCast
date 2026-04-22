@@ -137,6 +137,30 @@ def _validate_storyboard_completeness(  # noqa: C901, PLR0912
             )
 
 
+def _populate_scene_occupancy(storyboard: Storyboard, ctx: GlobalContext) -> None:
+    """Populates the global context's scene occupancy map from validated storyboard data.
+
+    Iterates over each scene and its visual objects. For objects with a defined
+    bounding box, reserves space in the global context to prevent visual overlap
+    during subsequent generation steps.
+
+    Args:
+        storyboard: The validated storyboard containing scenes and visual objects.
+        ctx: The global context object whose scene_occupancy map will be updated.
+    """
+    for scene in storyboard.scenes:
+        for obj in scene.objects:
+            if obj.bounding_box is not None:
+                width, height = obj.bounding_box
+                ctx.reserve_space(
+                    scene_id=scene.scene_id,
+                    center=obj.position,
+                    width=width,
+                    height=height,
+                    label=obj.name,
+                )
+
+
 async def step_architecting(
     plan: CurriculumPlan,
     request: JobRequest,
@@ -212,6 +236,7 @@ async def step_architecting(
                     retry_hint=retry_hint,
                 )
                 _validate_storyboard_completeness(storyboard, plan)
+                _populate_scene_occupancy(storyboard, ctx)
                 break
             except StoryboardGenerationError as e:
                 last_error = str(e)
