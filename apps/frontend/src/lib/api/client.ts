@@ -46,22 +46,22 @@ export async function listJobs(): Promise<{ jobs: JobSummary[] }> {
 export async function getJobStatus(jobId: string): Promise<JobStatus> {
   if (jobId.startsWith('mock-')) {
     const mockDetail = MOCK_JOB_DETAILS[jobId];
-    if (mockDetail) return mockDetail;
+    if (mockDetail) return mockDetail as unknown as JobStatus;
     throw new Error('Mock job not found');
   }
   const { data, error } = await apiClient.GET('/jobs/{job_id}/status', {
     params: { path: { job_id: jobId } },
   });
   if (error) throw new Error('Failed to fetch job status');
-  return data as unknown as JobStatus;
+  return data as JobStatus;
 }
 
 export async function createJob(request: JobRequest): Promise<JobStatus> {
   const { data, error } = await apiClient.POST('/jobs/create', {
-    body: request as components['schemas']['JobRequest'],
+    body: request,
   });
   if (error) throw new Error('Failed to create job');
-  return data as unknown as JobStatus;
+  return data as JobStatus;
 }
 
 /**
@@ -75,7 +75,7 @@ export async function retryJob(jobId: string): Promise<JobStatus> {
     params: { path: { job_id: jobId } },
   });
   if (error) throw new Error('Failed to retry job');
-  return data as unknown as JobStatus;
+  return data as JobStatus;
 }
 
 /**
@@ -111,7 +111,7 @@ export async function reviewJob(jobId: string, review: JobReviewRequest): Promis
     body: review as components['schemas']['JobReviewRequest'],
   });
   if (error) throw new Error('Failed to submit review');
-  return data as unknown as JobStatus;
+  return data as JobStatus;
 }
 
 export async function getAvailableModels(): Promise<

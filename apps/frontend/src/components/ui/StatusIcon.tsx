@@ -2,7 +2,7 @@ import { CheckCircle2, XCircle, Clock, Square, Loader2 } from 'lucide-react';
 import { JobStatus } from '@/lib/api/types';
 
 interface StatusIconProps {
-  status: JobStatus['status'];
+  status: JobStatus['status'] | 'queued';
   className?: string;
 }
 

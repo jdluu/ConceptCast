@@ -223,7 +223,11 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
               <div className="relative mb-10 h-48 w-48">
                 {job.preview_url && (
                   <div className="absolute inset-4 overflow-hidden rounded-full opacity-40">
-                    <img src={job.preview_url} alt="Preview" className="h-full w-full object-cover" />
+                    <img
+                      src={job.preview_url}
+                      alt="Preview"
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                 )}
                 <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 100 100">

@@ -1,15 +1,16 @@
 import React from 'react';
-import { LazyMotion, domAnimation } from 'motion/react';
-import * as m from 'motion/react-m';
 import { JobStatus, ThoughtLog, CurriculumPlan, Storyboard } from '@/lib/api/client';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { VideoPlayer } from '@/components/ui/VideoPlayer';
-import { CurriculumTimeline } from '@/components/orchestration/CurriculumTimeline';
-import { ArtifactCard, ArtifactBadge } from '@/components/orchestration/artifacts/ArtifactCommon';
+import { CurriculumPlanView } from '@/components/orchestration/artifacts/CurriculumPlanView';
+import { StoryboardView } from '@/components/orchestration/artifacts/StoryboardView';
+import { ArtifactBadge } from '@/components/orchestration/artifacts/ArtifactCommon';
 import { format } from 'date-fns';
 import { formatDuration } from '@/lib/utils/durationUtils';
 import { Loader2 } from 'lucide-react';
 import { useJobEvents } from '@/lib/hooks/useJobEvents';
+import { LazyMotion, domAnimation } from 'motion/react';
+import * as m from 'motion/react-m';
 
 interface JobDetailPanelProps {
   jobId: string;
@@ -117,24 +118,30 @@ export function JobDetailPanel({ jobId }: JobDetailPanelProps) {
               {
                 id: 'prompt',
                 label: 'Prompt',
-                content: <PromptView topic={topic} userPrompt={job.user_prompt} audience={audience} />,
+                content: (
+                  <PromptView topic={topic} userPrompt={job.user_prompt} audience={audience} />
+                ),
               },
               {
                 id: 'plan',
                 label: 'Curriculum',
-                content: job.plan ? (
-                  <CurriculumTimeline plan={job.plan as unknown as CurriculumPlan} />
-                ) : (
-                  <NoArtifact title="Curriculum Plan" />
+                content: (
+                  <div className="scrollbar-thin scrollbar-thumb-surface-border max-h-[600px] overflow-y-auto pr-2">
+                    <CurriculumPlanView
+                      plan={job.plan as CurriculumPlan}
+                      status={job.status}
+                      onViewFull={() => {}}
+                    />
+                  </div>
                 ),
               },
               {
                 id: 'storyboard',
                 label: 'Visuals',
-                content: job.storyboard ? (
-                  <StoryboardView storyboard={job.storyboard as unknown as Storyboard} />
-                ) : (
-                  <NoArtifact title="Storyboard" />
+                content: (
+                  <div className="scrollbar-thin scrollbar-thumb-surface-border max-h-[600px] overflow-y-auto pr-2">
+                    <StoryboardView storyboard={job.storyboard as Storyboard} status={job.status} />
+                  </div>
                 ),
               },
               { id: 'code', label: 'Script', content: <CodeView code={job.manim_code} /> },
@@ -158,45 +165,6 @@ export function JobDetailPanel({ jobId }: JobDetailPanelProps) {
           </p>
         </div>
       )}
-    </div>
-  );
-}
-
-function NoArtifact({ title }: { title: string }) {
-  return (
-    <div className="border-surface-border bg-background/30 rounded-2xl border border-dashed p-12 text-center">
-      <p className="text-text-muted text-sm italic">{title} not available yet</p>
-    </div>
-  );
-}
-
-function StoryboardView({ storyboard }: { storyboard: Storyboard }) {
-  return (
-    <div className="scrollbar-thin scrollbar-thumb-surface-border max-h-[600px] space-y-4 overflow-y-auto pr-2">
-      {storyboard.scenes.map((scene) => (
-        <ArtifactCard key={scene.scene_id} className="hover:border-council-active/30">
-          <ArtifactBadge>SCENE {scene.scene_id}</ArtifactBadge>
-          <h4 className="text-sm-plus text-foreground mb-2 font-bold tracking-tight uppercase">
-            {scene.title}
-          </h4>
-          <p className="text-text-muted text-xs leading-relaxed">{scene.description}</p>
-          {scene.objects && (
-            <div className="border-surface-border/50 mt-3 border-t pt-2">
-              <ArtifactBadge variant="active">Visual Elements</ArtifactBadge>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {scene.objects.map((v) => (
-                  <span
-                    key={`${scene.scene_id}:${v.name}`}
-                    className="border-council-active/10 bg-council-active/5 text-tiny text-council-active rounded-md border px-2 py-0.5 font-medium"
-                  >
-                    {v.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </ArtifactCard>
-      ))}
     </div>
   );
 }

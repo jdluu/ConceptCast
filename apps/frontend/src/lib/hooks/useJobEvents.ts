@@ -86,8 +86,8 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
             es.close();
             setConnectionState('closed');
           }
-        } catch (error) {
-          console.error('Failed to parse SSE message', error);
+        } catch (parseError) {
+          console.error('Failed to parse SSE message', parseError);
         }
       });
 
@@ -101,8 +101,8 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
 
         retryTimeout.current = window.setTimeout(connect, delay);
       });
-    } catch (error) {
-      setError(error instanceof Error ? error : new Error('Unknown error connecting to SSE'));
+    } catch (connError) {
+      setError(connError instanceof Error ? connError : new Error('Unknown error connecting to SSE'));
       setConnectionState('error');
     }
   }, [jobId]);

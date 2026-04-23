@@ -88,17 +88,17 @@ export function JobCreationForm() {
     }
   }, [hasRealProviders, selectedProvider, realProvidersOnly, setValue]);
 
-  const onFormSubmit = async (data: JobFormData) => {
+  const onFormSubmit = async (formData: JobFormData) => {
     try {
       const request: JobRequest = {
-        topic: data.topic,
-        target_audience: data.target_audience || settings.defaultAudience,
-        provider: data.provider,
-        model_id: data.model_id,
+        topic: formData.topic,
+        target_audience: formData.target_audience || settings.defaultAudience,
+        provider: formData.provider,
+        model_id: formData.model_id,
         hitl_enabled: settings.hitlEnabled,
-        analyst_model: data.analyst_model || undefined,
-        architect_model: data.architect_model || undefined,
-        animator_model: data.animator_model || undefined,
+        analyst_model: formData.analyst_model || undefined,
+        architect_model: formData.architect_model || undefined,
+        animator_model: formData.animator_model || undefined,
       };
       await createJob(request);
     } catch (error) {

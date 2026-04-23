@@ -89,7 +89,10 @@ export function JobRow({
           </div>
         </td>
         <td className="max-w-[300px] px-4 py-5">
-          <span className="text-foreground block truncate leading-snug font-semibold" title={job.topic}>
+          <span
+            className="text-foreground block truncate leading-snug font-semibold"
+            title={job.topic}
+          >
             {job.topic}
           </span>
           <span className="text-text-muted mt-1 block font-mono text-[10px] tracking-tight uppercase opacity-50">

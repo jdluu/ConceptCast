@@ -73,7 +73,9 @@ export interface paths {
          * Create Job
          * @description Initializes a new asynchronous video generation job.
          *
-         *     Initializes the job record in the database and triggers background processing.
+         *     Implements idempotency: If a pending or completed job with the same topic
+         *     and target audience already exists (created within the last hour), that
+         *     existing job is returned instead of creating a new one.
          *
          *     Args:
          *         request: The job creation configuration.
@@ -108,6 +110,40 @@ export interface paths {
          * @description Handles human-in-the-loop review actions for a paused job.
          */
         post: operations["review_job_jobs__job_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{job_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Preview
+         * @description Triggers or retrieves a low-quality preview frame for a job.
+         *
+         *     If a preview frame already exists in the job's artifact directory, its URL
+         *     is returned immediately. Otherwise, it triggers a fast, low-resolution
+         *     Manim render to extract a representative frame for the current code.
+         *
+         *     Args:
+         *         job_id: The unique identifier of the job.
+         *         db: The active database session.
+         *
+         *     Returns:
+         *         JobStatus: The updated job status record containing the `preview_url`.
+         *
+         *     Raises:
+         *         HTTPException: If the job is not found or code hasn't been generated yet.
+         */
+        get: operations["get_job_preview_jobs__job_id__preview_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -211,6 +247,8 @@ export interface paths {
         /**
          * List Jobs
          * @description Lists all jobs sorted by creation date (newest first).
+         *
+         *     Uses an optimized query that defers heavy columns.
          *
          *     Args:
          *         mode: Optional filter to return only 'live' or 'mock' jobs.
@@ -467,6 +505,8 @@ export interface components {
             retry_count: number;
             /** Thumbnail Url */
             thumbnail_url?: string | null;
+            /** Preview Url */
+            preview_url?: string | null;
             /** Video Metadata */
             video_metadata?: {
                 [key: string]: unknown;
@@ -538,6 +578,8 @@ export interface components {
             thumbnail_url?: string | null;
             /** Video Url */
             video_url?: string | null;
+            /** Preview Url */
+            preview_url?: string | null;
             /** Video Metadata */
             video_metadata?: {
                 [key: string]: unknown;
@@ -639,7 +681,7 @@ export interface components {
              * Step Id
              * @description Sequential ID of the step
              */
-            step_id: number;
+            step_id: number | string;
             /**
              * Concept
              * @description The specific sub-concept being taught
@@ -694,6 +736,7 @@ export interface components {
          *         color: Visual color constant or hex string.
          *         label: Text label associated with the object.
          *         parameters: Optional dictionary of specific Manim parameters (e.g., {'radius': 1.0}).
+         *         bounding_box: Optional (width, height) of the object for spatial tracking.
          */
         VisualObject: {
             /**
@@ -728,6 +771,14 @@ export interface components {
             parameters?: {
                 [key: string]: unknown;
             };
+            /**
+             * Bounding Box
+             * @description (width, height) of the object for spatial tracking
+             */
+            bounding_box?: [
+                number,
+                number
+            ] | null;
         };
     };
     responses: never;
@@ -827,6 +878,37 @@ export interface operations {
                 "application/json": components["schemas"]["JobReviewRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_preview_jobs__job_id__preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
