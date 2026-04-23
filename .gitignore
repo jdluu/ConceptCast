@@ -7,6 +7,7 @@ Thumbs.db
 # --- IDE Specific ---
 .idea/
 .vscode/
+.cursor/
 *.sublime-project
 *.sublime-workspace
 
@@ -18,16 +19,14 @@ dist/
 build/
 out/
 *.tsbuildinfo
+logs/
 
 # --- Frontend / Node ---
-.next/
-.astro/
-.eslintcache
-.stylelintcache
 coverage/
 npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.log
 
 # --- Backend / Python ---
 __pycache__/
@@ -62,6 +61,7 @@ data/jobs/*
 media/
 cli_reports/
 apps/backend/cli_reports/
+apps/backend/e2e_reports/
 apps/backend/media/
 
 # Databases

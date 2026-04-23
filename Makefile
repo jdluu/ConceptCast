@@ -27,7 +27,21 @@ ifeq ($(CONTAINER_TOOL),)
 $(warning "No container engine (podman or docker) found. Redis will not be started automatically.")
 endif
 
-INFISICAL := infisical run --path=/ai --
+# Infisical configuration (can be bypassed with USE_INFISICAL=false)
+USE_INFISICAL ?= true
+ifeq ($(USE_INFISICAL),true)
+    # Check if infisical is working for the /ConceptCast/ai path
+    INFISICAL_WORKS := $(shell infisical run --path=/ConceptCast/ai -- echo "ok" 2>/dev/null)
+    ifeq ($(INFISICAL_WORKS),ok)
+        INFISICAL := infisical run --path=/ConceptCast/ai --
+    else
+        $(warning "Infisical folder '/ConceptCast/ai' not found or inaccessible. Falling back to local environment.")
+        INFISICAL :=
+    endif
+else
+    INFISICAL :=
+endif
+
 BACKEND_SH := cd "$(BACKEND_DIR)" &&
 
 # --- Help ---
@@ -103,8 +117,8 @@ dev: redis-up ## DEV Run full stack in dev mode
 		setsid bash -lc "cd \"$(BACKEND_DIR)\" && uv run uvicorn main:app --app-dir src --reload --host 0.0.0.0 --port 8000" & backend_pid="$$!"; \
 		$(MAKE) -s wait-for-backend; \
 		$(MAKE) -s gen-api; \
-		mkdir -p "$$root_dir/.cursor"; \
-		setsid bash -lc "cd \"$(BACKEND_DIR)\" && uv run taskiq worker infra.tasks:broker --app-dir src" >"$$root_dir/.cursor/worker-dev.log" 2>&1 & worker_pid="$$!"; \
+		mkdir -p "$$root_dir/logs"; \
+		setsid bash -lc "cd \"$(BACKEND_DIR)\" && uv run taskiq worker infra.tasks:broker --app-dir src" >"$$root_dir/logs/worker-dev.log" 2>&1 & worker_pid="$$!"; \
 		set +e; \
 		cd "apps/frontend" && ./node_modules/.bin/vite --host; status="$$?"; \
 		set -e; \
@@ -200,5 +214,4 @@ clean: ## MAINT Remove build artifacts, node_modules, and job data
 	rm -rf apps/frontend/dist
 	rm -rf data/jobs/*
 	rm -rf apps/backend/e2e_reports/*
-	rm -f .cursor/debug-*.log
-	rm -f .cursor/worker-dev.log
+	rm -rf logs/
