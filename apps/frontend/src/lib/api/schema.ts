@@ -96,6 +96,161 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jobs/{job_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Status
+         * @description Retrieves the current status and artifacts for a specific job.
+         *
+         *     Args:
+         *         job_id: The unique identifier of the job.
+         *         db: The active database session.
+         *
+         *     Returns:
+         *         The current JobStatus.
+         *
+         *     Raises:
+         *         HTTPException: If the job is not found.
+         */
+        get: operations["get_job_status_jobs__job_id__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Jobs
+         * @description Lists all jobs sorted by creation date (newest first).
+         *
+         *     Uses an optimized query that defers heavy columns.
+         *
+         *     Args:
+         *         mode: Optional filter to return only 'live' or 'mock' jobs.
+         *         db: The active database session.
+         *
+         *     Returns:
+         *         JobListResponse containing a list of job summaries.
+         *
+         *     Raises:
+         *         HTTPException: If an error occurs during serialization.
+         */
+        get: operations["list_jobs_jobs__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete All Jobs
+         * @description Deletes multiple jobs and clears their associated filesystem data.
+         *
+         *     Args:
+         *         mode: Optional filter to only delete 'live' or 'mock' jobs.
+         *         db: The active database session.
+         */
+        delete: operations["delete_all_jobs_jobs__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{job_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Job
+         * @description Retries a failed or stuck job from the last successful checkpoint.
+         *
+         *     Resets the job status and triggers background logic again.
+         *
+         *     Args:
+         *         job_id: The unique identifier of the job to retry.
+         *         background_tasks: FastAPI background tasks handler.
+         *         req: FastAPI request to access application state.
+         *         _db: The active database session (unused but required for dependency chain).
+         *
+         *     Returns:
+         *         The updated JobStatus after resetting for retry.
+         */
+        post: operations["retry_job_jobs__job_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Job
+         * @description Deletes a job and its associated filesystem data.
+         *
+         *     Args:
+         *         job_id: The unique identifier of the job to delete.
+         *         db: The active database session.
+         *
+         *     Raises:
+         *         HTTPException: If the job is not found.
+         */
+        delete: operations["delete_job_jobs__job_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{job_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Job Events
+         * @description Provides a real-time stream of job updates via Server-Sent Events (SSE).
+         *
+         *     Args:
+         *         job_id: The unique identifier of the job to stream.
+         *         db_session_factory: Dependency for creating database sessions.
+         *
+         *     Returns:
+         *         StreamingResponse: An SSE event stream.
+         */
+        get: operations["job_events_jobs__job_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/{job_id}/review": {
         parameters: {
             query?: never;
@@ -150,63 +305,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/jobs/{job_id}/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Job Status
-         * @description Retrieves the current status and artifacts for a specific job.
-         *
-         *     Args:
-         *         job_id: The unique identifier of the job.
-         *         db: The active database session.
-         *
-         *     Returns:
-         *         The current JobStatus.
-         *
-         *     Raises:
-         *         HTTPException: If the job is not found.
-         */
-        get: operations["get_job_status_jobs__job_id__status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/jobs/{job_id}/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Job Events
-         * @description Provides a real-time stream of job updates via Server-Sent Events (SSE).
-         *
-         *     Args:
-         *         job_id: The unique identifier of the job to stream.
-         *         db_session_factory: Dependency for creating database sessions.
-         *
-         *     Returns:
-         *         StreamingResponse: An SSE event stream.
-         */
-        get: operations["job_events_jobs__job_id__events_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/jobs/{job_id}/plan": {
         parameters: {
             query?: never;
@@ -232,104 +330,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/jobs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Jobs
-         * @description Lists all jobs sorted by creation date (newest first).
-         *
-         *     Uses an optimized query that defers heavy columns.
-         *
-         *     Args:
-         *         mode: Optional filter to return only 'live' or 'mock' jobs.
-         *         db: The active database session.
-         *
-         *     Returns:
-         *         JobListResponse containing a list of job summaries.
-         *
-         *     Raises:
-         *         HTTPException: If an error occurs during serialization.
-         */
-        get: operations["list_jobs_jobs_get"];
-        put?: never;
-        post?: never;
-        /**
-         * Delete All Jobs
-         * @description Deletes multiple jobs and clears their associated filesystem data.
-         *
-         *     Args:
-         *         mode: Optional filter to only delete 'live' or 'mock' jobs.
-         *         db: The active database session.
-         */
-        delete: operations["delete_all_jobs_jobs_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/jobs/{job_id}/retry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Retry Job
-         * @description Retries a failed or stuck job from the last successful checkpoint.
-         *
-         *     Resets the job status and triggers background logic again.
-         *
-         *     Args:
-         *         job_id: The unique identifier of the job to retry.
-         *         background_tasks: FastAPI background tasks handler.
-         *         req: FastAPI request to access application state.
-         *         db: The active database session.
-         *
-         *     Returns:
-         *         The updated JobStatus after resetting for retry.
-         */
-        post: operations["retry_job_jobs__job_id__retry_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/jobs/{job_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Delete Job
-         * @description Deletes a job and its associated filesystem data.
-         *
-         *     Args:
-         *         job_id: The unique identifier of the job to delete.
-         *         db: The active database session.
-         *
-         *     Raises:
-         *         HTTPException: If the job is not found.
-         */
-        delete: operations["delete_job_jobs__job_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -864,72 +864,6 @@ export interface operations {
             };
         };
     };
-    review_job_jobs__job_id__review_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["JobReviewRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobStatus"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_job_preview_jobs__job_id__preview_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobStatus"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_job_status_jobs__job_id__status_get: {
         parameters: {
             query?: never;
@@ -961,69 +895,7 @@ export interface operations {
             };
         };
     };
-    job_events_jobs__job_id__events_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_plan_jobs__job_id__plan_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CurriculumPlan"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_jobs_jobs_get: {
+    list_jobs_jobs__get: {
         parameters: {
             query?: {
                 mode?: ("live" | "mock") | null;
@@ -1054,7 +926,7 @@ export interface operations {
             };
         };
     };
-    delete_all_jobs_jobs_delete: {
+    delete_all_jobs_jobs__delete: {
         parameters: {
             query?: {
                 mode?: ("live" | "mock") | null;
@@ -1131,6 +1003,134 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_events_jobs__job_id__events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_job_jobs__job_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_preview_jobs__job_id__preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plan_jobs__job_id__plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumPlan"];
+                };
             };
             /** @description Validation Error */
             422: {
