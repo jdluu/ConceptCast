@@ -1,9 +1,13 @@
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import JSON, DateTime, Integer, String, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from infra.database import Base
+
+if TYPE_CHECKING:
+    from infra.models.thought import ThoughtRecord
 
 
 class JobRecord(Base):
@@ -16,8 +20,14 @@ class JobRecord(Base):
     """
 
     __tablename__ = "jobs"
+    __table_args__ = (
+        UniqueConstraint(
+            "topic", "target_audience", "mode", name="uq_job_idempotency"
+        ),
+    )
 
     job_id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+
     topic: Mapped[str] = mapped_column(String, index=True)
     user_prompt: Mapped[str | None] = mapped_column(String, nullable=True)
     target_audience: Mapped[str] = mapped_column(String, nullable=True)
@@ -39,9 +49,14 @@ class JobRecord(Base):
     validator_model: Mapped[str | None] = mapped_column(String, nullable=True)
     architect_model: Mapped[str | None] = mapped_column(String, nullable=True)
     animator_model: Mapped[str | None] = mapped_column(String, nullable=True)
-    streamed_thoughts: Mapped[list[dict[str, str]] | None] = mapped_column(
-        JSON, nullable=True, default=None
+
+    thoughts: Mapped[list["ThoughtRecord"]] = relationship(
+        "ThoughtRecord",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        lazy="noload",
     )
+
     cost: Mapped[float] = mapped_column(default=0.0)
     thumbnail_url: Mapped[str | None] = mapped_column(String, nullable=True)
     video_metadata: Mapped[dict[str, object] | None] = mapped_column(

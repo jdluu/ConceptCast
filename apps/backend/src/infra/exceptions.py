@@ -47,7 +47,10 @@ class AnimationGenerationError(ConceptCastError):
     """Raised when the animation code generation phase fails."""
 
     def __init__(
-        self, message: str, details: dict[str, str] | None = None, logs: str | None = None
+        self,
+        message: str,
+        details: dict[str, str] | None = None,
+        logs: str | None = None,
     ) -> None:
         super().__init__(message, details)
         self.logs = logs
