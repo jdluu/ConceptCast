@@ -5,12 +5,14 @@ import react from '@vitejs/plugin-react';
 import oxlint from 'vite-plugin-oxlint';
 
 import tailwindcss from '@tailwindcss/vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   envDir: '../../',
-  plugins: [react(), tailwindcss(), oxlint(), tsconfigPaths()],
+  plugins: [react(), tailwindcss(), oxlint()],
+  resolve: {
+    tsconfigPaths: true,
+  },
   server: {
     proxy: {
       '/api': {
