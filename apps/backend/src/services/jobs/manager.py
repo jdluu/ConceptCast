@@ -79,18 +79,18 @@ async def update_job_record(
         updates: A dictionary of field names and their new values.
     """
     if isinstance(session_or_factory, AsyncSession):
-        await _perform_job_update(session_or_factory, job_id, updates)
+        await perform_job_update(session_or_factory, job_id, updates)
     else:
         async with session_or_factory() as db:
             try:
-                await _perform_job_update(db, job_id, updates)
+                await perform_job_update(db, job_id, updates)
                 await db.commit()
             except Exception:
                 await db.rollback()
                 raise
 
 
-async def _perform_job_update(
+async def perform_job_update(
     db: AsyncSession, job_id: str, updates: dict[str, object]
 ) -> None:
     """Internal helper to apply updates to a job record atomically."""

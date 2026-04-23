@@ -4,7 +4,7 @@ The GCO acts as the shared blackboard for the Agent Council, maintaining
 consistency across pedagogical steps, visual styles, and spatial layouts.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -64,7 +64,7 @@ class ErrorEvent(BaseModel):
     error_type: str  # e.g. "SyntaxError", "ValidationFailure"
     message: str
     context: dict[str, object] = Field(default_factory=dict)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class DecisionLog(BaseModel):
@@ -73,7 +73,7 @@ class DecisionLog(BaseModel):
     agent: str
     rationale: str
     implications: list[str] = Field(default_factory=list)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class WorkflowMetrics(BaseModel):
