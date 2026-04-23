@@ -1,7 +1,9 @@
-"""Orchestration layer for the pedagogical video generation workflow.
+"""Workflow orchestrator for the ConceptCast agent council.
 
-Coordinates multiple AI agents and background tasks to transform a topic
-into a structured curriculum and eventually a rendered Manim animation.
+Coordinates the multi-step pedagogical video generation pipeline: topic
+refinement, planning, architecting, animating, and rendering dispatch.
+Delegates step-specific logic to handler functions while managing session
+lifecycle, callbacks, and error recovery.
 """
 
 import asyncio
@@ -10,18 +12,13 @@ from datetime import UTC, datetime
 
 import structlog
 from pydantic_ai.usage import RunUsage
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.schemas import CurriculumPlan, JobRequest, Storyboard
+from api.schemas import JobRequest, Storyboard
 from domain.models.workflow import GlobalContext
 from infra.ai.factory import get_concept_model
 from infra.database import AsyncSessionLocal
-from infra.exceptions import (
-    AnimationGenerationError,
-    PlanGenerationError,
-    StoryboardGenerationError,
-)
+from infra.exceptions import PlanGenerationError
 from infra.models.job import JobRecord
 from infra.tasks import render_video_task
 from services.jobs.topic import refine_topic
@@ -32,14 +29,17 @@ from services.workflow.utils import (
 )
 
 from ..jobs.manager import (
-    _perform_job_update,
+    perform_job_update,
     prepare_job_for_retry_logic,
     update_job_status,
 )
 from ..jobs.thoughts import append_job_thought
-from .steps.animating import step_animating
-from .steps.architecting import step_architecting
-from .steps.planning import step_planning
+from .handlers import (
+    handle_animating_step,
+    handle_architecting_steps,
+    handle_planning_step,
+    load_job_record,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -105,9 +105,6 @@ async def process_job_logic(
                 await session.commit()
 
         try:
-            # Re-fetch just user_prompt for execute_workflow if needed,
-            # or just let execute_workflow handle it all.
-            # Actually, let's keep it simple and just pass topic from request.
             await execute_workflow(
                 session=session,
                 job_id=job_id,
@@ -135,266 +132,6 @@ async def process_job_logic(
             logger.error("workflow_background_failed", job_id=job_id, error=str(e))
 
 
-async def _handle_planning_step(
-    job_id: str,
-    job_state: JobRecord,
-    request: JobRequest,
-    _provider: str,
-    update_job: Callable[[dict[str, object]], Awaitable[None]],
-    on_thought: Callable[[str, str, str], Awaitable[None]],
-    ctx: GlobalContext,
-) -> tuple[CurriculumPlan, RunUsage | None]:
-    """Handles Step 1 (Planning) including deterministic structural retries.
-
-    Args:
-        job_id: The unique identifier for the job.
-        job_state: The current database record for the job.
-        request: The initial user request.
-        _provider: The AI provider to use.
-        update_job: Callback for persisting job state updates.
-        on_thought: Callback for streaming agent thoughts.
-        ctx: The Global Context Object (GCO) for the workflow.
-
-    Returns:
-        tuple[CurriculumPlan, RunUsage | None]: The generated plan and total token usage.
-
-    Raises:
-        PlanGenerationError: If planning fails to produce a valid curriculum after retries.
-    """
-    await update_job(
-        {
-            "status": "planning",
-            "current_step": "planning_start",
-            "started_at": datetime.now(UTC),
-        }
-    )
-
-    plan: CurriculumPlan | None = None
-    if job_state.plan:
-        logger.info("planning_cached_plan_reused", job_id=job_id)
-        await on_thought("system", "status", "Using cached pedagogical plan...")
-        cached_plan = parse_job_artifact(job_state.plan, CurriculumPlan)
-        ctx.plan = cached_plan
-        return cached_plan, None
-
-    total_usage = RunUsage()
-    max_retries = 3
-    current_attempt = 0
-    last_feedback = ""
-
-    while current_attempt < max_retries:
-        current_attempt += 1
-        attempt_prefix = f"[Attempt {current_attempt}/{max_retries}] "
-        attempt_prefix_local = attempt_prefix
-
-        async def _on_thought_attempt(
-            agent: str,
-            phase: str,
-            content: str,
-            attempt_prefix_local: str = attempt_prefix_local,
-        ) -> None:
-            if phase == "structured_output" and agent == "analyst":
-                await on_thought(agent, phase, f"{attempt_prefix_local}{content}")
-                return
-            await on_thought(agent, phase, content)
-
-        await on_thought(
-            "system",
-            "status",
-            f"{attempt_prefix}Generating curriculum for: {request.topic}",
-        )
-
-        try:
-            plan, p_usage = await step_planning(
-                request,
-                job_state,
-                update_job,
-                _on_thought_attempt,
-                ctx,
-                force_generate=current_attempt > 1,
-                retry_hint=last_feedback or None,
-            )
-        except PlanGenerationError as e:
-            last_feedback = str(e)
-            await on_thought(
-                "system",
-                "status",
-                f"{attempt_prefix}Curriculum generation failed structural checks:\n{last_feedback}",
-            )
-            logger.warning(
-                "planning_attempt_failed",
-                job_id=job_id,
-                attempt=current_attempt,
-                max_retries=max_retries,
-                feedback=last_feedback,
-            )
-            if current_attempt >= max_retries:
-                raise
-            continue
-
-        total_usage = merge_usage(total_usage, p_usage)
-        ctx.plan = plan
-        break
-
-    if not plan:
-        raise PlanGenerationError(
-            "Failed to generate any curriculum plan after retries."
-        )
-
-    # Deterministic curriculum preflight pass after a structurally valid plan exists.
-    await update_job({"status": "planning", "current_step": "curriculum_preflight"})
-    await on_thought(
-        "system",
-        "status",
-        f"[Attempt {current_attempt}/{max_retries}] Structural preflight check for curriculum...",
-    )
-    is_valid, issues = plan.is_structurally_valid()
-    if not is_valid:
-        await on_thought(
-            "system",
-            "status",
-            f"[Attempt {current_attempt}/{max_retries}] Structural preflight issues:\n- "
-            + "\n- ".join(issues),
-        )
-        logger.warning(
-            "planning_structural_issues_after_retries",
-            job_id=job_id,
-            issues=issues,
-        )
-        raise PlanGenerationError(
-            "Structural preflight failed and cannot proceed.\n- " + "\n- ".join(issues)
-        )
-
-    # Persist the final state.
-    await update_job(
-        {
-            "plan": plan.model_dump() if plan else None,
-            "current_step": "planning_complete",
-        }
-    )
-
-    return plan, total_usage
-
-
-async def _handle_architecting_steps(
-    job_id: str,
-    job_state: JobRecord,
-    request: JobRequest,
-    plan: CurriculumPlan,
-    _provider: str,
-    update_job: Callable[[dict[str, object]], Awaitable[None]],
-    on_thought: Callable[[str, str, str], Awaitable[None]],
-    ctx: GlobalContext,
-) -> tuple[Storyboard, RunUsage | None]:
-    """Handles Step 3 (Architecting) to produce the visual storyboard.
-
-    Args:
-        job_id: The unique identifier for the job.
-        job_state: The current database record for the job.
-        request: The initial user request.
-        plan: The structurally valid curriculum plan.
-        _provider: The AI provider to use.
-        update_job: Callback for persisting job state updates.
-        on_thought: Callback for streaming agent thoughts.
-        ctx: The Global Context Object (GCO) for the workflow.
-
-    Returns:
-        tuple[Storyboard, RunUsage | None]: The generated storyboard and total token usage.
-
-    Raises:
-        StoryboardGenerationError: If architecting fails to produce a valid storyboard.
-    """
-    if job_state.storyboard:
-        logger.info("architecting_cached_storyboard_reused", job_id=job_id)
-        await on_thought("system", "status", "Using cached storyboard...")
-        arch = parse_job_artifact(job_state.storyboard, Storyboard)
-        ctx.storyboard = arch
-        return arch, None
-
-    await on_thought("system", "status", "Starting visual architecting...")
-    await update_job(
-        {"status": "architecting", "current_step": "storyboard_generation"}
-    )
-
-    storyboard, a_usage = await step_architecting(
-        plan, request, job_state, update_job, on_thought, ctx, persist=True
-    )
-
-    if not storyboard or not storyboard.scenes:
-        raise StoryboardGenerationError(
-            "Architecting failed to produce a valid storyboard with scenes."
-        )
-
-    ctx.storyboard = storyboard
-    return storyboard, a_usage
-
-
-async def _handle_animating_step(
-    job_id: str,
-    job_state: JobRecord,
-    request: JobRequest,
-    storyboard: Storyboard,
-    _provider: str,
-    update_job: Callable[[dict[str, object]], Awaitable[None]],
-    on_thought: Callable[[str, str, str], Awaitable[None]],
-    ctx: GlobalContext,
-    retry_hint: str | None = None,
-) -> tuple[str, RunUsage | None]:
-    """Handles Step 4 (Animating) including iterative code generation.
-
-    Args:
-        job_id: The unique identifier for the job.
-        job_state: The current database record for the job.
-        request: The initial user request.
-        storyboard: The visual sequence to animate.
-        _provider: The AI provider to use.
-        update_job: Callback for persisting job state updates.
-        on_thought: Callback for streaming agent thoughts.
-        ctx: The Global Context Object (GCO) for the workflow.
-
-    Returns:
-        tuple[str, RunUsage | None]: The generated Manim code and total token usage.
-
-    Raises:
-        AnimationGenerationError: If the animation step fails to produce valid code.
-    """
-    if job_state.manim_code:
-        logger.info("animating_cached_code_reused", job_id=job_id)
-        await on_thought("system", "status", "Using cached Manim code...")
-        ctx.manim_code = job_state.manim_code
-        return job_state.manim_code, None
-
-    await on_thought("system", "status", "Generating Manim animation script...")
-    await update_job({"status": "animating", "current_step": "animating_start"})
-
-    code, m_usage = await step_animating(
-        storyboard,
-        request,
-        job_state,
-        update_job,
-        on_thought,
-        ctx,
-        initial_hint=retry_hint,
-    )
-    if not code:
-        raise AnimationGenerationError("Animating failed to produce code.")
-
-    ctx.manim_code = code
-    await update_job({"manim_code": code})
-    return code, m_usage
-
-
-async def _load_job_record(session: AsyncSession, job_id: str) -> JobRecord:
-    """Helper to fetch a JobRecord or raise a descriptive error."""
-    stmt = select(JobRecord).where(JobRecord.job_id == job_id)
-    res = await session.execute(stmt)
-    job = res.scalar_one_or_none()
-    if not job:
-        logger.error("workflow_job_not_found", job_id=job_id)
-        raise RuntimeError(f"Job {job_id} not found in database.")
-    return job
-
-
 async def execute_workflow(  # noqa: PLR0915, PLR0913
     session: AsyncSession,
     job_id: str,
@@ -413,7 +150,7 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
         total_usage = merge_usage(total_usage, u)
 
     # 1. Fetch Job State
-    job_state = await _load_job_record(session, job_id)
+    job_state = await load_job_record(session, job_id)
 
     # 2. Re-construct Request for agents (used for getting models)
     request = JobRequest(
@@ -436,7 +173,7 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
     if job_state.topic == job_state.user_prompt:
         await on_thought("system", "status", "Refining topic...")
         await update_job({"current_step": "refining_topic"})
-        
+
         model = get_concept_model(provider, model_id)
         if model:
             refined_topic = await refine_topic(job_state.user_prompt, model)
@@ -451,54 +188,13 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
             job_state.current_step == "rendering_failed_needs_fix"
             and job_state.storyboard
         ):
-            await on_thought(
-                "system",
-                "status",
-                "Resuming from rendering failure: regenerating animation code with render-error hints.",
+            await _handle_render_repair(
+                job_id, job_state, request, provider,
+                update_job, on_thought, ctx, add_usage,
             )
-            storyboard = parse_job_artifact(job_state.storyboard, Storyboard)
-            ctx.storyboard = storyboard
-            repair_hint = job_state.error or "Previous rendering attempt failed."
-            # Force regeneration instead of reusing the known-bad code.
-            await update_job(
-                {
-                    "status": "animating",
-                    "current_step": "rendering_repair_regenerate_code",
-                    "manim_code": None,
-                }
-            )
-            code, usage_repair = await _handle_animating_step(
-                job_id,
-                job_state,
-                request,
-                storyboard,
-                provider,
-                update_job,
-                on_thought,
-                ctx,
-                retry_hint=(
-                    "Repair this render failure. "
-                    f"Previous failure details: {repair_hint}"
-                ),
-            )
-            add_usage(usage_repair)
-            await render_video_task.kiq(
-                job_id=job_id,
-                code=code,
-                storyboard_dict=storyboard.model_dump(),
-                request_dict=request.model_dump(),
-            )
-            await update_job(
-                {
-                    "status": "rendering",
-                    "current_step": "rendering_repair_retry_dispatched",
-                    "error": None,
-                }
-            )
-            logger.info("workflow_repair_render_dispatched", job_id=job_id)
             return
 
-        plan, usage_1 = await _handle_planning_step(
+        plan, usage_1 = await handle_planning_step(
             job_id, job_state, request, provider, update_job, on_thought, ctx
         )
         add_usage(usage_1)
@@ -518,12 +214,12 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
             return
         # ---------------------------------------
 
-        storyboard, usage_3 = await _handle_architecting_steps(
+        storyboard, usage_3 = await handle_architecting_steps(
             job_id, job_state, request, plan, provider, update_job, on_thought, ctx
         )
         add_usage(usage_3)
 
-        code, usage_4 = await _handle_animating_step(
+        code, usage_4 = await handle_animating_step(
             job_id,
             job_state,
             request,
@@ -572,7 +268,7 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
             session_duration = (datetime.now(UTC) - started_at).total_seconds()
 
         # Update within the same session
-        await _perform_job_update(
+        await perform_job_update(
             session,
             job_id,
             {
@@ -587,3 +283,75 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
         )
         await session.commit()
         raise
+
+
+async def _handle_render_repair(
+    job_id: str,
+    job_state: JobRecord,
+    request: JobRequest,
+    provider: str,
+    update_job: Callable[[dict[str, object]], Awaitable[None]],
+    on_thought: Callable[[str, str, str], Awaitable[None]],
+    ctx: GlobalContext,
+    add_usage: Callable[[RunUsage | None], None],
+) -> None:
+    """Handles the render-repair path for jobs that failed during rendering.
+
+    Reuses the cached storyboard and regenerates animation code with
+    render-error hints before re-dispatching to the rendering worker.
+
+    Args:
+        job_id: The unique identifier for the job.
+        job_state: The current database record for the job.
+        request: The reconstructed user request.
+        provider: The AI provider to use.
+        update_job: Callback for persisting job state updates.
+        on_thought: Callback for streaming agent thoughts.
+        ctx: The Global Context Object (GCO) for the workflow.
+        add_usage: Callback for accumulating token usage.
+    """
+    await on_thought(
+        "system",
+        "status",
+        "Resuming from rendering failure: regenerating animation code with render-error hints.",
+    )
+    storyboard = parse_job_artifact(job_state.storyboard, Storyboard)
+    ctx.storyboard = storyboard
+    repair_hint = job_state.error or "Previous rendering attempt failed."
+    # Force regeneration instead of reusing the known-bad code.
+    await update_job(
+        {
+            "status": "animating",
+            "current_step": "rendering_repair_regenerate_code",
+            "manim_code": None,
+        }
+    )
+    code, usage_repair = await handle_animating_step(
+        job_id,
+        job_state,
+        request,
+        storyboard,
+        provider,
+        update_job,
+        on_thought,
+        ctx,
+        retry_hint=(
+            "Repair this render failure. "
+            f"Previous failure details: {repair_hint}"
+        ),
+    )
+    add_usage(usage_repair)
+    await render_video_task.kiq(
+        job_id=job_id,
+        code=code,
+        storyboard_dict=storyboard.model_dump(),
+        request_dict=request.model_dump(),
+    )
+    await update_job(
+        {
+            "status": "rendering",
+            "current_step": "rendering_repair_retry_dispatched",
+            "error": None,
+        }
+    )
+    logger.info("workflow_repair_render_dispatched", job_id=job_id)
