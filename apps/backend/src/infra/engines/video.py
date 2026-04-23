@@ -115,9 +115,7 @@ def _prepare_render_environment(code: str, job_id: str) -> tuple[Path, Path | No
     code_file.write_text(sanitized_code, encoding="utf-8")
 
     # Host path is relevant only if we are using a container tool
-    host_job_dir = (
-        settings.jobs_dir / job_id if local_sandbox.container_tool else None
-    )
+    host_job_dir = settings.jobs_dir / job_id if local_sandbox.container_tool else None
 
     return job_dir, host_job_dir
 

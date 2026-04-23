@@ -6,16 +6,17 @@ animations for the Manim engine.
 
 from collections.abc import Awaitable, Callable
 
-from pydantic_ai import Agent
 from pydantic_ai.usage import RunUsage
 
 from api.schemas import CurriculumPlan, Storyboard
 from domain.models.workflow import GlobalContext
-from infra.ai.base import BaseConceptModel, load_prompt
-from infra.ai.streaming import run_agent_streamed
+from infra.ai.base import BaseConceptModel
 from services.workflow.context_injectors import extract_architect_context
 
-system_prompt = load_prompt("architect")
+from .base import ConceptAgent
+
+# Initialize the shared architect agent instance
+architect_agent: ConceptAgent[Storyboard] = ConceptAgent("architect", Storyboard)
 
 
 async def generate_storyboard(
@@ -36,25 +37,14 @@ async def generate_storyboard(
     Returns:
         tuple: (The structured Storyboard, RunUsage data).
     """
-    agent = Agent(
-        model.model,
-        system_prompt=system_prompt,
-        output_type=Storyboard,
-        deps_type=GlobalContext,
-        retries=3,
-    )
-
     if ctx:
         prompt = extract_architect_context(ctx)
     else:
         prompt = f"Create a storyboard for the following curriculum:\n{plan.model_dump_json()}"
 
     if retry_hint:
-        # Keep repair instructions explicit and compact, so models
-        # focus on meeting storyboard structural requirements.
         prompt = f"{prompt}\n\nREPAIR INSTRUCTIONS:\n{retry_hint}"
 
-    result, usage = await run_agent_streamed(
-        "architect", agent, prompt, on_thought=on_thought, deps=ctx
+    return await architect_agent.run(
+        model=model, prompt=prompt, on_thought=on_thought, ctx=ctx
     )
-    return result, usage

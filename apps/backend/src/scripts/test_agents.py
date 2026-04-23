@@ -4,6 +4,7 @@ Tests the low-level Pydantic AI event loop for all council agents to ensure
 thinking and output parts are correctly emitted and captured.
 """
 
+import argparse
 import asyncio
 import contextlib
 import sys
@@ -20,6 +21,8 @@ from api.schemas import (
     Storyboard,
 )
 from domain.models.workflow import GlobalContext
+from infra.ai.base import BaseConceptModel
+from infra.ai.factory import get_concept_model
 from infra.ai.mock import MockConceptModel, RealisticMockModel
 from infra.ai.streaming import run_agent_streamed
 from infra.models.job import JobRecord
@@ -33,16 +36,27 @@ async def test_agent_logic(  # noqa: C901, PLR0912
     system_prompt: str,
     output_type: type,
     topic: str = "Linear Algebra",
+    provider: str = "mock",
+    model_id: str | None = None,
 ) -> bool:
     """Simulates a single agent run and validates the event stream."""
-    logger.info("diagnostic_agent_test_started", agent=agent_name.upper())
+    logger.info("diagnostic_agent_test_started", agent=agent_name.upper(), provider=provider)
 
-    concept_model = MockConceptModel(RealisticMockModel(), f"mock-{agent_name}")
+    if provider == "mock":
+        concept_model: BaseConceptModel | None = MockConceptModel(RealisticMockModel(), f"mock-{agent_name}")
+    else:
+        concept_model = get_concept_model(provider, model_id)
+
+    if not concept_model:
+        logger.error("diagnostic_agent_test_failed_model_not_found", provider=provider)
+        return False
+
     agent = Agent(
         concept_model.model,
         system_prompt=system_prompt,
         output_type=output_type,
         deps_type=GlobalContext,
+        retries=3,
     )
 
     # We use a simple prompt that will trigger the mock model
@@ -228,9 +242,12 @@ async def test_full_workflow(topic: str = "Quantum Entanglement") -> bool:
         return True
 
 
-async def run_diagnostics() -> None:
+async def run_diagnostics(args: argparse.Namespace) -> None:
     """Runs a full suite of agent diagnostics."""
     logger.info("diagnostic_suite_started")
+
+    provider = "nano" if args.no_mock else "mock"
+    model_id = args.model_id
 
     tests = [
         ("analyst", "Analyst Agent", CurriculumPlan),
@@ -241,11 +258,14 @@ async def run_diagnostics() -> None:
 
     results = []
     for name, prompt, out_type in tests:
-        success = await test_agent_logic(name, prompt, out_type)
+        success = await test_agent_logic(
+            name, prompt, out_type, provider=provider, model_id=model_id
+        )
         results.append(success)
         await asyncio.sleep(0.2)  # Small delay for readability
 
     # --- FULL WORKFLOW INTEGRATION TEST ---
+    # We only run workflow integration in mock mode to avoid high token costs for a sanity check
     workflow_success = await test_full_workflow("Quantum Entanglement")
     results.append(workflow_success)
 
@@ -257,5 +277,14 @@ async def run_diagnostics() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="ConceptCast Agent Diagnostic Suite")
+    parser.add_argument(
+        "--no-mock", action="store_true", help="Run with real AI providers"
+    )
+    parser.add_argument(
+        "--model-id", type=str, default=None, help="Specific model to test"
+    )
+    cmd_args = parser.parse_args()
+
     with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(run_diagnostics())
+        asyncio.run(run_diagnostics(cmd_args))

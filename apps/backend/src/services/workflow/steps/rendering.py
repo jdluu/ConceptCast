@@ -109,7 +109,10 @@ async def step_rendering(
             await on_thought("system", "status", "Visual preview ready.")
     except Exception as e:
         import structlog
-        structlog.get_logger(__name__).debug("automatic_preview_failed", job_id=job_id, error=str(e))
+
+        structlog.get_logger(__name__).debug(
+            "automatic_preview_failed", job_id=job_id, error=str(e)
+        )
 
     await update_job({"status": "rendering", "current_step": "rendering_full"})
 

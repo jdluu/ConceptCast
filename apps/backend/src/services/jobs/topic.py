@@ -1,5 +1,4 @@
-"""Service for refining and interpreting user prompts into concise topics.
-"""
+"""Service for refining and interpreting user prompts into concise topics."""
 
 import structlog
 from pydantic_ai import Agent
@@ -26,10 +25,10 @@ async def refine_topic(user_prompt: str, model: BaseConceptModel) -> str:
         str: A concise, professional title (e.g., "The Pythagorean Theorem").
     """
     try:
-        agent: Agent[None, str] = Agent(  # type: ignore[call-overload]
+        agent: Agent[None, str] = Agent(
             model.model,
             system_prompt=system_prompt,
-            result_type=str,
+            output_type=str,
             retries=2,
         )
 

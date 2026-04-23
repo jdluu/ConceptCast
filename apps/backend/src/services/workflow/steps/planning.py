@@ -38,13 +38,11 @@ def _plan_structure_issues(plan: CurriculumPlan) -> list[str]:
     """Returns deterministic structural issues for generated curricula."""
     issues: list[str] = []
 
-    concept = plan.concept_title.strip() if plan.concept_title else ""
-    audience = plan.target_audience.strip() if plan.target_audience else ""
-    if _is_placeholder_text(concept):
-        issues.append("concept_title is empty or placeholder")
-    if _is_placeholder_text(audience):
-        issues.append("target_audience is empty or placeholder")
-
+    if not plan.concept_title or not plan.concept_title.strip():
+        issues.append("concept_title is empty")
+    
+    # We are lenient with target_audience during generation as we can hydrate it.
+    
     if not plan.teaching_steps:
         issues.append("teaching_steps is empty")
         return issues

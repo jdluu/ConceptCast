@@ -2,8 +2,9 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from api.schemas import JobRequest
 from infra.models.job import JobRecord
@@ -11,6 +12,38 @@ from infra.settings import get_settings
 from services.jobs.events import job_event_manager
 
 logger = structlog.get_logger(__name__)
+
+
+async def get_job_summaries(
+    db: AsyncSession, mode: str | None = None
+) -> list[JobRecord]:
+    """Fetches a list of job records optimized for summary views.
+
+    Explicitly defers loading of heavy JSON columns (plan, storyboard, code)
+    to reduce database bandwidth and memory usage during list operations.
+
+    Args:
+        db: The active database session.
+        mode: Optional filter for 'live' or 'mock' jobs.
+
+    Returns:
+        list[JobRecord]: A list of job records with only summary fields loaded.
+    """
+    stmt = select(JobRecord).order_by(JobRecord.created_at.desc())
+
+    # Defer loading of heavy columns
+    stmt = stmt.options(
+        defer(JobRecord.plan),
+        defer(JobRecord.storyboard),
+        defer(JobRecord.manim_code),
+        defer(JobRecord.validation),
+    )
+
+    if mode:
+        stmt = stmt.where(JobRecord.mode == mode)
+
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
 
 def determine_execution_mode(request: JobRequest) -> bool:
@@ -60,14 +93,14 @@ async def update_job_record(
 async def _perform_job_update(
     db: AsyncSession, job_id: str, updates: dict[str, object]
 ) -> None:
-    """Internal helper to apply updates to a job record within a session."""
-    result = await db.execute(select(JobRecord).where(JobRecord.job_id == job_id))
-    job = result.scalar_one_or_none()
-    if job:
-        for key, value in updates.items():
-            setattr(job, key, value)
-        job.updated_at = datetime.now(UTC)
-        await job_event_manager.notify(job_id)
+    """Internal helper to apply updates to a job record atomically."""
+    # Add updated_at to the updates if not already present
+    now = datetime.now(UTC)
+    full_updates = {**updates, "updated_at": now}
+
+    stmt = update(JobRecord).where(JobRecord.job_id == job_id).values(**full_updates)
+    await db.execute(stmt)
+    await job_event_manager.notify(job_id)
 
 
 async def update_job_status(
@@ -140,6 +173,11 @@ async def _perform_retry_prep(db: AsyncSession, job_id: str) -> JobRecord:
         is_render_repair or failure_stage == "animating"
     )
 
+    from infra.models.thought import ThoughtRecord
+
+    # Delete old thoughts to cleanly start over
+    await db.execute(delete(ThoughtRecord).where(ThoughtRecord.job_id == job_id))
+
     updates: dict[str, object] = {
         "status": "pending_retry",
         # Keep the render error message as retry hint when repairing.
@@ -148,7 +186,6 @@ async def _perform_retry_prep(db: AsyncSession, job_id: str) -> JobRecord:
         if is_render_repair
         else "retrying",
         "retry_count": job.retry_count + 1,
-        "streamed_thoughts": [],
         "render_progress": 0,
         "started_at": None,
         "finished_at": None,

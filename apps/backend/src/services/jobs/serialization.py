@@ -101,10 +101,8 @@ def map_job_record_to_status(job: JobRecord) -> JobStatus:
         ],
         normalized_status,
     )
-    mode_literal = cast(Literal["live", "mock"], job.mode)
-    failure_stage, failure_type, failure_summary = _classify_failure(job)
 
-    thoughts = [ThoughtLog(**t) for t in (job.streamed_thoughts or [])]
+    failure_stage, failure_type, failure_summary = _classify_failure(job)
 
     # Calculate processing duration
     is_active = status_literal not in ("completed", "failed", "pending_retry")
@@ -116,28 +114,34 @@ def map_job_record_to_status(job: JobRecord) -> JobStatus:
         current_session_duration = (datetime.now(UTC) - started_at).total_seconds()
 
     duration_seconds = job.total_execution_time + current_session_duration
+
     metadata_duration = None
     if isinstance(job.video_metadata, dict):
         raw_duration = job.video_metadata.get("duration")
         if isinstance(raw_duration, int | float):
             metadata_duration = float(raw_duration)
 
+    # job.thoughts is a list of ThoughtRecord models (if loaded)
+    thought_logs = []
+    if "thoughts" in job.__dict__:
+        thought_logs = [
+            ThoughtLog(
+                agent=t.agent,
+                phase=t.phase,
+                content=t.content,
+                ts=t.ts.isoformat(),
+            )
+            for t in job.thoughts
+        ]
+
     return JobStatus(
         job_id=job.job_id,
         topic=job.topic,
         user_prompt=job.user_prompt,
-        status=status_literal,
         current_step=job.current_step,
-        plan=CurriculumPlan.model_validate(job.plan) if job.plan else None,
-        storyboard=Storyboard.model_validate(job.storyboard)
-        if job.storyboard
-        else None,
-        manim_code=job.manim_code,
-        video_url=job.video_url,
         error=job.error,
-        mode=mode_literal,
+        mode=cast(Literal["live", "mock"], job.mode),
         hitl_enabled=job.hitl_enabled,
-        streamed_thoughts=thoughts,
         provider=job.provider,
         model_id=job.model_id,
         analyst_model=job.analyst_model,
@@ -146,19 +150,27 @@ def map_job_record_to_status(job: JobRecord) -> JobStatus:
         target_audience=job.target_audience,
         started_at=job.started_at.isoformat() if job.started_at else None,
         finished_at=job.finished_at.isoformat() if job.finished_at else None,
-        duration_seconds=max(
-            0.0,
-            metadata_duration if metadata_duration is not None else duration_seconds,
-        ),
         cost=job.cost,
-        retry_count=job.retry_count,
+        retry_count=job.retry_count or 0,
         thumbnail_url=job.thumbnail_url,
+        video_url=job.video_url,
         preview_url=job.preview_url,
         video_metadata=job.video_metadata,
         render_progress=job.render_progress,
         failure_stage=failure_stage,
         failure_type=failure_type,
         failure_summary=failure_summary,
+        status=status_literal,
+        streamed_thoughts=thought_logs,
+        plan=CurriculumPlan.model_validate(job.plan) if job.plan else None,
+        storyboard=Storyboard.model_validate(job.storyboard)
+        if job.storyboard
+        else None,
+        manim_code=job.manim_code,
+        duration_seconds=max(
+            0.0,
+            metadata_duration if metadata_duration is not None else duration_seconds,
+        ),
     )
 
 
@@ -171,7 +183,6 @@ def map_job_record_to_summary(job: JobRecord) -> JobSummary:
     Returns:
         JobSummary: A lightweight schema for list views.
     """
-    retry_count_val = job.retry_count if job.retry_count is not None else 0
     failure_stage, failure_type, failure_summary = _classify_failure(job)
 
     metadata_duration = None
@@ -180,41 +191,38 @@ def map_job_record_to_summary(job: JobRecord) -> JobSummary:
         if isinstance(raw_duration, int | float):
             metadata_duration = float(raw_duration)
 
+    duration_seconds = None
+    if metadata_duration is not None:
+        duration_seconds = metadata_duration
+    elif job.started_at and job.finished_at:
+        duration_seconds = (job.finished_at - job.started_at).total_seconds()
+
     return JobSummary(
         job_id=job.job_id,
-        topic=job.topic,
+        topic=job.topic or "Unknown",
         user_prompt=job.user_prompt,
-        status=job.status,
         current_step=job.current_step,
-        mode=job.mode,
-        hitl_enabled=job.hitl_enabled,
-        created_at=job.created_at.isoformat(),
-        retry_count=retry_count_val,
         error=job.error,
+        mode=job.mode,
+        created_at=job.created_at.isoformat(),
+        hitl_enabled=job.hitl_enabled,
         provider=job.provider,
         model_id=job.model_id,
         analyst_model=job.analyst_model,
         architect_model=job.architect_model,
         animator_model=job.animator_model,
         target_audience=job.target_audience,
-        started_at=(job.started_at.isoformat() if job.started_at else None),
-        finished_at=(job.finished_at.isoformat() if job.finished_at else None),
-        duration_seconds=(
-            metadata_duration
-            if metadata_duration is not None
-            else (
-                (job.finished_at - job.started_at).total_seconds()
-                if job.started_at and job.finished_at
-                else None
-            )
-        ),
+        started_at=job.started_at.isoformat() if job.started_at else None,
+        finished_at=job.finished_at.isoformat() if job.finished_at else None,
         cost=job.cost,
+        retry_count=job.retry_count or 0,
         thumbnail_url=job.thumbnail_url,
         video_url=job.video_url,
-        preview_url=job.preview_url,
         video_metadata=job.video_metadata,
         render_progress=job.render_progress,
         failure_stage=failure_stage,
         failure_type=failure_type,
         failure_summary=failure_summary,
+        status=job.status,
+        duration_seconds=duration_seconds,
     )

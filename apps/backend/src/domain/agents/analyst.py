@@ -6,16 +6,17 @@ dependency graph is logical and effective for the target audience.
 
 from collections.abc import Awaitable, Callable
 
-from pydantic_ai import Agent
 from pydantic_ai.usage import RunUsage
 
 from domain.models.curriculum import TeachingStepsDraft
 from domain.models.workflow import GlobalContext
-from infra.ai.base import BaseConceptModel, load_prompt
-from infra.ai.streaming import run_agent_streamed
+from infra.ai.base import BaseConceptModel
 from services.workflow.context_injectors import extract_analyst_context
 
-system_prompt = load_prompt("analyst")
+from .base import ConceptAgent
+
+# Initialize the shared analyst agent instance
+analyst_agent: ConceptAgent[TeachingStepsDraft] = ConceptAgent("analyst", TeachingStepsDraft)
 
 
 async def generate_curriculum(
@@ -38,14 +39,6 @@ async def generate_curriculum(
     Returns:
         tuple: (Generated teaching steps draft, RunUsage data).
     """
-    agent = Agent(
-        model.model,
-        system_prompt=system_prompt,
-        output_type=TeachingStepsDraft,
-        deps_type=GlobalContext,
-        retries=3,
-    )
-
     if ctx:
         prompt = extract_analyst_context(ctx)
     else:
@@ -54,7 +47,6 @@ async def generate_curriculum(
     if retry_hint:
         prompt = f"{prompt}\n\nREPAIR INSTRUCTIONS:\n{retry_hint}"
 
-    result, usage = await run_agent_streamed(
-        "analyst", agent, prompt, on_thought=on_thought, deps=ctx
+    return await analyst_agent.run(
+        model=model, prompt=prompt, on_thought=on_thought, ctx=ctx
     )
-    return result, usage
