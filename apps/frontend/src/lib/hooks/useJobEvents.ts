@@ -35,12 +35,10 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
       queryError &&
       (queryError.message.includes('not found') || queryError.message.includes('404'))
     ) {
-      if (jobStatus) {
-        const { resetJob } = useJobStore.getState();
-        resetJob();
-      }
+      const { resetJob } = useJobStore.getState();
+      resetJob();
     }
-  }, [queryError, jobStatus]);
+  }, [queryError]);
 
   // Refs to keep track of retry logic without triggering re-renders
   const retryCount = useRef(0);

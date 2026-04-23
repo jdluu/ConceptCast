@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Toaster, toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ChatLaunchForm } from '@/components/forms/ChatLaunchForm';
@@ -36,6 +36,23 @@ function AppContent() {
   const { playSound } = useAudioEffects();
   const { sendNotification } = useNotifications();
 
+  // Tracks which job+status pairs have already triggered notifications
+  // to prevent replaying on rehydration or HMR remounts.
+  const notifiedRef = useRef<string | null>(null);
+
+  // On mount, clear stale terminal-state jobs from the persisted store.
+  // A persisted "failed" or "completed" job should not keep the user
+  // locked into the generation view on a fresh page load.
+  useEffect(() => {
+    if (
+      initialJob &&
+      (initialJob.status === 'completed' || initialJob.status === 'failed')
+    ) {
+      notifiedRef.current = `${initialJob.job_id}:${initialJob.status}`;
+      useJobStore.getState().resetJob();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- mount-only reconciliation
+
   // Live job state from backend via SSE
   const {
     jobStatus: liveJobStatus,
@@ -48,19 +65,27 @@ function AppContent() {
   // Sync rendering progress from backend or simulation
   useRenderProgress(job?.status, job?.render_progress);
 
-  // Background notifications and sound effects for status changes
+  // Background notifications and sound effects for status changes.
+  // Deduplicates using a ref to prevent replaying on rehydration.
   useEffect(() => {
-    if (job?.status === 'failed' && job.error) {
+    if (!job) return;
+
+    const notificationKey = `${job.job_id}:${job.status}`;
+    if (notifiedRef.current === notificationKey) return;
+
+    if (job.status === 'failed' && job.error) {
+      notifiedRef.current = notificationKey;
       toast.error(`Generation failed: ${job.error}`);
       sendNotification('Generation Failed', `Job "${job.topic}" encountered an error.`);
       playSound('error');
     }
-    if (job?.status === 'completed') {
+    if (job.status === 'completed') {
+      notifiedRef.current = notificationKey;
       toast.success('Animation completed! Loading results...');
       sendNotification('Animation Ready', `"${job.topic}" has been successfully synthesized.`);
       playSound('success');
     }
-  }, [job?.status, job?.error, job?.topic, sendNotification, playSound]);
+  }, [job?.status, job?.error, job?.topic, job?.job_id, sendNotification, playSound]);
 
   return (
     <>
