@@ -27,7 +27,8 @@ Unlike traditional linear pipelines, ConceptCast uses a **Global Context Object 
 1.  **Global State (GCO)**: Centralized tracking of visual lexicon, spatial layout, and previous errors.
 2.  **Shared Context**: Targeted injectors provide agents with specific slices of the GCO, ensuring Scene 10 respects the style and layout established in Scene 1.
 3.  **Local Memory**: Agents maintain internal reasoning loops for self-correction and tool usage.
-
+4.  **Repair-First Architecture**: Agents use multimodal feedback to patch visualization code safely, bypassing restrictive geometric fallbacks.
+5.  **Real-Time Observability**: A Redis-backed Server-Sent Events (SSE) stream provides live insight into agent transitions and generation logs.
 ## Documentation & Wiki
 
 For technical enthusiasts and contributors, please refer to our **[Project Wiki](docs/wiki/Home.md)** for:

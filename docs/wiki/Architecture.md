@@ -48,8 +48,11 @@ Instead of a simple linear pipeline, all agents interact with a **GCO** that mai
 - **Global State**: The bird's-eye view maintained by the Orchestrator and persisted in the database.
 
 ### 3. Production Bible (Externalized Prompts)
-System prompts are externalized in `apps/backend/src/prompts/`. This allows for rapid iteration of agent personas and strict enforcement of Manim-specific spatial reasoning and pedagogical rules without modifying application logic.
+System prompts are externalized in the top-level `prompts/` directory. This allows for rapid iteration of agent personas and strict enforcement of Manim-specific spatial reasoning and pedagogical rules without modifying application logic.
 
+### 4. Repair-First Rendering & Observability
+- **Repair-First Loop**: Agents evaluate their own errors and actively construct repairs rather than resorting to overly strict visual fallbacks. The system's lowered similarity thresholds (e.g., to 0.35) enable creative risk-taking.
+- **SSE Telemetry**: Real-time Redis-backed streaming broadcasts agent step transitions, logic streams, and render statuses directly to the dashboard, providing full observability over the Agent Council's workflows.
 ## Key Technologies
 - **Backend**: FastAPI, Pydantic AI, SQLAlchemy (Async), Taskiq (Task Queue).
 - **AI Docs**: Context7 (Real-time Manim & Library documentation).
