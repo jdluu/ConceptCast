@@ -45,6 +45,10 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B", "SIM", "N", "C90", "PL", "ARG", "PTH", "T20"]
 ignore = ["E501", "PLC0415", "PLR2004"] # Line length handled by formatter, local imports allowed, magic values allowed
 
+[tool.ruff.lint.per-file-ignores]
+"src/scripts/*" = ["T201"]
+"src/main.py" = ["T201"] # Allow print in main for startup messages if any
+
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
 
@@ -60,6 +64,7 @@ python_version = "3.11"
 strict = true
 ignore_missing_imports = true
 check_untyped_defs = true
+plugins = ["pydantic.mypy"]
 
 
 
