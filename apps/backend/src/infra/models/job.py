@@ -21,9 +21,7 @@ class JobRecord(Base):
 
     __tablename__ = "jobs"
     __table_args__ = (
-        UniqueConstraint(
-            "topic", "target_audience", "mode", name="uq_job_idempotency"
-        ),
+        UniqueConstraint("topic", "target_audience", "mode", name="uq_job_idempotency"),
     )
 
     job_id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
@@ -49,6 +47,7 @@ class JobRecord(Base):
     validator_model: Mapped[str | None] = mapped_column(String, nullable=True)
     architect_model: Mapped[str | None] = mapped_column(String, nullable=True)
     animator_model: Mapped[str | None] = mapped_column(String, nullable=True)
+    reviewer_model: Mapped[str | None] = mapped_column(String, nullable=True)
 
     thoughts: Mapped[list["ThoughtRecord"]] = relationship(
         "ThoughtRecord",

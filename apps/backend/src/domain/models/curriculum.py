@@ -24,6 +24,9 @@ class TeachingStep(BaseModel):
     concept: str = Field(..., description="The specific sub-concept being taught")
     visual_metaphor: str = Field(..., description="Visual analogy")
     narration: str = Field(..., description="Voiceover script for this step")
+    estimated_duration: float = Field(
+        default=0.0, description="Estimated duration in seconds"
+    )
 
     @field_validator("concept", "visual_metaphor", "narration")
     @classmethod
@@ -68,10 +71,10 @@ class CurriculumPlan(BaseModel):
         """
         issues: list[str] = []
         concept = (self.concept_title or "").strip().lower()
-        
+
         if concept in _PLACEHOLDER_TEXT:
             issues.append("concept_title is empty or placeholder")
-        
+
         # We are lenient with target_audience during structural checks
         # as it can be hydrated from the request.
 

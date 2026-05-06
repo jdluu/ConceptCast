@@ -22,7 +22,9 @@ class VisualObject(BaseModel):
 
     name: str = Field(..., description="Internal name")
     type: str = Field(..., description="Manim type (e.g., 'Circle')")
-    position: str = Field(..., description="Relative position")
+    position: str = Field(
+        default="ORIGIN", description="Relative position or coordinate"
+    )
     color: str | None = Field(None, description="Visual color or hex string")
     label: str | None = Field(None, description="Associated text label")
     parameters: dict[str, object] = Field(
@@ -58,6 +60,7 @@ class Scene(BaseModel):
     title: str = Field(..., description="Descriptive title")
     description: str = Field(..., description="Visual overview")
     narration: str = Field(..., description="Voiceover script")
+    duration: float = Field(default=0.0, description="Target duration in seconds")
     objects: list[VisualObject] = Field(
         default_factory=list, description="Visual entities in the scene"
     )
