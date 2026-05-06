@@ -51,10 +51,7 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
       )}
 
       {job.status === 'rendering' && (
-        <RenderingMonitor
-          renderProgress={job.render_progress || 0}
-          previewUrl={job.preview_url}
-        />
+        <RenderingMonitor renderProgress={job.render_progress || 0} previewUrl={job.preview_url} />
       )}
 
       <ArtifactSections

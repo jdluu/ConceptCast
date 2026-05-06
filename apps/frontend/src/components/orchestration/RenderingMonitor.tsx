@@ -15,22 +15,14 @@ export function RenderingMonitor({ renderProgress, previewUrl }: RenderingMonito
       <div className="border-council-active/20 bg-surface relative overflow-hidden rounded-3xl border p-12 shadow-2xl backdrop-blur-sm">
         {previewUrl && (
           <div className="absolute inset-0 opacity-10">
-            <img
-              src={previewUrl}
-              alt="Preview"
-              className="h-full w-full object-cover blur-sm"
-            />
+            <img src={previewUrl} alt="Preview" className="h-full w-full object-cover blur-sm" />
           </div>
         )}
         <div className="relative z-10 mx-auto flex max-w-md flex-col items-center text-center">
           <div className="relative mb-10 h-48 w-48">
             {previewUrl && (
               <div className="absolute inset-4 overflow-hidden rounded-full opacity-40">
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="h-full w-full object-cover"
-                />
+                <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
               </div>
             )}
             <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 100 100">

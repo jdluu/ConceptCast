@@ -44,10 +44,7 @@ function AppContent() {
   // A persisted "failed" or "completed" job should not keep the user
   // locked into the generation view on a fresh page load.
   useEffect(() => {
-    if (
-      initialJob &&
-      (initialJob.status === 'completed' || initialJob.status === 'failed')
-    ) {
+    if (initialJob && (initialJob.status === 'completed' || initialJob.status === 'failed')) {
       notifiedRef.current = `${initialJob.job_id}:${initialJob.status}`;
       useJobStore.getState().resetJob();
     }

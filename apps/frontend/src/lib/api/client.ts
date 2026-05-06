@@ -34,7 +34,7 @@ export {
 };
 
 export async function listJobs(): Promise<{ jobs: JobSummary[] }> {
-  const { data, error } = await apiClient.GET('/jobs');
+  const { data, error } = await apiClient.GET('/jobs/', {});
   if (error) throw new Error('Failed to fetch jobs');
 
   const jobs = import.meta.env.DEV
@@ -94,7 +94,7 @@ export async function deleteJob(jobId: string): Promise<void> {
  * Deletes all jobs and clears the entire job history.
  */
 export async function deleteAllJobs(): Promise<void> {
-  const { error } = await apiClient.DELETE('/jobs');
+  const { error } = await apiClient.DELETE('/jobs/', {});
   if (error) throw new Error('Failed to clear job history');
 }
 

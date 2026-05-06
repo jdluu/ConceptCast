@@ -133,8 +133,7 @@ export function PipelineHeader({
             }
             if (isCurrent) {
               if (step.id === 'animating') return `Scene ${renderProgress || 1} logic`;
-              if (step.id === 'rendering')
-                return `${Math.round(renderProgress || 0)}% frames`;
+              if (step.id === 'rendering') return `${Math.round(renderProgress || 0)}% frames`;
               return 'Working...';
             }
             return 'Queued';

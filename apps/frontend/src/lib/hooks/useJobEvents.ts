@@ -100,7 +100,9 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
         retryTimeout.current = window.setTimeout(connect, delay);
       });
     } catch (connError) {
-      setError(connError instanceof Error ? connError : new Error('Unknown error connecting to SSE'));
+      setError(
+        connError instanceof Error ? connError : new Error('Unknown error connecting to SSE'),
+      );
       setConnectionState('error');
     }
   }, [jobId]);
