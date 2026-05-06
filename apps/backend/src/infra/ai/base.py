@@ -52,6 +52,11 @@ class BaseConceptModel(ABC):
         pass
 
     @property
+    def is_multimodal(self) -> bool:
+        """Returns True if the model supports image/vision inputs."""
+        return False
+
+    @property
     def supports_artifacts(self) -> bool:
         """Returns True if the model supports system-level artifacts (e.g. Claude)."""
         return False
@@ -102,7 +107,7 @@ def load_prompt(name: str) -> str:
     """
     from infra.settings import PROJECT_ROOT
 
-    path = PROJECT_ROOT / "apps" / "backend" / "src" / "prompts" / f"{name}.txt"
+    path = PROJECT_ROOT / "prompts" / f"{name}.txt"
     try:
         return path.read_text(encoding="utf-8").strip()
     except Exception as e:

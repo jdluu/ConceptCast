@@ -1,5 +1,7 @@
+import re
 from typing import Any
 
+import structlog
 from pydantic import BaseModel
 
 from api.schemas import (
@@ -9,9 +11,12 @@ from api.schemas import (
     Storyboard,
     TeachingStep,
     TeachingStepsDraft,
+    VisualObject,
 )
 from domain.models.curriculum import ValidationResult
 from infra.settings import get_settings
+
+logger = structlog.get_logger(__name__)
 
 settings = get_settings()
 
@@ -25,6 +30,7 @@ MOCK_PLANS = {
                 concept="The Spin Property",
                 visual_metaphor="Rotating spheres with glowing axes",
                 narration="Imagine two particles, like tiny spinning tops.",
+                estimated_duration=5.0,
             ),
             TeachingStep(
                 step_id=2,
@@ -110,89 +116,174 @@ MOCK_STORYBOARDS = {
                 title="Quantum Void",
                 description="Opening shot: Two particles appearing in a void.",
                 narration="In the vastness of the quantum void.",
-                objects=[],
+                duration=5.0,
+                objects=[
+                    VisualObject(
+                        name="particle_1",
+                        type="Circle",
+                        position="LEFT * 2",
+                        color="BLUE",
+                        label="Particle A",
+                    ),
+                    VisualObject(
+                        name="particle_2",
+                        type="Circle",
+                        position="RIGHT * 2",
+                        color="RED",
+                        label="Particle B",
+                    ),
+                ],
             ),
             Scene(
                 scene_id=2,
                 title="Spin Alignment",
                 description="Particles start spinning in synchrony.",
                 narration="Watch as their fates become intertwined.",
-                objects=[],
+                objects=[
+                    VisualObject(
+                        name="sync_indicator",
+                        type="Arrow",
+                        position="UP * 1",
+                        color="YELLOW",
+                        label="Synchronized",
+                    )
+                ],
             ),
             Scene(
                 scene_id=3,
                 title="Measurement",
                 description="A flash of light hits the first particle.",
                 narration="One choice determines the entire system.",
-                objects=[],
+                objects=[
+                    VisualObject(
+                        name="flash",
+                        type="Star",
+                        position="LEFT * 2",
+                        color="WHITE",
+                    )
+                ],
             ),
             Scene(
                 scene_id=4,
                 title="The Bridge",
                 description="A glowing link forms between the spheres.",
                 narration="Distance is no longer a barrier.",
-                objects=[],
+                objects=[
+                    VisualObject(
+                        name="bridge",
+                        type="Line",
+                        position="ORIGIN",
+                        color="GOLD",
+                    )
+                ],
             ),
             Scene(
                 scene_id=5,
                 title="Quantum Gate",
                 description="The particles pass through a prism.",
                 narration="Logic transformed by quantum rules.",
-                objects=[],
+                objects=[
+                    VisualObject(
+                        name="gate",
+                        type="Square",
+                        position="ORIGIN",
+                        color="PURPLE",
+                        label="CNOT Gate",
+                    )
+                ],
             ),
             Scene(
                 scene_id=6,
                 title="Correlation",
                 description="Charts showing linked probabilities.",
                 narration="Patterns that classical physics can't explain.",
-                objects=[],
+                objects=[
+                    VisualObject(
+                        name="chart",
+                        type="Axes",
+                        position="DOWN * 1",
+                        color="WHITE",
+                    )
+                ],
             ),
             Scene(
                 scene_id=7,
                 title="Computer Core",
                 description="Zoom out to show a complex circuit.",
                 narration="The foundation of a new era of computing.",
-                objects=[],
+                objects=[
+                    VisualObject(
+                        name="circuit_grid",
+                        type="NumberPlane",
+                        position="ORIGIN",
+                        color="DARK_GRAY",
+                    )
+                ],
             ),
             Scene(
                 scene_id=8,
                 title="The Noise",
                 description="Static begins to cloud the vision.",
                 narration="The challenge of decoherence.",
-                objects=[],
+                objects=[
+                    VisualObject(
+                        name="noise_dots",
+                        type="Dot",
+                        position="UP * 2",
+                        color="GRAY",
+                    )
+                ],
             ),
             Scene(
                 scene_id=9,
                 title="Error Correction",
                 description="Golden threads of light repair the static.",
                 narration="Overcoming noise with quantum redundancy.",
-                objects=[],
+                objects=[
+                    VisualObject(
+                        name="repair_thread",
+                        type="CubicBezier",
+                        position="ORIGIN",
+                        color="GOLD",
+                    )
+                ],
             ),
             Scene(
                 scene_id=10,
                 title="Teleportation",
                 description="A particle vanishes and reappears instantly.",
                 narration="The ultimate mastery of quantum information.",
-                objects=[],
+                objects=[
+                    VisualObject(
+                        name="portal_exit",
+                        type="Annulus",
+                        position="RIGHT * 3",
+                        color="CYAN",
+                    )
+                ],
             ),
         ],
     )
 }
 
 MOCK_MANIM_CODE = """
-# Concept: {{concept_title}}
-# Create components
-p1 = Circle(color=BLUE, fill_opacity=0.5).shift(LEFT * 2)
-p2 = Circle(color=RED, fill_opacity=0.5).shift(RIGHT * 2)
+from manim import *
 
-# Animations
-self.play(Create(p1), Create(p2))
-self.wait(1)
+class SceneGen(Scene):
+    def construct(self):
+        # Concept: {{concept_title}}
+        # Create components
+        p1 = Circle(color=BLUE, fill_opacity=0.5).shift(LEFT * 2)
+        p2 = Circle(color=RED, fill_opacity=0.5).shift(RIGHT * 2)
 
-# Narration transition
-title = Text("{{concept_title}}", font_size=36).to_edge(UP)
-self.play(Write(title))
-self.wait(2)
+        # Animations
+        self.play(Create(p1), Create(p2))
+        self.wait(1)
+
+        # Narration transition
+        title = Text("{{concept_title}}", font_size=36).to_edge(UP)
+        self.play(Write(title))
+        self.wait(2)
 """
 
 MOCK_REVIEWS = {
@@ -217,8 +308,9 @@ def inject_topic_recursively(obj: Any, topic: str) -> Any:
         The object with all topic placeholders replaced.
     """
     settings = get_settings()
+    # Case-insensitive replacements
     replacements = {
-        settings.mock_topic: topic,
+        settings.mock_topic.lower(): topic,
         "quantum": "core",
         "particles": "components",
         "particle": "component",
@@ -227,7 +319,8 @@ def inject_topic_recursively(obj: Any, topic: str) -> Any:
     if isinstance(obj, str):
         res = obj
         for target, replacement in replacements.items():
-            res = res.replace(target, replacement)
+            # Use regex for case-insensitive replacement
+            res = re.sub(re.escape(target), replacement, res, flags=re.IGNORECASE)
         return res
 
     if isinstance(obj, list):
@@ -236,12 +329,13 @@ def inject_topic_recursively(obj: Any, topic: str) -> Any:
     if isinstance(obj, dict):
         return {k: inject_topic_recursively(v, topic) for k, v in obj.items()}
 
-    if hasattr(obj, "__dict__") or isinstance(obj, BaseModel):
-        # Handle Pydantic models and simple objects
-        fields = obj.__dict__ if not isinstance(obj, BaseModel) else obj.model_fields
-        for field_name in fields:
+    if isinstance(obj, BaseModel):
+        # Use model_copy with update for Pydantic models to ensure validation
+        updated_fields = {}
+        for field_name in obj.model_fields:
             val = getattr(obj, field_name)
-            setattr(obj, field_name, inject_topic_recursively(val, topic))
+            updated_fields[field_name] = inject_topic_recursively(val, topic)
+        return obj.model_copy(update=updated_fields)
 
     return obj
 
@@ -278,7 +372,13 @@ def get_realistic_response(
         sb = MOCK_STORYBOARDS["default"].model_copy(deep=True)
         if topic:
             sb = inject_topic_recursively(sb, topic)
-        return sb.model_dump_json()
+        res = sb.model_dump_json()
+        logger.info(
+            "get_realistic_response_storyboard",
+            json_length=len(res),
+            has_objects=any(s.objects for s in sb.scenes),
+        )
+        return res
 
     if output_type == AnimationReview:
         return MOCK_REVIEWS["default"].model_dump_json()

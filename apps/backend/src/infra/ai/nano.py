@@ -48,6 +48,15 @@ class NanoConceptModel(BaseConceptModel):
         """
         return is_thinking_model(self._model_id)
 
+    @property
+    def is_multimodal(self) -> bool:
+        """Determines if the model supports image/vision inputs.
+
+        DeepSeek reasoning models currently do not support vision.
+        """
+        mid = self._model_id.lower()
+        return not ("deepseek" in mid and ":thinking" in mid)
+
 
 class NanoModelProvider(BaseProvider):
     """Provider adapter for Nano GPT AI models.

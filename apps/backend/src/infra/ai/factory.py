@@ -22,25 +22,25 @@ class ProviderEntry:
     display_name: str
 
 
+def _load_nano_models() -> tuple[str, ...]:
+    """Loads Nano GPT models from the root config directory."""
+    from infra.settings import PROJECT_ROOT
+
+    models_file = PROJECT_ROOT / "config" / "nano_models.txt"
+    if not models_file.exists():
+        return ("openai/gpt-oss-120b",)  # Fallback
+
+    with models_file.open() as f:
+        return tuple(
+            line.strip() for line in f if line.strip() and not line.startswith("#")
+        )
+
+
 PROVIDER_REGISTRY = (
     ProviderEntry(
         id="nano",
         settings_key="nano_api_key",
-        models=(
-            "openai/gpt-oss-120b",
-            "openai/gpt-oss-20b",
-            "deepseek/deepseek-v3.2:thinking",
-            "deepseek/deepseek-v3.2-speciale",
-            "nvidia/nemotron-3-super-120b-a12b:thinking",
-            "google/gemma-4-31b-it:thinking",
-            "qwen/qwen3.5-122b-a10b:thinking",
-            "moonshotai/kimi-k2.5:thinking",
-            "zai-org/glm-5.1:thinking",
-            "nousresearch/hermes-4-405b:thinking",
-            "meta-llama/llama-3.3-70b-instruct",
-            "mistralai/mistral-large-3-675b-instruct-2512",
-            "minimax/minimax-m2.7",
-        ),
+        models=_load_nano_models(),
         default_model="openai/gpt-oss-120b",
         display_name="Nano GPT",
     ),
@@ -71,7 +71,7 @@ class NanoProvider(BaseProvider):
 
     def create_model(self, model_id: str) -> BaseConceptModel:
         """Required by BaseProvider interface."""
-        return self.get_model(model_id) # type: ignore
+        return self.get_model(model_id)  # type: ignore
 
     def get_model(self, model_id: str | None = None) -> BaseConceptModel | None:
         key = self.settings.nano_api_key
@@ -79,13 +79,13 @@ class NanoProvider(BaseProvider):
             return None
 
         m_id = model_id or self.entry.default_model
-        
+
         # In modern PydanticAI (0.1+), base_url is set via the provider.
         provider = OpenAIProvider(
             base_url="https://nano-gpt.com/api/subscription/v1",
             api_key=key,
         )
-        
+
         return NanoConceptModel(
             model=OpenAIChatModel(m_id, provider=provider),
             model_id=m_id,

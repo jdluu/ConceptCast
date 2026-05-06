@@ -86,7 +86,9 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
             return str(payload)
 
     try:
-        async for event in agent.run_stream_events(prompt, message_history=message_history, **run_kwargs):
+        async for event in agent.run_stream_events(
+            prompt, message_history=message_history, **run_kwargs
+        ):
             logger.debug(
                 "agent_stream_event",
                 agent_name=agent_name,
@@ -147,16 +149,18 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
                             phase,
                             _tool_message(tool_name),
                         )
+                        # We still need the tool name for arg streaming, so use a separate set
                         tool_names[event.index] = "notified"
 
-                    if event.delta.args_delta and tool_name != "notified":
+                    if event.delta.args_delta:
                         arg_str = (
                             event.delta.args_delta
                             if isinstance(event.delta.args_delta, str)
                             else json.dumps(event.delta.args_delta)
                         )
-                        phase = _tool_phase(tool_name)
-                        await on_thought(agent_name, phase, arg_str)
+                        # We can't easily get the name back if we overwrote it with "notified"
+                        # But we know it's a tool call.
+                        await on_thought(agent_name, "tool_call", arg_str)
             elif isinstance(event, AgentRunResultEvent):
                 final = event.result.output
                 usage = event.result.usage()

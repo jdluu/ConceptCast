@@ -142,6 +142,71 @@ MANIM_DOCS: dict[str, str] = {
         "ValueTracker(value=0). A hidden mobject used to track and animate numerical "
         "values. Key methods: get_value(), set_value()."
     ),
+    "Brace": (
+        "Brace(mobject, direction=DOWN). A curly brace that labels a mobject. "
+        "Key methods: get_text(), get_tex()."
+    ),
+    "BraceBetweenPoints": (
+        "BraceBetweenPoints(point_1, point_2, direction=ORIGIN). "
+        "A curly brace between two explicit points."
+    ),
+    "SurroundingRectangle": (
+        "SurroundingRectangle(mobject, color=YELLOW, buff=0.1). "
+        "A rectangle drawn around a mobject with configurable padding."
+    ),
+    "BackgroundRectangle": (
+        "BackgroundRectangle(mobject, color=BLACK, fill_opacity=0.75). "
+        "An opaque rectangle placed behind a mobject for contrast."
+    ),
+    "Table": (
+        "Table(table, row_labels=None, col_labels=None). "
+        "A structured grid of entries. Key methods: get_cell(), get_entries()."
+    ),
+    "BarChart": (
+        "BarChart(values, bar_names=None, y_range=None). "
+        "A bar chart visualization. Key methods: change_bar_values()."
+    ),
+    "Annulus": ("Annulus(inner_radius=1, outer_radius=2). A ring-shaped region."),
+    "Ellipse": (
+        "Ellipse(width=2, height=1). An elliptical shape. "
+        "Key properties: width, height."
+    ),
+    "Star": ("Star(n=5, outer_radius=1, inner_radius=0.4). An n-pointed star."),
+    "DashedLine": ("DashedLine(start, end, dash_length=0.2). A dashed line segment."),
+    "Matrix": (
+        "Matrix(matrix, h_buff=0.8, v_buff=0.8). "
+        "Visual matrix display. Key methods: get_entries(), get_brackets()."
+    ),
+    "VGroup": (
+        "VGroup(*vmobjects). A group of VMobjects treated as a single entity. "
+        "Key methods: arrange(), shift(), scale(), set_color()."
+    ),
+    "LaggedStart": (
+        "LaggedStart(*animations, lag_ratio=0.5). "
+        "Plays animations sequentially with overlapping starts."
+    ),
+    "AnimationGroup": (
+        "AnimationGroup(*animations, lag_ratio=0). "
+        "Plays multiple animations simultaneously."
+    ),
+    "Succession": (
+        "Succession(*animations). Plays animations one after another sequentially."
+    ),
+    "Indicate": (
+        "Indicate(mobject, color=YELLOW, scale_factor=1.2). "
+        "Briefly highlights a mobject by scaling and coloring it."
+    ),
+    "Circumscribe": (
+        "Circumscribe(mobject, shape=Rectangle). "
+        "Draws a temporary shape around a mobject to draw attention."
+    ),
+    "GrowFromCenter": (
+        "GrowFromCenter(mobject). Animation: Scales a mobject from zero at its center."
+    ),
+    "ShowPassingFlash": (
+        "ShowPassingFlash(mobject, time_width=0.3). "
+        "A flash effect that travels along a VMobject path."
+    ),
 }
 
 _DOC_QUERY_CACHE: OrderedDict[str, str] = OrderedDict()
@@ -166,35 +231,28 @@ def _cache_set(query: str, content: str) -> None:
 async def prepare_manim_docs(
     ctx: RunContext[GlobalContext], tool_def: ToolDefinition
 ) -> ToolDefinition | None:
-    """Prepares and filters Manim documentation for the current storyboard.
+    """Prepares Manim documentation context for the animator agent.
 
-    This 'prepare' callback dynamically adjusts the tool's description
-    to include only those Manim types that are mentioned in the storyboard,
-    reducing token usage and focusing the agent's attention.
+    Provides the full curated Manim API reference so the model can discover
+    and use the full breadth of available classes, not just those already
+    mentioned in the storyboard.
 
     Args:
         ctx: Run context containing the global workflow state.
         tool_def: The definition of the search tool being prepared.
 
     Returns:
-        The modified ToolDefinition with an contextually relevant description.
+        The modified ToolDefinition with the full Manim reference.
     """
     deps = getattr(ctx, "deps", None)
     if deps is None:
         logger.debug("prepare_manim_docs_missing_deps")
         return tool_def
 
-    storyboard = deps.storyboard
-    if not storyboard or not storyboard.scenes:
-        return tool_def
-
-    mentioned_types = {obj.type for scene in storyboard.scenes for obj in scene.objects}
-
-    relevant_docs = {k: v for k, v in MANIM_DOCS.items() if k in mentioned_types}
-    doc_summary = "\n".join([f"- {k}: {v}" for k, v in relevant_docs.items()])
+    doc_summary = "\n".join([f"- {k}: {v}" for k, v in MANIM_DOCS.items()])
 
     tool_def.description = (
-        f"Search for Manim syntax. Curated context for this storyboard:\n{doc_summary}"
+        f"Search for Manim syntax. Available Manim API reference:\n{doc_summary}"
     )
 
     return tool_def
