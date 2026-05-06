@@ -10,17 +10,16 @@ import asyncio
 import json
 import sys
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, cast
 
 import httpx
 
 from infra.ai.factory import get_available_providers_and_models
-from infra.settings import get_settings
+from infra.settings import PROJECT_ROOT, get_settings
 
 # Configuration
 BASE_URL = "http://localhost:8000"
-REPORTS_DIR = Path(__file__).parent.parent.parent / "e2e_reports"
+REPORTS_DIR = PROJECT_ROOT / "reports"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ANSI Colors
@@ -465,6 +464,7 @@ async def run_single_simulation(  # noqa: PLR0913
     analyst_model: str | None = None,
     architect_model: str | None = None,
     animator_model: str | None = None,
+    reviewer_model: str | None = None,
     verbose_structured: bool = False,
 ) -> dict[str, object]:
     """Runs a single simulation for one provider/model."""
@@ -484,6 +484,7 @@ async def run_single_simulation(  # noqa: PLR0913
                     "analyst_model": analyst_model,
                     "architect_model": architect_model,
                     "animator_model": animator_model,
+                    "reviewer_model": reviewer_model,
                     "hitl_enabled": hitl_enabled,
                 },
             )
@@ -567,9 +568,11 @@ async def run_full_simulation(  # noqa: PLR0913
     include_mock: bool = True,
     *,
     hitl_enabled: bool,
+    model_id_filter: str | None = None,
     analyst_model: str | None = None,
     architect_model: str | None = None,
     animator_model: str | None = None,
+    reviewer_model: str | None = None,
     verbose_structured: bool = False,
     aggregate_report: bool = True,
 ) -> None:
@@ -594,6 +597,9 @@ async def run_full_simulation(  # noqa: PLR0913
             continue
 
         for model_id in provider_info.models:
+            if model_id_filter and model_id_filter != model_id:
+                continue
+
             result = await run_single_simulation(
                 provider,
                 model_id,
@@ -603,6 +609,7 @@ async def run_full_simulation(  # noqa: PLR0913
                 analyst_model=analyst_model,
                 architect_model=architect_model,
                 animator_model=animator_model,
+                reviewer_model=reviewer_model,
                 verbose_structured=verbose_structured,
             )
             aggregate_results.append(result)
@@ -637,6 +644,12 @@ if __name__ == "__main__":
         "--hitl-disabled", action="store_true", help="Force-disable HITL"
     )
     parser.add_argument(
+        "--model-id",
+        type=str,
+        default=None,
+        help="Filter simulation to a specific model",
+    )
+    parser.add_argument(
         "--analyst-model", type=str, default=None, help="Override analyst model"
     )
     parser.add_argument(
@@ -644,6 +657,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--animator-model", type=str, default=None, help="Override animator model"
+    )
+    parser.add_argument(
+        "--reviewer-model", type=str, default=None, help="Override reviewer model"
     )
     parser.add_argument(
         "--verbose-structured",
@@ -670,9 +686,11 @@ if __name__ == "__main__":
                     if args.hitl_disabled
                     else (True if args.hitl_enabled else bool(settings.hitl_enabled))
                 ),
+                model_id_filter=args.model_id,
                 analyst_model=args.analyst_model,
                 architect_model=args.architect_model,
                 animator_model=args.animator_model,
+                reviewer_model=args.reviewer_model,
                 verbose_structured=args.verbose_structured,
                 aggregate_report=not args.no_aggregate_report,
             )

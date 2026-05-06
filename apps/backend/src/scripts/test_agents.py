@@ -40,10 +40,14 @@ async def test_agent_logic(  # noqa: C901, PLR0912
     model_id: str | None = None,
 ) -> bool:
     """Simulates a single agent run and validates the event stream."""
-    logger.info("diagnostic_agent_test_started", agent=agent_name.upper(), provider=provider)
+    logger.info(
+        "diagnostic_agent_test_started", agent=agent_name.upper(), provider=provider
+    )
 
     if provider == "mock":
-        concept_model: BaseConceptModel | None = MockConceptModel(RealisticMockModel(), f"mock-{agent_name}")
+        concept_model: BaseConceptModel | None = MockConceptModel(
+            RealisticMockModel(), f"mock-{agent_name}"
+        )
     else:
         concept_model = get_concept_model(provider, model_id)
 
