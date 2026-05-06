@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     animation_review_enabled: bool = True
     hitl_enabled: bool = False
     curriculum_validation_enabled: bool = False
-    database_url: str = "sqlite:///" + str(PROJECT_ROOT / "conceptcast.db")
+    database_url: str = "sqlite:///" + str(PROJECT_ROOT / "data" / "conceptcast.db")
     redis_url: str = "redis://localhost:6379"
     cors_origins: str = "http://localhost:5173"
     data_dir: Path = PROJECT_ROOT / "data"

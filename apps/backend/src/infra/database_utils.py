@@ -20,7 +20,7 @@ async def run_with_sqlite_retry(
 ) -> T:
     """Retries an async function that performs SQLite operations.
 
-    Handles 'database is locked' (OperationalError) and transient 
+    Handles 'database is locked' (OperationalError) and transient
     IntegrityErrors during concurrent operations.
     """
     last_error = None

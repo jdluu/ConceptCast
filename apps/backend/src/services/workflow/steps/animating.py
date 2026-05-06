@@ -34,7 +34,8 @@ def _format_error_feedback(proposed_code: str, error_text: str) -> str:
         f"Your previous code failed to render or pass syntax checks.\n\n"
         f"**Failed Code:**\n```python\n{proposed_code}\n```\n\n"
         f"**Error/Traceback:**\n```\n{error_text}\n```\n\n"
-        f"Analyze the error carefully and provide ONLY the corrected code for this scene. "
+        f"Fix the specific error while preserving your creative approach. "
+        f"Do not simplify the animation - fix only the broken part. "
         f"Ensure variables are defined before use and coordinates are correct."
     )
 
@@ -162,16 +163,11 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                 {"current_step": f"animating_scene_{scene.scene_id}_attempt_{i + 1}"}
             )
 
-            # Progressive simplification
-            if i >= 3:
-                hint = (
-                    f"{hint}\n\nCRITICAL: You are repeatedly failing. Fall back to simpler animations "
-                    "(Create, FadeIn) and simpler geometry (Text, Circle). Avoid complex transforms."
-                )
+            scene_code = ""
+            isolated_code = ""
 
             try:
-                patch_prefix = "RETRY SCENE: Fix the reported failures without rewriting other scenes. "
-                effective_hint = f"{patch_prefix}{hint}" if hint else None
+                effective_hint = hint
 
                 scene_code, usage = await generate_manim_code(
                     target_scene=scene,
@@ -315,13 +311,17 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                     attempt=i + 1,
                 )
 
-                # Targeted feedback loop
-                error_feedback = _format_error_feedback(
-                    isolated_code,
-                    f"Review Failed. Issues: {review_result.issues}\nInstructions: {review_result.revision_instructions}",
+                # Constructive review feedback (not error-framed)
+                review_feedback = (
+                    f"The reviewer identified areas for improvement in your scene code.\n\n"
+                    f"**Current Code:**\n```python\n{isolated_code}\n```\n\n"
+                    f"**Reviewer Notes:** {review_result.issues}\n\n"
+                    f"**Suggestions:** {review_result.revision_instructions}\n\n"
+                    f"Incorporate the feedback while preserving your creative approach. "
+                    f"Do not simplify the animation."
                 )
                 message_history.append(
-                    ModelRequest(parts=[UserPromptPart(content=error_feedback)])
+                    ModelRequest(parts=[UserPromptPart(content=review_feedback)])
                 )
                 hint = "See previous message for QA review failures."
 

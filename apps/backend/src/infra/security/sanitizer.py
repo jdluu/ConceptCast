@@ -13,6 +13,8 @@ _ALLOWED_MODULES = {
     "random",
     "datetime",
     "itertools",
+    "functools",
+    "string",
     "typing",
 }
 
@@ -213,14 +215,16 @@ def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
 
     ASTSanitizer().visit(tree)
 
-    # Fast-fail for lowercase color strings (common AI hallucination)
-    # Manim constants are CAPS (e.g. RED, BLUE). Strings like "red" fail.
-    bad_colors = _LOWERCASE_COLOR_RE.findall(cleaned)
-    if bad_colors:
-        raise RuntimeError(
-            f"Invalid color strings found: {', '.join(bad_colors)}. "
-            "Use uppercase Manim constants (e.g., RED, BROWN) or hex strings."
+    # Auto-fix lowercase color strings (common AI hallucination).
+    # Manim constants are CAPS (e.g. RED, BLUE). Strings like "red" fail at runtime.
+    def _fix_color_match(match: re.Match[str]) -> str:
+        return (
+            match.group(0)
+            .replace(f'"{match.group(1)}"', f'"{match.group(1).upper()}"')
+            .replace(f"'{match.group(1)}'", f"'{match.group(1).upper()}'")
         )
+
+    cleaned = _LOWERCASE_COLOR_RE.sub(_fix_color_match, cleaned)
 
     has_scene_gen = any(
         isinstance(node, ast.ClassDef) and node.name == "SceneGen"

@@ -7,6 +7,7 @@ frontend via Server-Sent Events, using Redis pub/sub notifications.
 import json
 import time
 from collections.abc import AsyncGenerator, Callable
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -19,8 +20,6 @@ from infra.database import AsyncSessionLocal
 from infra.models.job import JobRecord
 from services.jobs.events import job_event_manager
 from services.jobs.serialization import map_job_record_to_status
-
-from typing import Annotated
 
 router = APIRouter()
 

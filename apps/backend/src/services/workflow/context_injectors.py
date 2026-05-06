@@ -103,19 +103,16 @@ def extract_animator_context(
     Returns:
         str: The serialized context block for the Animator agent.
     """
-    return _format_context(
-        {
-            "style_guidelines": ctx.style,
-            "target_scene": target_scene,
-            "current_scene_id": scene_id,
-            "scene_occupancy_map": ctx.scene_occupancy,
-            "current_manim_code": ctx.manim_code,
-            "visual_lexicon": ctx.lexicon,
-            "previous_errors_to_avoid": [
-                e for e in ctx.error_buffer if e.agent == "animator"
-            ],
-        }
-    )
+    recent_errors = [e for e in ctx.error_buffer if e.agent == "animator"][-3:]
+    context_data: dict[str, Any] = {
+        "style_guidelines": ctx.style,
+        "target_scene": target_scene,
+        "current_scene_id": scene_id,
+        "visual_lexicon": ctx.lexicon,
+    }
+    if recent_errors:
+        context_data["recent_errors_to_avoid"] = recent_errors
+    return _format_context(context_data)
 
 
 def extract_reviewer_context(ctx: GlobalContext) -> str:
@@ -130,12 +127,13 @@ def extract_reviewer_context(ctx: GlobalContext) -> str:
     Returns:
         str: The serialized context block for the Reviewer agent.
     """
+    recent_revisions = [
+        e for e in ctx.error_buffer if e.agent in ("animator", "reviewer")
+    ][-5:]
     return _format_context(
         {
             "target_storyboard": ctx.storyboard,
             "visual_lexicon": ctx.lexicon,
-            "revision_history": [
-                e for e in ctx.error_buffer if e.agent in ["animator", "reviewer"]
-            ],
+            "revision_history": recent_revisions,
         }
     )

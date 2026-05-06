@@ -8,9 +8,12 @@ unavailable.
 
 import asyncio
 from collections import defaultdict
+from typing import Any, cast
 
 import structlog
-from redis.asyncio import Redis, ConnectionError as RedisConnectionError
+from redis.asyncio import ConnectionError as RedisConnectionError
+from redis.asyncio import Redis
+from redis.asyncio.client import PubSub
 
 from infra.settings import get_settings
 
@@ -110,7 +113,7 @@ class JobEventManager:
             await pubsub.close()
 
     @staticmethod
-    async def _read_next_message(pubsub) -> dict | None:  # type: ignore[type-arg]
+    async def _read_next_message(pubsub: PubSub) -> dict[str, Any] | None:
         """Reads messages from a pub/sub subscription, skipping control messages.
 
         Args:
@@ -121,7 +124,7 @@ class JobEventManager:
         """
         async for message in pubsub.listen():
             if message["type"] == "message":
-                return message
+                return cast(dict[str, Any], message)
         return None
 
     async def _wait_fallback(self, job_id: str, timeout: float) -> bool:

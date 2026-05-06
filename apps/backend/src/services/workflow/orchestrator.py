@@ -189,8 +189,14 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
             and job_state.storyboard
         ):
             await _handle_render_repair(
-                job_id, job_state, request, provider,
-                update_job, on_thought, ctx, add_usage,
+                job_id,
+                job_state,
+                request,
+                provider,
+                update_job,
+                on_thought,
+                ctx,
+                add_usage,
             )
             return
 
@@ -336,8 +342,7 @@ async def _handle_render_repair(
         on_thought,
         ctx,
         retry_hint=(
-            "Repair this render failure. "
-            f"Previous failure details: {repair_hint}"
+            f"Repair this render failure. Previous failure details: {repair_hint}"
         ),
     )
     add_usage(usage_repair)

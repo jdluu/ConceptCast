@@ -40,9 +40,9 @@ def _plan_structure_issues(plan: CurriculumPlan) -> list[str]:
 
     if not plan.concept_title or not plan.concept_title.strip():
         issues.append("concept_title is empty")
-    
+
     # We are lenient with target_audience during generation as we can hydrate it.
-    
+
     if not plan.teaching_steps:
         issues.append("teaching_steps is empty")
         return issues

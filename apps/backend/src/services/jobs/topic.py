@@ -33,7 +33,7 @@ async def refine_topic(user_prompt: str, model: BaseConceptModel) -> str:
         )
 
         result = await agent.run(user_prompt)
-        refined = str(result.data).strip()  # type: ignore[attr-defined]
+        refined = str(result.output).strip()
 
         # Sanity check: if it's too long or empty, fallback to raw prompt
         if not refined or len(refined.split()) > 10:

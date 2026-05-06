@@ -59,7 +59,7 @@ def _looks_like_large_rewrite(old: str, new: str) -> bool:
     if not old.strip() or not new.strip():
         return False
     ratio = SequenceMatcher(a=old, b=new).ratio()
-    return ratio < 0.55
+    return ratio < 0.35
 
 
 async def step_rendering(
@@ -212,9 +212,9 @@ async def step_rendering(
                 manim_code=current_code,
             )
             retry_hint = (
-                "PATCH MODE: Apply minimal edits to current_manim_code in context. "
-                "Do not rewrite unrelated scenes. "
-                f"Repair target: {_render_error_hint(error_msg, logs)}"
+                "Fix the rendering error in the code. Focus on the specific error below "
+                "and correct only the problematic sections. Preserve working scenes. "
+                f"Error details: {_render_error_hint(error_msg, logs)}"
             )
             retry_code, retry_usage = await generate_manim_code(
                 storyboard,

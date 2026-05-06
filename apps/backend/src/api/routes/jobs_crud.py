@@ -114,6 +114,7 @@ async def create_job(
             analyst_model=request.analyst_model,
             architect_model=request.architect_model,
             animator_model=request.animator_model,
+            reviewer_model=request.reviewer_model,
         )
 
         async def _save_job() -> None:
@@ -246,6 +247,7 @@ async def retry_job(
         analyst_model=job.analyst_model,
         architect_model=job.architect_model,
         animator_model=job.animator_model,
+        reviewer_model=job.reviewer_model,
     )
 
     background_tasks.add_task(process_job_logic, job_id, request, session_factory)
