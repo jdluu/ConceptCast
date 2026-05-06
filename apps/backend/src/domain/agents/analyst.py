@@ -16,7 +16,9 @@ from services.workflow.context_injectors import extract_analyst_context
 from .base import ConceptAgent
 
 # Initialize the shared analyst agent instance
-analyst_agent: ConceptAgent[TeachingStepsDraft] = ConceptAgent("analyst", TeachingStepsDraft)
+analyst_agent: ConceptAgent[TeachingStepsDraft] = ConceptAgent(
+    "analyst", TeachingStepsDraft
+)
 
 
 async def generate_curriculum(

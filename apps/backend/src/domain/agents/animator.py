@@ -49,24 +49,7 @@ async def generate_manim_code(
     """
 
     def _prepare_agent(agent: Agent[Any, Any]) -> None:
-        docs_lookup_needed = False
-        if retry_hint:
-            normalized_hint = retry_hint.lower()
-            docs_lookup_needed = any(
-                marker in normalized_hint
-                for marker in (
-                    "attributeerror",
-                    "typeerror",
-                    "nameerror",
-                    "manim api",
-                    "unknown",
-                    "constructor",
-                    "parameter",
-                )
-            )
-        if docs_lookup_needed:
-            # Dynamically attach documentation search tool if API errors are detected
-            agent.tool(prepare=prepare_manim_docs)(search_manim_docs)
+        agent.tool(prepare=prepare_manim_docs)(search_manim_docs)
 
     if ctx:
         prompt = extract_animator_context(ctx, target_scene, scene_id=scene_id)

@@ -6,10 +6,11 @@ correctness, readability, and alignment with pedagogical goals.
 
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import Any
 
 import structlog
 from pydantic_ai import Agent
-from pydantic_ai.messages import BinaryContent, ModelRequestPart, UserPromptPart
+from pydantic_ai.messages import BinaryContent
 from pydantic_ai.usage import RunUsage
 
 from api.schemas import AnimationReview, Storyboard
@@ -55,22 +56,7 @@ async def review_animation(
         deps_type=GlobalContext,
         retries=3,
     )
-    log_text = execution_logs.lower()
-    docs_lookup_needed = any(
-        marker in log_text
-        for marker in (
-            "attributeerror",
-            "typeerror",
-            "nameerror",
-            "unexpected keyword",
-            "manim",
-            "fadein",
-            "fade_out",
-        )
-    )
-    if docs_lookup_needed:
-        # Dynamically attach documentation search tool if log analysis suggests API errors
-        agent.tool(prepare=prepare_manim_docs)(search_manim_docs)
+    agent.tool(prepare=prepare_manim_docs)(search_manim_docs)
 
     prompt_parts = [
         "**Perform a Visual QA Review**",
@@ -96,16 +82,14 @@ async def review_animation(
 
     prompt = "\n\n".join(prompt_parts)
 
-    final_prompt: str | list[ModelRequestPart] = prompt
-    if content_with_images and frame_path:
+    final_prompt: Any = prompt
+    if content_with_images and frame_path and model.is_multimodal:
         try:
             with Path(frame_path).open("rb") as f:
                 image_data = f.read()
             final_prompt = [
-                UserPromptPart(content=prompt),
-                UserPromptPart(
-                    content=[BinaryContent(data=image_data, media_type="image/png")]
-                ),
+                prompt,
+                BinaryContent(data=image_data, media_type="image/png"),
             ]
         except Exception as e:
             logger.warning(
