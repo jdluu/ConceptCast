@@ -18,7 +18,7 @@ The goal is to support critical thinking rather than replace it. ConceptCast aut
 
 ConceptCast is built with an extensible, object-oriented architecture. It orchestrates multiple AI agents (Analyst, Architect, Animator, and Reviewer) to transform a text topic into a pedagogical curriculum and eventually a rendered video.
 
-The system uses **Pydantic AI**, making it easy to add support for new AI providers by implementing a new provider class (see [Pydantic AI Models Overview](https://ai.pydantic.dev/models/overview/) for reference). In this implementation, **Nano GPT** is used to access various open source models.
+The system uses **Pydantic AI**, making it easy to add support for new AI providers by implementing a new provider class. In this implementation, **Nano GPT** is used to access various open-source models. Model identifiers can be easily updated in `apps/backend/src/infra/ai/nano_models.txt`.
 
 ## Methodology: Layered Memory
 

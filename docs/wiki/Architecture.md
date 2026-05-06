@@ -48,7 +48,7 @@ Instead of a simple linear pipeline, all agents interact with a **GCO** that mai
 - **Global State**: The bird's-eye view maintained by the Orchestrator and persisted in the database.
 
 ### 3. Production Bible (Externalized Prompts)
-System prompts are externalized in `src/prompts/`. This allows for rapid iteration of agent personas and strict enforcement of Manim-specific spatial reasoning and pedagogical rules without modifying application logic.
+System prompts are externalized in `apps/backend/src/prompts/`. This allows for rapid iteration of agent personas and strict enforcement of Manim-specific spatial reasoning and pedagogical rules without modifying application logic.
 
 ## Key Technologies
 - **Backend**: FastAPI, Pydantic AI, SQLAlchemy (Async), Taskiq (Task Queue).

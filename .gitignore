@@ -50,21 +50,15 @@ junit.xml
 !.env.example
 .infisical.json
 
-# --- Application Specific (ConceptCast) ---
-# Data & Jobs
+# --- Application Artifacts ---
 data/*
 !data/jobs/
 data/jobs/*
 !data/jobs/.gitkeep
-
-# Media & Reports
-media/
+logs/
+reports/
+data/*.db
+data/*.db-shm
+data/*.db-wal
 cli_reports/
-apps/backend/cli_reports/
-apps/backend/e2e_reports/
-apps/backend/media/
-
-# Databases
-*.db
-*.db-shm
-*.db-wal
+media/

@@ -29,17 +29,24 @@ endif
 
 # Infisical configuration (can be bypassed with USE_INFISICAL=false)
 USE_INFISICAL ?= true
+INFISICAL_PATH ?= /
+INFISICAL_ENV ?= dev
+INFISICAL :=
 ifeq ($(USE_INFISICAL),true)
-    # Check if infisical is working for the /ConceptCast/ai path
-    INFISICAL_WORKS := $(shell infisical run --path=/ConceptCast/ai -- echo "ok" 2>/dev/null)
-    ifeq ($(INFISICAL_WORKS),ok)
-        INFISICAL := infisical run --path=/ConceptCast/ai --
-    else
-        $(warning "Infisical folder '/ConceptCast/ai' not found or inaccessible. Falling back to local environment.")
-        INFISICAL :=
+    # Check if infisical CLI is installed
+    HAS_INFISICAL := $(shell which infisical 2>/dev/null)
+    ifneq ($(HAS_INFISICAL),)
+        # Check if infisical is working for the configured path and environment
+        # Use --recursive to find secrets anywhere in the project root
+        INFISICAL_WORKS := $(shell infisical run --env=$(INFISICAL_ENV) --path=$(INFISICAL_PATH) --recursive -- echo "ok" 2>/dev/null)
+        ifeq ($(INFISICAL_WORKS),ok)
+            INFISICAL := infisical run --env=$(INFISICAL_ENV) --path=$(INFISICAL_PATH) --recursive --
+        else
+            # Only warn if the CLI is present but not configured correctly for this project
+            $(warning "Infisical CLI found but path '$(INFISICAL_PATH)' in environment '$(INFISICAL_ENV)' is inaccessible. Falling back to local environment.")
+            INFISICAL :=
+        endif
     endif
-else
-    INFISICAL :=
 endif
 
 BACKEND_SH := cd "$(BACKEND_DIR)" &&
@@ -142,21 +149,27 @@ wait-for-backend:
 	@until curl -s "$(BASE_URL)/openapi.json" > /dev/null; do sleep 1; done
 	@echo "Backend is ready."
 
-# --- Testing & Quality ---
+# --- Testing, Diagnostics & Generation ---
 
 test: test-backend ## QA Run all automated tests (backend)
 
 test-backend: ## QA Run backend unit and integration tests (pytest). args="-k my_test"
 	$(BACKEND_SH) uv run pytest $(args)
 
-test-agents: ## QA Run agent diagnostics. Default args="--no-mock" to test real providers.
-	@args="$${args:---no-mock}"; \
+diagnose: ## QA Run agent logic diagnostics using MOCKS.
+	@args="$${args:---model-id mock-analyst}"; \
 	$(INFISICAL) bash -c '$(BACKEND_SH) uv run python src/scripts/test_agents.py $$args'
 
-e2e: ## QA Run E2E simulation. topic="derivatives" audience="Students" args="--no-mock".
+generate-mock: ## QA Run E2E simulation using MOCK models for logic verification.
 	@topic="$${topic:-derivatives}"; \
 	audience="$${audience:-General Audience}"; \
-	$(INFISICAL) bash -c '$(BACKEND_SH) uv run python src/scripts/e2e_cli.py --topic "$$topic" --audience "$$audience" $(args)'
+	$(INFISICAL) bash -c '$(BACKEND_SH) uv run python src/scripts/e2e_cli.py --topic "$$topic" --audience "$$audience"'
+
+generate: ## QA Run ACTUAL pedagogical generation with real models. model="openai/gpt-oss-120b" topic="math"
+	@topic="$${topic:-derivatives}"; \
+	audience="$${audience:-General Audience}"; \
+	model="$${model:-deepseek/deepseek-v4-pro:thinking}"; \
+	$(INFISICAL) bash -c '$(BACKEND_SH) uv run python src/scripts/e2e_cli.py --topic "$$topic" --audience "$$audience" --no-mock --model-id "$$model" --analyst-model "$$model" --architect-model "$$model" --animator-model "$$model" --reviewer-model "$$model"'
 
 lint: lint-frontend lint-backend ## QA Run all linters
 lint-frontend: ## QA Run frontend linter (oxlint)
@@ -213,5 +226,7 @@ clean: ## MAINT Remove build artifacts, node_modules, and job data
 	rm -rf .turbo
 	rm -rf apps/frontend/dist
 	rm -rf data/jobs/*
-	rm -rf apps/backend/e2e_reports/*
-	rm -rf logs/
+	rm -rf data/*.db*
+	rm -rf reports/*
+	rm -rf logs/*
+	rm -f *.db*

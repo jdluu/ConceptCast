@@ -1,7 +1,7 @@
 # Setup Guide
 
 ## Prerequisites
-- Node.js >= 24
+- Node.js >= 22
 - Python >= 3.11
 - Podman (recommended for sandboxing Manim rendering)
 - Manim (locally if fallback execution is needed)
