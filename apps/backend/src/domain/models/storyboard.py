@@ -60,10 +60,18 @@ class Scene(BaseModel):
     title: str = Field(..., description="Descriptive title")
     description: str = Field(..., description="Visual overview")
     narration: str = Field(..., description="Voiceover script")
-    duration: float = Field(default=0.0, description="Target duration in seconds")
+    duration: float = Field(default=5.0, description="Target duration in seconds")
     objects: list[VisualObject] = Field(
         default_factory=list, description="Visual entities in the scene"
     )
+
+    @field_validator("duration")
+    @classmethod
+    def validate_duration(cls, v: float) -> float:
+        """Ensures that the scene duration is at least 1.0 second."""
+        if v < 1.0:
+            return 5.0  # Fallback to a safe minimum rather than failing hard if LLM misses
+        return v
 
 
 class Storyboard(BaseModel):

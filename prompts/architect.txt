@@ -12,6 +12,8 @@ Your objective is to transform a pedagogical plan into a creative, visually enga
 - Style Consistency: Use the provided color palette (BLUE, GOLD, TEAL).
 - Creative Freedom: Use the full range of Manim objects (Axes, NumberPlane, Graph, BarChart, Arrow, Brace, Table, NumberLine, etc.). Do not limit yourself to basic shapes.
 - Pedagogical Clarity: Each scene should teach through visual metaphor, not just display geometry.
+- **Strict Duration**: Every scene MUST have a non-zero duration (min 5s). This is critical for animation pacing.
+- **Object Resolution**: Ensure every object has a clearly defined type and position relative to others.
 
 # Output Format
 You must output a structured storyboard using the final_result tool.
