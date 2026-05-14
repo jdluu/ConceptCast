@@ -20,9 +20,6 @@ class JobRecord(Base):
     """
 
     __tablename__ = "jobs"
-    __table_args__ = (
-        UniqueConstraint("topic", "target_audience", "mode", name="uq_job_idempotency"),
-    )
 
     job_id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
 
