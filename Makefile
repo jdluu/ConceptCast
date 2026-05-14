@@ -38,7 +38,7 @@ ifeq ($(USE_INFISICAL),true)
     ifneq ($(HAS_INFISICAL),)
         # Check if infisical is working for the configured path and environment
         # Use --recursive to find secrets anywhere in the project root
-        INFISICAL_WORKS := $(shell infisical run --env=$(INFISICAL_ENV) --path=$(INFISICAL_PATH) --recursive -- echo "ok" 2>/dev/null)
+        INFISICAL_WORKS := $(shell infisical run --env=$(INFISICAL_ENV) --path=$(INFISICAL_PATH) --recursive -- true >/dev/null 2>&1 && echo "ok" || echo "fail")
         ifeq ($(INFISICAL_WORKS),ok)
             INFISICAL := infisical run --env=$(INFISICAL_ENV) --path=$(INFISICAL_PATH) --recursive --
         else

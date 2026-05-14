@@ -67,9 +67,9 @@ class Settings(BaseSettings):
     render_quality: str = "ql"
     streamed_thoughts_max_entries: int = 500
     # Max outer-loop attempts for animator self-correction (preview + review loop).
-    animation_review_max_iterations: int = 6
+    animation_review_max_iterations: int = 10
     # Max attempts to repair Manim code after a render failure (patch-first loop).
-    render_repair_max_attempts: int = 6
+    render_repair_max_attempts: int = 10
     animation_review_enabled: bool = True
     hitl_enabled: bool = False
     curriculum_validation_enabled: bool = False
@@ -111,9 +111,13 @@ class Settings(BaseSettings):
         """Checks if configured API keys are placeholders.
 
         Returns:
-            bool: True if keys match known dummy values (e.g., 'your-key-here').
+            bool: True if keys match known dummy values (e.g., 'your-key-here', 'your_').
         """
-        return bool(self.nano_api_key and "your-key-here" in self.nano_api_key.lower())
+        val = self.nano_api_key
+        if not val:
+            return True
+        v = val.lower()
+        return "your-key-here" in v or v.startswith("your_")
 
 
 @lru_cache

@@ -99,7 +99,7 @@ def get_available_providers_and_models(settings: Settings) -> list[ProviderModel
         # Check if the required API key is set
         if entry.settings_key:
             key_val = getattr(settings, entry.settings_key, None)
-            if not key_val or key_val == f"your_{entry.settings_key}":
+            if not key_val or "your-key-here" in key_val.lower() or key_val.lower().startswith("your_"):
                 continue
 
         available.append(

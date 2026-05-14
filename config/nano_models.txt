@@ -1,5 +1,3 @@
-openai/gpt-4o
-openai/gpt-4o-mini
 openai/gpt-oss-120b
 openai/gpt-oss-20b
 deepseek/deepseek-v4-pro:thinking
