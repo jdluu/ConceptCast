@@ -97,14 +97,7 @@ async def run_mock_flow(
 
         code = generate_mock_code()
 
-        # Simulate a quick review cycle
         await update_job({"manim_code": code, "current_step": "animating_iter_1"})
-        await on_thought(
-            "reviewer", "Visual QA", "Reviewing generated animation code..."
-        )
-        await asyncio.sleep(1.0 * sleep_mult)
-        await on_thought("reviewer", "Visual QA", "Code looks correct. Approving.")
-
         await update_job({"status": "rendering", "current_step": "animating_complete"})
 
         # Step 4: Rendering

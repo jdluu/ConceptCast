@@ -54,3 +54,9 @@ class AnimationGenerationError(ConceptCastError):
     ) -> None:
         super().__init__(message, details)
         self.logs = logs
+
+
+class JobCancelledError(ConceptCastError):
+    """Raised when a job is cancelled by the user during execution."""
+
+    pass

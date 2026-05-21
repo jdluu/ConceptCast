@@ -12,6 +12,7 @@ from taskiq_redis import ListQueueBroker
 
 from api.schemas import JobRequest, Storyboard
 from infra.database import AsyncSessionLocal
+from infra.exceptions import JobCancelledError
 from infra.models.job import JobRecord
 from infra.settings import get_settings
 from services.jobs.manager import update_job_status
@@ -87,6 +88,9 @@ async def render_video_task(
                 update_job=update_job,
                 on_thought=on_thought,
             )
+        except JobCancelledError:
+            logger.info("render_task_cancelled_by_user", job_id=job_id)
+            return
         except RenderRepairRequiredError as e:
             logger.error(
                 "render_repair_required",

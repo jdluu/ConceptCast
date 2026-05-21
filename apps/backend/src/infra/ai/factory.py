@@ -47,7 +47,7 @@ PROVIDER_REGISTRY = (
     ProviderEntry(
         id="mock",
         settings_key="",  # No key needed
-        models=("mock-analyst", "mock-architect", "mock-animator", "mock-reviewer"),
+        models=("mock-analyst", "mock-architect", "mock-animator"),
         default_model="mock-analyst",
         display_name="Mock Demo",
     ),
@@ -99,7 +99,11 @@ def get_available_providers_and_models(settings: Settings) -> list[ProviderModel
         # Check if the required API key is set
         if entry.settings_key:
             key_val = getattr(settings, entry.settings_key, None)
-            if not key_val or "your-key-here" in key_val.lower() or key_val.lower().startswith("your_"):
+            if (
+                not key_val
+                or "your-key-here" in key_val.lower()
+                or key_val.lower().startswith("your_")
+            ):
                 continue
 
         available.append(

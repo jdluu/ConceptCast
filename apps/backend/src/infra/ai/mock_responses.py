@@ -5,7 +5,6 @@ import structlog
 from pydantic import BaseModel
 
 from api.schemas import (
-    AnimationReview,
     CurriculumPlan,
     Scene,
     Storyboard,
@@ -286,16 +285,6 @@ class SceneGen(Scene):
         self.wait(2)
 """
 
-MOCK_REVIEWS = {
-    "default": AnimationReview(
-        approved=True,
-        issues=[],
-        revision_instructions=(
-            "The animation perfectly matches the storyboard requirements."
-        ),
-    )
-}
-
 
 def inject_topic_recursively(obj: Any, topic: str) -> Any:
     """Recursively replaces topic keywords with the user's topic.
@@ -379,9 +368,6 @@ def get_realistic_response(
             has_objects=any(s.objects for s in sb.scenes),
         )
         return res
-
-    if output_type == AnimationReview:
-        return MOCK_REVIEWS["default"].model_dump_json()
 
     # Handle Manim code injection
     manim_template = MOCK_MANIM_CODE

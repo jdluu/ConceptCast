@@ -70,7 +70,13 @@ class Settings(BaseSettings):
     animation_review_max_iterations: int = 10
     # Max attempts to repair Manim code after a render failure (patch-first loop).
     render_repair_max_attempts: int = 10
-    animation_review_enabled: bool = True
+
+    # Per-agent pydantic-ai request limits.
+    # Each unit corresponds to one model round-trip (prompt + tool calls + retries).
+    agent_request_limit_analyst: int = 10
+    agent_request_limit_architect: int = 10
+    agent_request_limit_animator: int = 25
+
     hitl_enabled: bool = False
     curriculum_validation_enabled: bool = False
     database_url: str = "sqlite:///" + str(PROJECT_ROOT / "data" / "conceptcast.db")

@@ -29,7 +29,6 @@ from pydantic_ai.models import (
 )
 
 from api.schemas import (
-    AnimationReview,
     CurriculumPlan,
     Storyboard,
     TeachingStepsDraft,
@@ -237,11 +236,7 @@ class RealisticMockModel(Model):
                 and "Validator" in system_text
             ):
                 target_type = ValidationResult
-            elif (
-                name in ("AnimationReview", "final_result")
-                and "Reviewer" in system_text
-            ):
-                target_type = AnimationReview
+
             elif name == "TeachingStepsDraft":
                 target_type = TeachingStepsDraft
             elif name == "CurriculumPlan":
@@ -250,8 +245,6 @@ class RealisticMockModel(Model):
                 target_type = Storyboard
             elif name == "ValidationResult":
                 target_type = ValidationResult
-            elif name == "AnimationReview":
-                target_type = AnimationReview
 
         response_text = get_realistic_response(
             system_text, target_type or str, user_topic

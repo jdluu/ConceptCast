@@ -7,7 +7,7 @@ from typing import Any, cast
 
 import structlog
 from pydantic import BaseModel, ValidationError
-from pydantic_ai import Agent, AgentRunResultEvent, exceptions
+from pydantic_ai import Agent, AgentRunResultEvent, UsageLimitExceeded, exceptions
 from pydantic_ai.messages import (
     ModelMessage,
     PartDeltaEvent,
@@ -19,7 +19,7 @@ from pydantic_ai.messages import (
     ToolCallPart,
     ToolCallPartDelta,
 )
-from pydantic_ai.usage import RunUsage
+from pydantic_ai.usage import RunUsage, UsageLimits
 
 logger = structlog.get_logger(__name__)
 
@@ -32,6 +32,7 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
     *,
     accumulated_usage: RunUsage | None = None,
     message_history: list[ModelMessage] | None = None,
+    usage_limits: UsageLimits | None = None,
     **run_kwargs: Any,
 ) -> tuple[Any, RunUsage]:
     """Runs an agent and streams intermediate thoughts and final output.
@@ -45,6 +46,7 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
         prompt: Input string or list of messages.
         on_thought: Async callback receiving (agent, phase, content).
         accumulated_usage: External usage object to increment.
+        usage_limits: Optional pydantic-ai UsageLimits to cap requests/tokens.
         **run_kwargs: Passed directly to `agent.run_stream_events`.
 
     Returns:
@@ -87,7 +89,10 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
 
     try:
         async for event in agent.run_stream_events(
-            prompt, message_history=message_history, **run_kwargs
+            prompt,
+            message_history=message_history,
+            usage_limits=usage_limits,
+            **run_kwargs,
         ):
             logger.debug(
                 "agent_stream_event",
@@ -172,6 +177,12 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
                             "structured_output",
                             f"Structured output result:\n{payload_json}\n",
                         )
+    except UsageLimitExceeded:
+        logger.error(
+            "agent_usage_limit_exceeded",
+            agent_name=agent_name,
+        )
+        raise
     except exceptions.UnexpectedModelBehavior as e:
         logger.error(
             "agent_unexpected_model_behavior",
