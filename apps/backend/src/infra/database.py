@@ -15,11 +15,26 @@ from infra.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
-DATABASE_URL = get_settings().database_url.replace("sqlite://", "sqlite+aiosqlite://")
+db_url = get_settings().database_url
+if db_url.startswith("sqlite://"):
+    DATABASE_URL = db_url.replace("sqlite://", "sqlite+aiosqlite://")
+    connect_args = {"check_same_thread": False, "timeout": 30}
+    pool_args = {}
+elif db_url.startswith("postgresql://"):
+    DATABASE_URL = db_url.replace("postgresql://", "postgresql+asyncpg://")
+    connect_args = {}
+    pool_args = {
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_recycle": 1800,
+        "pool_pre_ping": True,
+    }
+else:
+    DATABASE_URL = db_url
+    connect_args = {}
+    pool_args = {}
 
-engine = create_async_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False, "timeout": 30}
-)
+engine = create_async_engine(DATABASE_URL, connect_args=connect_args, **pool_args)
 
 #: Factory for generating new asynchronous database sessions.
 AsyncSessionLocal = async_sessionmaker(
@@ -41,7 +56,8 @@ async def init_db() -> None:
     """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        await conn.execute(text("PRAGMA journal_mode=WAL;"))
+        if engine.dialect.name == "sqlite":
+            await conn.execute(text("PRAGMA journal_mode=WAL;"))
 
 
 async def check_db_health() -> bool:

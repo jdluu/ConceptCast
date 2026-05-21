@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from infra.database import Base
@@ -44,7 +44,6 @@ class JobRecord(Base):
     validator_model: Mapped[str | None] = mapped_column(String, nullable=True)
     architect_model: Mapped[str | None] = mapped_column(String, nullable=True)
     animator_model: Mapped[str | None] = mapped_column(String, nullable=True)
-    reviewer_model: Mapped[str | None] = mapped_column(String, nullable=True)
 
     thoughts: Mapped[list["ThoughtRecord"]] = relationship(
         "ThoughtRecord",

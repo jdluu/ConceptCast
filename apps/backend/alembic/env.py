@@ -29,6 +29,17 @@ target_metadata = Base.metadata
 # ... etc.
 
 
+def _get_migration_url() -> str:
+    from infra.settings import get_settings
+
+    db_url = get_settings().database_url
+    if db_url.startswith("sqlite://"):
+        return db_url.replace("sqlite://", "sqlite+aiosqlite://")
+    elif db_url.startswith("postgresql://"):
+        return db_url.replace("postgresql://", "postgresql+asyncpg://")
+    return db_url
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -41,9 +52,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    from infra.settings import get_settings
-
-    url = get_settings().database_url.replace("sqlite://", "sqlite+aiosqlite://")
+    url = _get_migration_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -69,13 +78,8 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
-
-    from infra.settings import get_settings
-
     config_section = config.get_section(config.config_ini_section, {})
-    config_section["sqlalchemy.url"] = get_settings().database_url.replace(
-        "sqlite://", "sqlite+aiosqlite://"
-    )
+    config_section["sqlalchemy.url"] = _get_migration_url()
 
     connectable = async_engine_from_config(
         config_section,

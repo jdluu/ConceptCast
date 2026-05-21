@@ -70,7 +70,9 @@ class Scene(BaseModel):
     def validate_duration(cls, v: float) -> float:
         """Ensures that the scene duration is at least 1.0 second."""
         if v < 1.0:
-            return 5.0  # Fallback to a safe minimum rather than failing hard if LLM misses
+            return (
+                5.0  # Fallback to a safe minimum rather than failing hard if LLM misses
+            )
         return v
 
 
