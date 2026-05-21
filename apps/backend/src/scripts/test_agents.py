@@ -16,7 +16,6 @@ from pydantic_ai import Agent
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.schemas import (
-    AnimationReview,
     CurriculumPlan,
     Storyboard,
 )
@@ -83,22 +82,6 @@ async def test_agent_logic(  # noqa: C901, PLR0912
     if agent_name == "architect":
         kwargs["deps"] = CurriculumPlan(
             concept_title=topic, target_audience="Beginner", teaching_steps=[]
-        )
-    elif agent_name == "reviewer":
-        # Reviewer requires a storyboard with at least one scene
-        from api.schemas import Scene
-
-        kwargs["deps"] = Storyboard(
-            concept_title=topic,
-            scenes=[
-                Scene(
-                    scene_id=1,
-                    title="Intro",
-                    description="Visual intro",
-                    narration="Let's start.",
-                    objects=[],
-                )
-            ],
         )
 
     ctx = GlobalContext(topic=topic, target_audience="Beginner")
@@ -257,7 +240,6 @@ async def run_diagnostics(args: argparse.Namespace) -> None:
         ("analyst", "Analyst Agent", CurriculumPlan),
         ("architect", "Architect Agent", Storyboard),
         ("animator", "Animator Agent", str),
-        ("reviewer", "Reviewer Agent", AnimationReview),
     ]
 
     results = []

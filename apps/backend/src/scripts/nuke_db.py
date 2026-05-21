@@ -13,8 +13,10 @@ from infra.settings import get_settings
 async def nuke_db() -> None:
     settings = get_settings()
     db_url = settings.database_url
-    if db_url.startswith("sqlite:///"):
-        db_url = db_url.replace("sqlite:///", "sqlite+aiosqlite:///")
+    if db_url.startswith("sqlite://"):
+        db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://")
+    elif db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://")
 
     engine = create_async_engine(db_url)
     async_session = async_sessionmaker(

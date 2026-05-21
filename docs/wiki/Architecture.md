@@ -17,13 +17,12 @@ graph TD
         Orchestrator[Workflow Orchestrator] -- "Injects Context" --> Analyst[Analyst Agent]
         Orchestrator -- "Injects Context" --> Architect[Architect Agent]
         Orchestrator -- "Injects Context" --> Animator[Animator Agent]
-        Orchestrator -- "Injects Context" --> Reviewer[Reviewer Agent]
-        
-        Analyst <-.-> GCO
-        Architect <-.-> GCO
-        Animator <-.-> GCO
-        Reviewer <-.-> GCO
+
     end
+    
+    Analyst <-.-> GCO
+    Architect <-.-> GCO
+    Animator <-.-> GCO
     
     Animator -- "Manim Script" --> Renderer[Rendering Service]
     Renderer -- "Podman Sandbox" --> Manim[Manim Engine]

@@ -464,7 +464,6 @@ async def run_single_simulation(  # noqa: PLR0913
     analyst_model: str | None = None,
     architect_model: str | None = None,
     animator_model: str | None = None,
-    reviewer_model: str | None = None,
     verbose_structured: bool = False,
 ) -> dict[str, object]:
     """Runs a single simulation for one provider/model."""
@@ -484,7 +483,6 @@ async def run_single_simulation(  # noqa: PLR0913
                     "analyst_model": analyst_model,
                     "architect_model": architect_model,
                     "animator_model": animator_model,
-                    "reviewer_model": reviewer_model,
                     "hitl_enabled": hitl_enabled,
                 },
             )
@@ -572,7 +570,6 @@ async def run_full_simulation(  # noqa: PLR0913
     analyst_model: str | None = None,
     architect_model: str | None = None,
     animator_model: str | None = None,
-    reviewer_model: str | None = None,
     verbose_structured: bool = False,
     aggregate_report: bool = True,
 ) -> None:
@@ -609,7 +606,6 @@ async def run_full_simulation(  # noqa: PLR0913
                 analyst_model=analyst_model,
                 architect_model=architect_model,
                 animator_model=animator_model,
-                reviewer_model=reviewer_model,
                 verbose_structured=verbose_structured,
             )
             aggregate_results.append(result)
@@ -659,9 +655,6 @@ if __name__ == "__main__":
         "--animator-model", type=str, default=None, help="Override animator model"
     )
     parser.add_argument(
-        "--reviewer-model", type=str, default=None, help="Override reviewer model"
-    )
-    parser.add_argument(
         "--verbose-structured",
         action="store_true",
         help="Print full structured-output payloads in terminal and report logs.",
@@ -690,7 +683,6 @@ if __name__ == "__main__":
                 analyst_model=args.analyst_model,
                 architect_model=args.architect_model,
                 animator_model=args.animator_model,
-                reviewer_model=args.reviewer_model,
                 verbose_structured=args.verbose_structured,
                 aggregate_report=not args.no_aggregate_report,
             )

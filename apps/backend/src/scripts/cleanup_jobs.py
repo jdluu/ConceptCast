@@ -14,15 +14,17 @@ from infra.settings import get_settings
 logger = structlog.get_logger(__name__)
 
 
-async def cleanup_job_data() -> None:
+async def cleanup_job_data() -> None:  # noqa: PLR0912
     settings = get_settings()
     data_jobs_dir = settings.data_dir / "jobs"
     legacy_artifacts_dir = data_jobs_dir / "artifacts"
 
     # 1. Gather all job IDs from database
     db_url = settings.database_url
-    if db_url.startswith("sqlite:///"):
-        db_url = db_url.replace("sqlite:///", "sqlite+aiosqlite:///")
+    if db_url.startswith("sqlite://"):
+        db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://")
+    elif db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://")
 
     engine = create_async_engine(db_url)
     async_session = sessionmaker(
