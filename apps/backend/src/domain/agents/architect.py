@@ -5,12 +5,14 @@ animations for the Manim engine.
 """
 
 from collections.abc import Awaitable, Callable
+from typing import Any
 
-from pydantic_ai.usage import RunUsage
+from pydantic_ai.usage import RunUsage, UsageLimits
 
 from api.schemas import CurriculumPlan, Storyboard
 from domain.models.workflow import GlobalContext
 from infra.ai.base import BaseConceptModel
+from infra.ai.tools import get_aesthetic_palette
 from services.workflow.context_injectors import extract_architect_context
 
 from .base import ConceptAgent
@@ -25,6 +27,7 @@ async def generate_storyboard(
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
     ctx: GlobalContext | None = None,
     retry_hint: str | None = None,
+    usage_limits: UsageLimits | None = None,
 ) -> tuple[Storyboard, RunUsage]:
     """Translates a curriculum plan into a visual storyboard.
 
@@ -33,6 +36,7 @@ async def generate_storyboard(
         model: The ConceptCast model to use for generation.
         on_thought: Optional callback for streaming agent thoughts.
         ctx: The Global Context Object (GCO) for the workflow.
+        usage_limits: Optional pydantic-ai UsageLimits for capping requests/tokens.
 
     Returns:
         tuple: (The structured Storyboard, RunUsage data).
@@ -45,6 +49,14 @@ async def generate_storyboard(
     if retry_hint:
         prompt = f"{prompt}\n\nREPAIR INSTRUCTIONS:\n{retry_hint}"
 
+    def _prepare_agent(agent: Any) -> None:
+        agent.tool()(get_aesthetic_palette)
+
     return await architect_agent.run(
-        model=model, prompt=prompt, on_thought=on_thought, ctx=ctx
+        model=model,
+        prompt=prompt,
+        on_thought=on_thought,
+        ctx=ctx,
+        pre_run_hook=_prepare_agent,
+        usage_limits=usage_limits,
     )

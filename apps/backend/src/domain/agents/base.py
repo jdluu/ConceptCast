@@ -9,7 +9,7 @@ from typing import Any, Generic, TypeVar
 
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
-from pydantic_ai.usage import RunUsage
+from pydantic_ai.usage import RunUsage, UsageLimits
 
 from domain.models.workflow import GlobalContext
 from infra.ai.base import BaseConceptModel, load_prompt
@@ -44,6 +44,7 @@ class ConceptAgent(Generic[T]):
         retries: int = 3,
         pre_run_hook: Callable[[Agent[Any, Any]], None] | None = None,
         message_history: list[ModelMessage] | None = None,
+        usage_limits: UsageLimits | None = None,
     ) -> tuple[T, RunUsage]:
         """Executes the agent with standardized streaming and error handling.
 
@@ -55,6 +56,7 @@ class ConceptAgent(Generic[T]):
             retries: Number of internal validation retries.
             pre_run_hook: Optional callback to modify the agent (e.g., add tools) before run.
             message_history: Optional history of messages for stateful multi-turn interactions.
+            usage_limits: Optional pydantic-ai UsageLimits for capping requests/tokens.
 
         Returns:
             tuple: (Parsed output model, total run usage).
@@ -77,5 +79,6 @@ class ConceptAgent(Generic[T]):
             on_thought=on_thought,
             deps=ctx,
             message_history=message_history,
+            usage_limits=usage_limits,
         )
         return result, usage

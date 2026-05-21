@@ -5,23 +5,61 @@ for visual clarity and pacing.
 """
 
 import json
+import re
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
-from pydantic_ai.usage import RunUsage
+from pydantic_ai.usage import RunUsage, UsageLimits
 
 from api.schemas import Scene, Storyboard
 from domain.models.workflow import GlobalContext
 from infra.ai.base import BaseConceptModel
-from infra.ai.tools import prepare_manim_docs, search_manim_docs
+from infra.ai.tools import (
+    get_aesthetic_palette,
+    lint_manim_code,
+    lookup_manim_pattern,
+    prepare_manim_docs,
+    search_manim_docs,
+)
 from services.workflow.context_injectors import extract_animator_context
 
 from .base import ConceptAgent
 
 # Initialize the shared animator agent instance
 animator_agent: ConceptAgent[str] = ConceptAgent("animator", str)
+
+_CODE_BLOCK_PATTERN = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL)
+
+
+def extract_python_code(raw: str) -> str:
+    """Extracts the last complete Python code block from model output.
+
+    Falls back to the raw content (stripped of markdown fences) when no
+    fenced block is detected. Preferring the *last* match handles cases
+    where the model emits prose followed by a corrected version.
+
+    Args:
+        raw: Raw model output that may contain markdown fences and prose.
+
+    Returns:
+        The extracted Python source code.
+    """
+    blocks = _CODE_BLOCK_PATTERN.findall(raw)
+    if blocks:
+        return str(blocks[-1]).strip()
+
+    # Fallback: strip leading/trailing fences that were not properly paired
+    cleaned = raw.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        cleaned = "\n".join(lines).strip()
+    return cleaned
 
 
 async def generate_manim_code(
@@ -32,6 +70,7 @@ async def generate_manim_code(
     ctx: GlobalContext | None = None,
     message_history: list[ModelMessage] | None = None,
     scene_id: int | None = None,
+    usage_limits: UsageLimits | None = None,
 ) -> tuple[str, RunUsage]:
     """Generates Manim Python code derived from a visual storyboard.
 
@@ -43,6 +82,7 @@ async def generate_manim_code(
         ctx: The Global Context Object (GCO) for the workflow.
         message_history: Optional history for stateful multi-turn retries.
         scene_id: Optional scene identifier for context injection.
+        usage_limits: Optional pydantic-ai UsageLimits for capping requests/tokens.
 
     Returns:
         tuple[str, RunUsage]: The generated Python code and token usage metadata.
@@ -50,6 +90,9 @@ async def generate_manim_code(
 
     def _prepare_agent(agent: Agent[Any, Any]) -> None:
         agent.tool(prepare=prepare_manim_docs)(search_manim_docs)
+        agent.tool()(lint_manim_code)
+        agent.tool()(lookup_manim_pattern)
+        agent.tool()(get_aesthetic_palette)
 
     if ctx:
         prompt = extract_animator_context(ctx, target_scene, scene_id=scene_id)
@@ -66,17 +109,10 @@ async def generate_manim_code(
         ctx=ctx,
         pre_run_hook=_prepare_agent,
         message_history=message_history,
+        usage_limits=usage_limits,
     )
 
-    # Post-processing: Clean up potential markdown fences
     if isinstance(result, str):
-        result = result.strip()
-        if result.startswith("```"):
-            lines = result.splitlines()
-            if lines[0].startswith("```"):
-                lines = lines[1:]
-            if lines and lines[-1].startswith("```"):
-                lines = lines[:-1]
-            result = "\n".join(lines).strip()
+        result = extract_python_code(result)
 
     return result, usage
