@@ -102,7 +102,7 @@ def _compute_backoff_delay(
     return exp_delay + jitter  # type: ignore
 
 
-async def get_manim_docs_context(query: str, *, api_key: str) -> str:
+async def get_manim_docs_context(query: str, *, api_key: str) -> str:  # noqa: PLR0911
     """Retrieves Manim Community documentation snippets from Context7.
 
     Fetches relevant snippets based on the provided query, applying caching
@@ -141,7 +141,9 @@ async def get_manim_docs_context(query: str, *, api_key: str) -> str:
                     headers=headers,
                     params=params,
                 )
-            except httpx.RequestError as e:
+            except httpx.InvalidURL as e:
+                return f"Context7 request error (invalid url): {e}. Query may be too long. Use standard Manim Community syntax."
+            except (httpx.RequestError, Exception) as e:
                 last_error = f"Context7 request error: {e}"
                 if attempt < max_retries:
                     await asyncio.sleep(

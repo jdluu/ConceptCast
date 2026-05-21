@@ -273,13 +273,19 @@ async def search_manim_docs(_ctx: RunContext[GlobalContext], query: str) -> str:
         JSON string containing the retrieved documentation.
     """
     normalized_query = " ".join(query.strip().split()).lower()
+
+    # Truncate overly long queries (e.g. if the LLM passes a full stack trace)
+    # to prevent httpx.InvalidURL (URL component 'query' too long)
+    if len(normalized_query) > 500:
+        normalized_query = normalized_query[:500]
+
     cached = _cache_get(normalized_query)
     if cached is not None:
         return json.dumps({"documentation": cached, "source": "cache"})
 
     api_key = get_settings().context7_api_key
     if api_key:
-        content = await get_manim_docs_context(query, api_key=api_key)
+        content = await get_manim_docs_context(normalized_query, api_key=api_key)
     else:
         matches = [
             f"{k}: {v}"
