@@ -2,13 +2,14 @@ import asyncio
 from collections.abc import Awaitable, Callable
 
 import structlog
-from pydantic_ai.usage import RunUsage
+from pydantic_ai.usage import RunUsage, UsageLimits
 
 from api.schemas import CurriculumPlan, JobRequest, TeachingStep
 from domain.agents.analyst import generate_curriculum
 from domain.models.workflow import GlobalContext
 from infra.exceptions import PlanGenerationError
 from infra.models.job import JobRecord
+from infra.settings import get_settings
 from services.workflow.base import get_step_model
 from services.workflow.utils import parse_job_artifact
 
@@ -112,6 +113,9 @@ async def step_planning(
                 on_thought=on_thought,
                 retry_hint=retry_hint,
                 ctx=ctx,
+                usage_limits=UsageLimits(
+                    request_limit=get_settings().agent_request_limit_analyst
+                ),
             )
             plan = CurriculumPlan(
                 concept_title=request.topic.strip(),

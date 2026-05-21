@@ -81,3 +81,39 @@ def calculate_job_cost(
     base_cost = settings.pricing_base_overhead if usage or render_duration > 0 else 0.0
 
     return round(token_cost + render_cost + base_cost, 2)
+
+
+def apply_search_replace_patch(original_code: str, patch_content: str) -> str:
+    """Parses Search-and-Replace blocks from patch_content and applies them to original_code."""
+    import re
+
+    pattern = re.compile(
+        r"<<<<<<< SEARCH\s*\n(.*?)\n=======\n(.*?)\n>>>>>>> REPLACE", re.DOTALL
+    )
+
+    matches = pattern.findall(patch_content)
+    if not matches:
+        # Fallback: if no search/replace block is found, assume the model outputted full corrected code
+        return patch_content
+
+    modified_code = original_code
+    import structlog
+
+    logger = structlog.get_logger(__name__)
+
+    for search_block, replace_block in matches:
+        search_block_stripped = search_block.strip()
+        # Find exact matches
+        if search_block_stripped in modified_code:
+            modified_code = modified_code.replace(
+                search_block_stripped, replace_block.strip()
+            )
+        elif search_block in modified_code:
+            modified_code = modified_code.replace(search_block, replace_block)
+        else:
+            logger.warning(
+                "patch_search_block_not_matched",
+                search_block=search_block_stripped,
+            )
+
+    return modified_code

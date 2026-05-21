@@ -8,7 +8,7 @@ import json
 from typing import Any
 
 from api.schemas import Scene, Storyboard
-from domain.models.workflow import GlobalContext
+from domain.models.workflow import ErrorEvent, GlobalContext
 
 
 def _format_context(data: dict[str, Any]) -> str:
@@ -83,6 +83,58 @@ def extract_architect_context(ctx: GlobalContext) -> str:
     )
 
 
+def _filter_lexicon(  # noqa: PLR0912
+    lexicon: dict[str, Any], target_scene: Scene | Storyboard | None
+) -> dict[str, Any]:
+    """Filters the visual lexicon to include only concepts referenced in the target scene/storyboard."""
+    if not target_scene or not lexicon:
+        return lexicon
+
+    search_text = []
+    if hasattr(target_scene, "scenes"):  # Storyboard
+        for scene in target_scene.scenes:
+            search_text.append(scene.title or "")
+            search_text.append(scene.description or "")
+            search_text.append(scene.narration or "")
+            for obj in getattr(scene, "objects", []):
+                search_text.append(obj.name or "")
+                search_text.append(obj.type or "")
+                search_text.append(obj.label or "")
+                search_text.append(obj.color or "")
+                for v in getattr(obj, "parameters", {}).values():
+                    if isinstance(v, str):
+                        search_text.append(v)
+    else:  # Scene
+        search_text.append(getattr(target_scene, "title", "") or "")
+        search_text.append(getattr(target_scene, "description", "") or "")
+        search_text.append(getattr(target_scene, "narration", "") or "")
+        for obj in getattr(target_scene, "objects", []):
+            search_text.append(obj.name or "")
+            search_text.append(obj.type or "")
+            search_text.append(obj.label or "")
+            search_text.append(obj.color or "")
+            for v in getattr(obj, "parameters", {}).values():
+                if isinstance(v, str):
+                    search_text.append(v)
+
+    combined_text = " ".join(search_text).lower()
+
+    filtered_lexicon = {}
+    for concept, symbol in lexicon.items():
+        concept_lower = concept.lower()
+        if concept_lower in combined_text:
+            filtered_lexicon[concept] = symbol
+            continue
+        if hasattr(symbol, "concept") and symbol.concept.lower() in combined_text:
+            filtered_lexicon[concept] = symbol
+            continue
+
+    if not filtered_lexicon:
+        return lexicon
+
+    return filtered_lexicon
+
+
 def extract_animator_context(
     ctx: GlobalContext,
     target_scene: Scene | Storyboard | None = None,
@@ -103,37 +155,34 @@ def extract_animator_context(
     Returns:
         str: The serialized context block for the Animator agent.
     """
-    recent_errors = [e for e in ctx.error_buffer if e.agent == "animator"][-3:]
+    animator_errors = [e for e in ctx.error_buffer if e.agent == "animator"]
+    recent_errors = []
+    for idx, err in enumerate(animator_errors):
+        if idx >= len(animator_errors) - 2:
+            recent_errors.append(err)
+        else:
+            pruned_message = err.message.splitlines()[0] if err.message else ""
+            if len(pruned_message) > 150:
+                pruned_message = pruned_message[:147] + "..."
+            recent_errors.append(
+                ErrorEvent(
+                    agent=err.agent,
+                    step=err.step,
+                    error_type=err.error_type,
+                    message=f"[Pruned older error] {pruned_message}",
+                    context={},
+                    timestamp=err.timestamp,
+                )
+            )
+
+    filtered_lex = _filter_lexicon(ctx.lexicon, target_scene)
+
     context_data: dict[str, Any] = {
         "style_guidelines": ctx.style,
         "target_scene": target_scene,
         "current_scene_id": scene_id,
-        "visual_lexicon": ctx.lexicon,
+        "visual_lexicon": filtered_lex,
     }
     if recent_errors:
-        context_data["recent_errors_to_avoid"] = recent_errors
+        context_data["recent_errors_to_avoid"] = recent_errors[-3:]
     return _format_context(context_data)
-
-
-def extract_reviewer_context(ctx: GlobalContext) -> str:
-    """Extracts relevant context for the Reviewer Agent.
-
-    Provides the target storyboard and lexicon to verify fidelity, along with
-    the error history to ensure revisions are progressing.
-
-    Args:
-        ctx: The shared Global Context Object.
-
-    Returns:
-        str: The serialized context block for the Reviewer agent.
-    """
-    recent_revisions = [
-        e for e in ctx.error_buffer if e.agent in ("animator", "reviewer")
-    ][-5:]
-    return _format_context(
-        {
-            "target_storyboard": ctx.storyboard,
-            "visual_lexicon": ctx.lexicon,
-            "revision_history": recent_revisions,
-        }
-    )

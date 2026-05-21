@@ -9,12 +9,12 @@ from pydantic_ai.messages import (
     TextPart,
     UserPromptPart,
 )
-from pydantic_ai.usage import RunUsage
+from pydantic_ai.usage import RunUsage, UsageLimits
 
 from api.schemas import JobRequest, Scene, Storyboard
 from domain.agents.animator import generate_manim_code
-from domain.agents.reviewer import review_animation
 from domain.models.workflow import GlobalContext
+from infra.ai.tools.analysis import statically_check_layout_collisions
 from infra.engines.video import render_preview
 from infra.exceptions import AnimationGenerationError
 from infra.models.job import JobRecord
@@ -130,12 +130,10 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
     if not model:
         raise AnimationGenerationError("Could not initialize animation model")
 
-    reviewer_model = get_step_model(request, job, agent_id="reviewer")
-    if not reviewer_model:
-        raise AnimationGenerationError("Could not initialize reviewer model")
-
     total_usage = RunUsage()
-    max_iterations_per_scene = get_settings().animation_review_max_iterations
+    settings = get_settings()
+    max_iterations_per_scene = settings.animation_review_max_iterations
+    animator_limits = UsageLimits(request_limit=settings.agent_request_limit_animator)
 
     # Initialize the master code structure if not recovering
     master_code = (
@@ -177,6 +175,7 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                     ctx=ctx,
                     message_history=message_history,
                     scene_id=scene.scene_id,
+                    usage_limits=animator_limits,
                 )
                 total_usage.incr(usage)
 
@@ -187,15 +186,6 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
 
                 # Cleanup potential boilerplate the model might have still generated
                 scene_code = scene_code.strip()
-
-                # 1. Remove optional markdown fences if present
-                if scene_code.startswith("```"):
-                    lines = scene_code.splitlines()
-                    if lines and lines[0].startswith("```"):
-                        lines = lines[1:]
-                    if lines and lines[-1].startswith("```"):
-                        lines = lines[:-1]
-                    scene_code = "\n".join(lines).strip()
 
                 # 2. Strip imports, class definitions, and method headers
                 lines = scene_code.splitlines()
@@ -226,6 +216,16 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                 isolated_code = _assemble_isolated_scene(scene_code, scene)
                 isolated_code = sanitize_manim_code(isolated_code)
                 _enforce_code_budget(isolated_code)
+
+                # Static spatial collision and layout validation check
+                collisions = statically_check_layout_collisions(
+                    isolated_code, scene.scene_id, ctx
+                )
+                if collisions:
+                    collision_err = "\n".join(collisions)
+                    raise AnimationGenerationError(
+                        f"Layout spatial validation failed with coordinate overlaps:\n{collision_err}"
+                    )
 
             except Exception as e:
                 logger.warning(
@@ -289,57 +289,7 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                     )
                 continue
 
-            # Vision/QA Review
-            await on_thought(
-                "system", "Status", f"Running QA Review for scene {scene.scene_id}..."
-            )
-            review_result, review_usage = await review_animation(
-                storyboard=storyboard,
-                frame_path=preview_result.frame_path,
-                execution_logs=preview_result.logs,
-                model=reviewer_model,
-                on_thought=on_thought,
-                ctx=ctx,
-            )
-            total_usage.incr(review_usage)
-
-            if not review_result.approved:
-                logger.warning(
-                    "animating_review_failed",
-                    issues=review_result.issues,
-                    scene_id=scene.scene_id,
-                    attempt=i + 1,
-                )
-
-                # Constructive review feedback (not error-framed)
-                review_feedback = (
-                    f"The reviewer identified areas for improvement in your scene code.\n\n"
-                    f"**Current Code:**\n```python\n{isolated_code}\n```\n\n"
-                    f"**Reviewer Notes:** {review_result.issues}\n\n"
-                    f"**Suggestions:** {review_result.revision_instructions}\n\n"
-                    f"Incorporate the feedback while preserving your creative approach. "
-                    f"Do not simplify the animation."
-                )
-                message_history.append(
-                    ModelRequest(parts=[UserPromptPart(content=review_feedback)])
-                )
-                hint = "See previous message for QA review failures."
-
-                ctx.add_error(
-                    "reviewer", "quality_review", RuntimeError("Quality review failed.")
-                )
-                await on_thought(
-                    "system",
-                    "Review Failed",
-                    f"Scene {scene.scene_id} rejected:\n{review_result.revision_instructions}",
-                )
-                if i == max_iterations_per_scene - 1:
-                    raise AnimationGenerationError(
-                        f"Scene {scene.scene_id} failed quality review after {max_iterations_per_scene} attempts."
-                    )
-                continue
-
-            # Scene code successfully parsed, preview rendered, and reviewed. Commit it.
+            # Scene code successfully parsed and preview rendered. Commit it.
             logger.info(
                 "animating_scene_approved",
                 scene_id=scene.scene_id,
@@ -367,7 +317,6 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
             )
 
     # Optional: Final full-length visual review. For now, rely on progressive preview success.
-    # The reviewer agent can still be utilized here, but the code is functionally stable.
     logger.info("animating_final_script_assembled", total_scenes=len(storyboard.scenes))
     objective_issues = _objective_animation_issues(master_code, storyboard)
     if objective_issues:

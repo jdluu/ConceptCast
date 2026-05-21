@@ -32,7 +32,7 @@ class JobSummary(BaseModel):
     analyst_model: str | None = None
     architect_model: str | None = None
     animator_model: str | None = None
-    reviewer_model: str | None = None
+
     target_audience: str | None = None
 
     started_at: str | None = None
@@ -87,7 +87,7 @@ class JobStatus(BaseModel):
     analyst_model: str | None = None
     architect_model: str | None = None
     animator_model: str | None = None
-    reviewer_model: str | None = None
+
     target_audience: str | None = None
 
     started_at: str | None = None
@@ -115,7 +115,6 @@ class JobRequest(BaseModel):
     analyst_model: str | None = None
     architect_model: str | None = None
     animator_model: str | None = None
-    reviewer_model: str | None = None
 
 
 class JobReviewRequest(BaseModel):

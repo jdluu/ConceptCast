@@ -18,7 +18,7 @@ from api.schemas import JobRequest, Storyboard
 from domain.models.workflow import GlobalContext
 from infra.ai.factory import get_concept_model
 from infra.database import AsyncSessionLocal
-from infra.exceptions import PlanGenerationError
+from infra.exceptions import JobCancelledError, PlanGenerationError
 from infra.models.job import JobRecord
 from infra.tasks import render_video_task
 from services.jobs.topic import refine_topic
@@ -116,6 +116,12 @@ async def process_job_logic(
                 on_thought=_on_thought_callback,
             )
         except ExceptionGroup as eg:
+            from infra.exceptions import JobCancelledError
+
+            if any(isinstance(exc, JobCancelledError) for exc in eg.exceptions):
+                logger.info("workflow_cancelled_by_user", job_id=job_id)
+                return
+
             # Parallel tasks (Validation + Architecting) might fail together
             logger.error("workflow_parallel_error", job_id=job_id, error=str(eg))
             for exc in eg.exceptions:
@@ -129,6 +135,11 @@ async def process_job_logic(
             first_err = eg.exceptions[0]
             await _update_job_callback({"status": "failed", "error": str(first_err)})
         except Exception as e:
+            from infra.exceptions import JobCancelledError
+
+            if isinstance(e, JobCancelledError):
+                logger.info("workflow_cancelled_by_user", job_id=job_id)
+                return
             logger.error("workflow_background_failed", job_id=job_id, error=str(e))
 
 
@@ -234,6 +245,7 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
             update_job,
             on_thought,
             ctx,
+            retry_hint=job_state.error,
         )
         add_usage(usage_4)
 
@@ -263,6 +275,9 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
                 }
             )
 
+    except JobCancelledError:
+        # Re-raise user-initiated cancellation without logging an error traceback
+        raise
     except Exception as e:
         logger.exception("workflow_execution_failed", job_id=job_id, error=str(e))
         final_cost = calculate_job_cost(total_usage)

@@ -9,7 +9,11 @@ from infra.models.job import JobRecord
 from infra.security.sanitizer import sanitize_manim_code
 from infra.settings import get_settings
 from services.workflow.base import get_step_model
-from services.workflow.utils import calculate_job_cost, merge_usage
+from services.workflow.utils import (
+    apply_search_replace_patch,
+    calculate_job_cost,
+    merge_usage,
+)
 
 
 class RenderRepairRequiredError(RuntimeError):
@@ -212,8 +216,13 @@ async def step_rendering(
                 manim_code=current_code,
             )
             retry_hint = (
-                "Fix the rendering error in the code. Focus on the specific error below "
-                "and correct only the problematic sections. Preserve working scenes. "
+                "Fix the rendering error in the code. Focus ONLY on correcting the problematic sections. "
+                "You MUST output your edits as one or more SEARCH/REPLACE blocks using this format:\n"
+                "<<<<<<< SEARCH\n"
+                "[exact lines of original code to replace]\n"
+                "=======\n"
+                "[corrected lines of code]\n"
+                ">>>>>>> REPLACE\n\n"
                 f"Error details: {_render_error_hint(error_msg, logs)}"
             )
             retry_code, retry_usage = await generate_manim_code(
@@ -224,14 +233,9 @@ async def step_rendering(
                 retry_hint=retry_hint,
             )
             total_usage = merge_usage(total_usage, retry_usage)
-            if _looks_like_large_rewrite(current_code, retry_code):
-                await on_thought(
-                    "system",
-                    "status",
-                    "Patch attempt produced a large rewrite; retrying with stricter patch-only guidance.",
-                )
-                continue
-            current_code = sanitize_manim_code(retry_code)
+
+            patched_code = apply_search_replace_patch(current_code, retry_code)
+            current_code = sanitize_manim_code(patched_code)
             await update_job(
                 {
                     "manim_code": current_code,

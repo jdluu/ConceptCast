@@ -2,13 +2,14 @@ import asyncio
 from collections.abc import Awaitable, Callable
 
 import structlog
-from pydantic_ai.usage import RunUsage
+from pydantic_ai.usage import RunUsage, UsageLimits
 
 from api.schemas import CurriculumPlan, JobRequest, Storyboard
 from domain.agents.architect import generate_storyboard
 from domain.models.workflow import GlobalContext
 from infra.exceptions import StoryboardGenerationError
 from infra.models.job import JobRecord
+from infra.settings import get_settings
 from services.workflow.base import get_step_model
 from services.workflow.utils import parse_job_artifact
 
@@ -219,6 +220,9 @@ async def step_architecting(  # noqa: PLR0912
                     on_thought=on_thought,
                     ctx=ctx,
                     retry_hint=retry_hint,
+                    usage_limits=UsageLimits(
+                        request_limit=get_settings().agent_request_limit_architect
+                    ),
                 )
                 _validate_storyboard_completeness(storyboard, plan)
                 _populate_scene_occupancy(storyboard, ctx)

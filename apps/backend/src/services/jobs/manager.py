@@ -94,6 +94,22 @@ async def perform_job_update(
     db: AsyncSession, job_id: str, updates: dict[str, object]
 ) -> None:
     """Internal helper to apply updates to a job record atomically."""
+    # Check for active cancellation first
+    result = await db.execute(
+        select(JobRecord.status, JobRecord.error).where(JobRecord.job_id == job_id)
+    )
+    row = result.first()
+    if row:
+        status, error = row
+        if (
+            status == "failed"
+            and error
+            and ("cancelled" in str(error).lower() or "cancel" in str(error).lower())
+        ):
+            from infra.exceptions import JobCancelledError
+
+            raise JobCancelledError("Job was cancelled by the user.")
+
     # Add updated_at to the updates if not already present
     now = datetime.now(UTC)
     full_updates = {**updates, "updated_at": now}
@@ -180,8 +196,8 @@ async def _perform_retry_prep(db: AsyncSession, job_id: str) -> JobRecord:
 
     updates: dict[str, object] = {
         "status": "pending_retry",
-        # Keep the render error message as retry hint when repairing.
-        "error": job.error if is_render_repair else None,
+        # Keep the error message as retry hint for all retry stages.
+        "error": job.error,
         "current_step": "rendering_failed_needs_fix"
         if is_render_repair
         else "retrying",

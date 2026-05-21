@@ -14,7 +14,6 @@ from domain.models.curriculum import (
 from domain.models.curriculum import (
     TeachingStepsDraft as TeachingStepsDraft,
 )
-from domain.models.review import AnimationReview as AnimationReview
 from domain.models.storyboard import (
     Scene as Scene,
 )

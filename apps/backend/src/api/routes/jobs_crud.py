@@ -114,7 +114,6 @@ async def create_job(
             analyst_model=request.analyst_model,
             architect_model=request.architect_model,
             animator_model=request.animator_model,
-            reviewer_model=request.reviewer_model,
         )
 
         async def _save_job() -> None:
@@ -230,11 +229,27 @@ async def retry_job(
         job_id: The unique identifier of the job to retry.
         background_tasks: FastAPI background tasks handler.
         req: FastAPI request to access application state.
-        _db: The active database session (unused but required for dependency chain).
+        _db: The active database session.
 
     Returns:
         The updated JobStatus after resetting for retry.
     """
+    # Fetch job status to ensure we only retry failed or paused/awaiting_review jobs
+    result = await _db.execute(select(JobRecord.status).where(JobRecord.job_id == job_id))
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    current_status = row[0]
+    if current_status not in {"failed", "awaiting_review"}:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Job {job_id} is in state '{current_status}' and cannot be retried. "
+                "Only failed or paused jobs can be retried."
+            ),
+        )
+
     session_factory = getattr(req.app.state, "db_session_factory", AsyncSessionLocal)
     job = await prepare_job_for_retry(job_id, session_factory)
 
@@ -247,7 +262,6 @@ async def retry_job(
         analyst_model=job.analyst_model,
         architect_model=job.architect_model,
         animator_model=job.animator_model,
-        reviewer_model=job.reviewer_model,
     )
 
     background_tasks.add_task(process_job_logic, job_id, request, session_factory)

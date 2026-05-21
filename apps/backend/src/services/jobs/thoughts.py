@@ -52,6 +52,17 @@ async def _perform_thought_append(
     if not job:
         return
 
+    if (
+        job.status == "failed"
+        and job.error
+        and (
+            "cancelled" in str(job.error).lower() or "cancel" in str(job.error).lower()
+        )
+    ):
+        from infra.exceptions import JobCancelledError
+
+        raise JobCancelledError("Job was cancelled by the user.")
+
     now = datetime.now(UTC)
     job.updated_at = now
 
