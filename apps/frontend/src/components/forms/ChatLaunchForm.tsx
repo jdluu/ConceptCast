@@ -94,7 +94,10 @@ export function ChatLaunchForm() {
   const { developerMode } = useDeveloperMode();
   const { createJob, isSubmitting } = useJobStore();
   const [topic, setTopic] = useState('');
-  const [audience, setAudience] = useState('');
+  const [audience, setAudience] = useState(() => {
+    const aud = settings.defaultAudience || 'General Audience';
+    return AUDIENCE_OPTIONS.includes(aud) ? aud : 'General Audience';
+  });
   const [openMenu, setOpenMenu] = useState<'provider' | 'model' | 'audience' | null>(null);
 
   const { data } = useQuery({
@@ -174,7 +177,10 @@ export function ChatLaunchForm() {
 
   // Keep audience selection in sync with default settings on first load / changes.
   useEffect(() => {
-    setAudience((current) => current || settings.defaultAudience || 'General Audience');
+    setAudience((current) => {
+      const aud = current || settings.defaultAudience || 'General Audience';
+      return AUDIENCE_OPTIONS.includes(aud) ? aud : 'General Audience';
+    });
   }, [settings.defaultAudience]);
 
   const submitDisabled =

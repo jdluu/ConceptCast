@@ -7,6 +7,7 @@ interface UseJobEventsReturn {
   jobStatus: JobStatus | null;
   connectionState: 'connecting' | 'connected' | 'error' | 'closed';
   error: Error | null;
+  cancelJob: () => void;
 }
 
 export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
@@ -20,7 +21,7 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
     queryKey: ['job', jobId],
     queryFn: () => getJobStatus(jobId!),
     enabled: !!jobId,
-    staleTime: Infinity, // Primary updates via SSE
+    staleTime: Infinity, // Primary updates via WebSocket
     refetchInterval: (query) => {
       const data = query.state.data;
       const status = data?.status;
@@ -40,39 +41,45 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
     }
   }, [queryError]);
 
-  // Refs to keep track of retry logic without triggering re-renders
+  // Refs to keep track of retry logic and socket without triggering re-renders
   const retryCount = useRef(0);
   const retryTimeout = useRef<number | null>(null);
-  const eventSource = useRef<EventSource | null>(null);
+  const socket = useRef<WebSocket | null>(null);
 
   const connect = useCallback(() => {
     if (!jobId) return;
 
     // Cleanup previous connection if exists
-    if (eventSource.current) {
-      eventSource.current.close();
+    if (socket.current) {
+      socket.current.close();
     }
 
     setConnectionState('connecting');
 
     try {
-      const es = new EventSource(`${API_BASE_URL}/jobs/${jobId}/events`);
-      eventSource.current = es;
+      const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws');
+      const wsUrl = `${wsBaseUrl}/jobs/${jobId}/control`;
+      const ws = new WebSocket(wsUrl);
+      socket.current = ws;
 
-      es.addEventListener('open', () => {
+      ws.addEventListener('open', () => {
         setConnectionState('connected');
         retryCount.current = 0;
         setError(null);
       });
 
-      es.addEventListener('message', (event) => {
+      ws.addEventListener('message', (event) => {
         try {
           const data = JSON.parse(event.data);
+
+          if (data.type === 'ping') {
+            return;
+          }
 
           if (data.error === 'Job not found') {
             const { resetJob } = useJobStore.getState();
             resetJob();
-            es.close();
+            ws.close();
             setConnectionState('closed');
             return;
           }
@@ -81,31 +88,56 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
           queryClient.setQueryData(['job', jobId], status);
 
           if (status.status === 'completed' || status.status === 'failed') {
-            es.close();
+            ws.close();
             setConnectionState('closed');
           }
         } catch (parseError) {
-          console.error('Failed to parse SSE message', parseError);
+          console.error('Failed to parse WebSocket message', parseError);
         }
       });
 
-      es.addEventListener('error', () => {
-        es.close();
+      ws.addEventListener('error', (err) => {
+        console.error('WebSocket connection error:', err);
+        setError(new Error('WebSocket connection error'));
         setConnectionState('error');
+      });
 
-        // Exponential backoff
-        const delay = Math.min(1000 * Math.pow(2, retryCount.current), 30000);
-        retryCount.current++;
+      ws.addEventListener('close', () => {
+        // Only retry if the connection was not closed intentionally on completion/failure
+        const currentData = queryClient.getQueryData<JobStatus>(['job', jobId]);
+        const isFinished = currentData?.status === 'completed' || currentData?.status === 'failed';
 
-        retryTimeout.current = window.setTimeout(connect, delay);
+        if (!isFinished) {
+          setConnectionState('error');
+
+          // Jittered exponential backoff: delay = min(30s, base * 2^retryCount)
+          const baseDelay = 1000;
+          const maxDelay = 30000;
+          const calculatedDelay = Math.min(maxDelay, baseDelay * Math.pow(2, retryCount.current));
+          const jitteredDelay = calculatedDelay / 2 + Math.random() * (calculatedDelay / 2);
+          retryCount.current++;
+
+          if (retryTimeout.current) {
+            window.clearTimeout(retryTimeout.current);
+          }
+          retryTimeout.current = window.setTimeout(connect, jitteredDelay);
+        } else {
+          setConnectionState('closed');
+        }
       });
     } catch (connError) {
       setError(
-        connError instanceof Error ? connError : new Error('Unknown error connecting to SSE'),
+        connError instanceof Error ? connError : new Error('Unknown error connecting to WebSocket'),
       );
       setConnectionState('error');
     }
-  }, [jobId]);
+  }, [jobId, queryClient]);
+
+  const cancelJob = useCallback(() => {
+    if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+      socket.current.send(JSON.stringify({ action: 'cancel' }));
+    }
+  }, []);
 
   useEffect(() => {
     if (jobId) {
@@ -115,8 +147,8 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
     }
 
     return () => {
-      if (eventSource.current) {
-        eventSource.current.close();
+      if (socket.current) {
+        socket.current.close();
       }
       if (retryTimeout.current) {
         clearTimeout(retryTimeout.current);
@@ -124,5 +156,5 @@ export function useJobEvents(jobId: string | undefined): UseJobEventsReturn {
     };
   }, [jobId, connect]);
 
-  return { jobStatus: jobStatus || null, connectionState, error };
+  return { jobStatus: jobStatus || null, connectionState, error, cancelJob };
 }

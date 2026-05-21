@@ -130,8 +130,11 @@ export function JobRow({
             <span className="text-tiny text-text-muted">{metadata.file_size || '60 FPS'}</span>
           </div>
         </td>
-        <td className="px-4 py-5 text-right">
-          <span className="text-council-active dark:text-council-active block font-bold">
+        <td className="max-w-[140px] px-4 py-5 text-right">
+          <span
+            className="text-council-active dark:text-council-active block truncate font-bold"
+            title={job.model_id || undefined}
+          >
             {job.model_id || '\u2014'}
           </span>
         </td>

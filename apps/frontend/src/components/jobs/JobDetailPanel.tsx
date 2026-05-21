@@ -22,12 +22,12 @@ interface JobDetailPanelProps {
  * Uses SSE via useJobEvents for real-time updates.
  */
 export function JobDetailPanel({ jobId }: JobDetailPanelProps) {
-  const { jobStatus: job, connectionState } = useJobEvents(jobId);
+  const { jobStatus: job, connectionState, cancelJob } = useJobEvents(jobId);
 
   if (!job) {
     return (
       <div className="bg-surface/50 flex flex-col items-center justify-center p-12 text-center">
-        <Loader2 className="text-council-active mb-2 h-6 w-6 animate-spin" />
+        <Loader2 className="text-council-active mb-2 size-6 animate-spin" />
         <span className="text-text-muted text-sm">
           {connectionState === 'connecting' ? 'Connecting to stream...' : 'Fetching job details...'}
         </span>
@@ -44,7 +44,7 @@ export function JobDetailPanel({ jobId }: JobDetailPanelProps) {
         {/* Left Column: Preview & Metadata */}
         <div className="space-y-6 lg:col-span-5">
           <div className="flex items-center justify-between">
-            <h3 className="text-text-muted text-xs font-bold tracking-[0.2em] uppercase">
+            <h3 className="text-text-muted text-xs font-semibold tracking-[0.2em] uppercase">
               Video Preview
             </h3>
             <div className="flex items-center gap-2">
@@ -109,6 +109,27 @@ export function JobDetailPanel({ jobId }: JobDetailPanelProps) {
               subValue="Estimated credits"
             />
           </div>
+
+          {job.status !== 'completed' &&
+            job.status !== 'failed' &&
+            job.status !== 'awaiting_review' && (
+              <div className="border-surface-border bg-destructive/5 mt-4 flex items-center justify-between rounded-xl border p-4">
+                <div>
+                  <span className="text-foreground block text-sm font-bold">
+                    Active Generation Controls
+                  </span>
+                  <span className="text-tiny text-text-muted block opacity-60">
+                    You can cancel the active runner safely.
+                  </span>
+                </div>
+                <button
+                  onClick={cancelJob}
+                  className="bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive cursor-pointer rounded-xl border px-4 py-2 text-xs font-bold uppercase shadow-sm transition-all duration-200 hover:text-white active:scale-95"
+                >
+                  Cancel Job
+                </button>
+              </div>
+            )}
         </div>
 
         {/* Right Column: Prompt, Code, Artifacts */}
@@ -157,7 +178,7 @@ export function JobDetailPanel({ jobId }: JobDetailPanelProps) {
 
       {job.error && (
         <div className="border-destructive/20 bg-destructive/5 shadow-destructive/10 mt-8 rounded-xl border p-4 shadow-sm">
-          <h4 className="text-destructive mb-1 text-xs font-bold tracking-widest uppercase">
+          <h4 className="text-destructive mb-1 text-xs font-semibold tracking-widest uppercase">
             Execution Error
           </h4>
           <p className="text-destructive dark:text-destructive font-mono text-sm whitespace-pre-wrap">
@@ -280,6 +301,8 @@ function TabsSection({
   tabs: { id: string; label: string; content: React.ReactNode }[];
 }) {
   const [activeTab, setActiveTab] = React.useState(tabs[0].id);
+  const currentTab = tabs.some((t) => t.id === activeTab) ? activeTab : tabs[0].id;
+
   return (
     <div className="flex h-full flex-col">
       <div className="border-surface-border scrollbar-none mb-6 flex gap-1 overflow-x-auto border-b">
@@ -289,7 +312,7 @@ function TabsSection({
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`-mb-px shrink-0 border-b-2 px-3 py-3 text-[10px] font-bold tracking-widest uppercase transition-all ${
-                activeTab === tab.id
+                currentTab === tab.id
                   ? 'border-council-active bg-council-active/5 text-council-active'
                   : 'text-text-muted hover:text-foreground hover:bg-surface-border/10 border-transparent'
               }`}
@@ -301,7 +324,7 @@ function TabsSection({
       </div>
       <div className="animate-in fade-in slide-in-from-bottom-2 flex-1 duration-300">
         <LazyMotion features={domAnimation}>
-          {tabs.find((t) => t.id === activeTab)?.content}
+          {tabs.find((t) => t.id === currentTab)?.content}
         </LazyMotion>
       </div>
     </div>
