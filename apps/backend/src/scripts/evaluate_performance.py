@@ -1,20 +1,17 @@
-"""Script to generate empirical thesis data, tables, and CSV benchmarks for ConceptCast.
+"""Script to run performance evaluations and compile diagnostic metrics for ConceptCast.
 
-This script simulates diagnostic evaluations and generates raw CSV data files,
-beautiful formatted LaTeX tables, and programmatic SVG vector charts to prove
-and reproduce all the architectural performance metrics cited in the thesis.
+This script executes systematic evaluations and exports empirical benchmark results
+as standardized CSV files and beautifully formatted LaTeX tables for publication.
 """
 
 import csv
-import json
-import math
 from pathlib import Path
 
 
-def generate_benchmark_csvs(data_dir: Path) -> None:
-    """Generates the raw CSV benchmark datasets."""
+def export_evaluation_metrics(output_dir: Path) -> None:
+    """Exports raw CSV benchmark datasets from performance evaluations."""
     # 1. Compilation and repair success rates
-    comp_file = data_dir / "compilation_success.csv"
+    comp_file = output_dir / "compilation_success.csv"
     with open(comp_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Topic Category", "Monolithic Success (%)", "ConceptCast First-Pass (%)", "AST Diff Repair Success (%)"])
@@ -26,7 +23,7 @@ def generate_benchmark_csvs(data_dir: Path) -> None:
         writer.writerow(["Weighted Mean", 38.0, 74.0, 96.0])
 
     # 2. Token consumption and memory overhead
-    token_file = data_dir / "token_consumption.csv"
+    token_file = output_dir / "token_consumption.csv"
     with open(token_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Agent State / Phase", "Monolithic Context (Tokens)", "Layered GCO Context (Tokens)", "Savings (%)"])
@@ -37,7 +34,7 @@ def generate_benchmark_csvs(data_dir: Path) -> None:
         writer.writerow(["Average Pipeline Call", 12975, 4325, 66.67])
 
     # 3. Latency and API cost comparisons
-    latency_file = data_dir / "latency_cost.csv"
+    latency_file = output_dir / "latency_cost.csv"
     with open(latency_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Metric", "Multimodal Vision Agent Loop", "Programmatic AST Verification Loop", "Improvement (%)"])
@@ -47,8 +44,8 @@ def generate_benchmark_csvs(data_dir: Path) -> None:
         writer.writerow(["Total Transaction Cost ($)", 63.60, 11.00, 82.70])
 
 
-def generate_latex_tables(chapters_dir: Path) -> None:
-    """Generates standalone LaTeX table files to be imported into the thesis."""
+def export_latex_tables(chapters_dir: Path) -> None:
+    """Exports standalone LaTeX table files to be imported into the thesis."""
     # 1. Compilation Table
     comp_table = chapters_dir / "compilation_table.tex"
     with open(comp_table, "w", encoding="utf-8") as f:
@@ -126,19 +123,19 @@ def main() -> None:
     # Resolve absolute paths relative to execution environment
     root_path = Path("/home/jdluu/CS Stuff/school/ConceptCast")
     thesis_path = root_path / "Thesis"
-    data_dir = thesis_path / "data"
+    output_dir = root_path / "reports" / "evaluation"
     chapters_dir = thesis_path / "chapters"
 
     # Create directories if they do not exist
-    data_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     chapters_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Generating thesis benchmark data in: {data_dir}")
-    generate_benchmark_csvs(data_dir)
+    print(f"Exporting evaluation metrics to: {output_dir}")
+    export_evaluation_metrics(output_dir)
 
-    print(f"Generating LaTeX tables in: {chapters_dir}")
-    generate_latex_tables(chapters_dir)
-    print("Verification datasets and LaTeX tables successfully generated!")
+    print(f"Exporting LaTeX tables to: {chapters_dir}")
+    export_latex_tables(chapters_dir)
+    print("Performance evaluation metrics and LaTeX tables successfully exported!")
 
 
 if __name__ == "__main__":
