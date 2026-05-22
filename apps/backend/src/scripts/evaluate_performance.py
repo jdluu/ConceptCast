@@ -120,21 +120,27 @@ Output API Cost / 1k runs    & \$18.40 & \$3.20 & 82.61\% \\
 
 
 def main() -> None:
-    # Resolve absolute paths relative to execution environment
-    root_path = Path("/home/jdluu/CS Stuff/school/ConceptCast")
+    # Resolve project root dynamically relative to script location
+    root_path = Path(__file__).resolve().parents[4]
     thesis_path = root_path / "Thesis"
     output_dir = root_path / "reports" / "evaluation"
-    chapters_dir = thesis_path / "chapters"
 
-    # Create directories if they do not exist
+    # Create reports output directory if it does not exist
     output_dir.mkdir(parents=True, exist_ok=True)
-    chapters_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Exporting evaluation metrics to: {output_dir}")
     export_evaluation_metrics(output_dir)
 
-    print(f"Exporting LaTeX tables to: {chapters_dir}")
-    export_latex_tables(chapters_dir)
+    # Determine LaTeX tables output directory based on Thesis availability
+    if thesis_path.is_dir():
+        chapters_dir = thesis_path / "chapters"
+        chapters_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Thesis directory detected. Exporting LaTeX tables to: {chapters_dir}")
+        export_latex_tables(chapters_dir)
+    else:
+        print(f"Thesis directory not detected. Exporting LaTeX tables to fallback: {output_dir}")
+        export_latex_tables(output_dir)
+
     print("Performance evaluation metrics and LaTeX tables successfully exported!")
 
 
