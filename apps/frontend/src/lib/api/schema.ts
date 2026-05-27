@@ -185,7 +185,7 @@ export interface paths {
      *         job_id: The unique identifier of the job to retry.
      *         background_tasks: FastAPI background tasks handler.
      *         req: FastAPI request to access application state.
-     *         _db: The active database session (unused but required for dependency chain).
+     *         _db: The active database session.
      *
      *     Returns:
      *         The updated JobStatus after resetting for retry.

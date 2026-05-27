@@ -98,7 +98,8 @@ async def test_create_job_success(
 
 @pytest.mark.asyncio
 async def test_create_job_idempotency(
-    client: AsyncClient, override_db: async_sessionmaker[AsyncSession]  # noqa: ARG001
+    client: AsyncClient,
+    override_db: async_sessionmaker[AsyncSession],  # noqa: ARG001
 ) -> None:
     """Verifies that duplicate requests return the same job within 1 hour."""
     payload = {

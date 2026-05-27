@@ -49,7 +49,9 @@ class SceneGen(Scene):
     def construct(self) -> None:
         pass
 """
-    with pytest.raises(RuntimeError, match="Import from module 'subprocess' is not allowed"):
+    with pytest.raises(
+        RuntimeError, match="Import from module 'subprocess' is not allowed"
+    ):
         sanitize_manim_code(banned_code)
 
 
@@ -62,7 +64,9 @@ class SceneGen(Scene):
     def construct(self) -> None:
         eval("1 + 1")
 """
-    with pytest.raises(RuntimeError, match="Call to unsafe builtin 'eval' is forbidden"):
+    with pytest.raises(
+        RuntimeError, match="Call to unsafe builtin 'eval' is forbidden"
+    ):
         sanitize_manim_code(banned_code)
 
 
@@ -76,7 +80,9 @@ class SceneGen(Scene):
         getattr(self, "__globals__")
 """
     # getattr itself is banned, but let's also test direct attribute access
-    with pytest.raises(RuntimeError, match="Call to unsafe builtin 'getattr' is forbidden"):
+    with pytest.raises(
+        RuntimeError, match="Call to unsafe builtin 'getattr' is forbidden"
+    ):
         sanitize_manim_code(banned_code)
 
     banned_attr_code = """
@@ -86,7 +92,9 @@ class SceneGen(Scene):
     def construct(self) -> None:
         x = self.__globals__
 """
-    with pytest.raises(RuntimeError, match="Access to unsafe attribute '__globals__' is forbidden"):
+    with pytest.raises(
+        RuntimeError, match="Access to unsafe attribute '__globals__' is forbidden"
+    ):
         sanitize_manim_code(banned_attr_code)
 
 
@@ -116,7 +124,9 @@ class SceneGen(Scene):
     def construct(self) -> None:
         pass
 """
-    with pytest.raises(RuntimeError, match="Exactly one class named 'SceneGen' is required"):
+    with pytest.raises(
+        RuntimeError, match="Exactly one class named 'SceneGen' is required"
+    ):
         sanitize_manim_code(multiple_scene_gen)
 
 

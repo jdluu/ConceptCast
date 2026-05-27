@@ -235,7 +235,9 @@ async def retry_job(
         The updated JobStatus after resetting for retry.
     """
     # Fetch job status to ensure we only retry failed or paused/awaiting_review jobs
-    result = await _db.execute(select(JobRecord.status).where(JobRecord.job_id == job_id))
+    result = await _db.execute(
+        select(JobRecord.status).where(JobRecord.job_id == job_id)
+    )
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="Job not found")
