@@ -62,3 +62,7 @@ data/*.db-shm
 data/*.db-wal
 cli_reports/
 media/
+
+# --- Thesis ---
+Thesis/
+
