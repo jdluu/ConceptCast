@@ -12,9 +12,16 @@ def export_evaluation_metrics(output_dir: Path) -> None:
     """Exports raw CSV benchmark datasets from performance evaluations."""
     # 1. Compilation and repair success rates
     comp_file = output_dir / "compilation_success.csv"
-    with open(comp_file, "w", newline="", encoding="utf-8") as f:
+    with comp_file.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["Topic Category", "Monolithic Success (%)", "ConceptCast First-Pass (%)", "AST Diff Repair Success (%)"])
+        writer.writerow(
+            [
+                "Topic Category",
+                "Monolithic Success (%)",
+                "ConceptCast First-Pass (%)",
+                "AST Diff Repair Success (%)",
+            ]
+        )
         writer.writerow(["Algebra & Calculus", 48.0, 80.0, 100.0])
         writer.writerow(["Linear Algebra", 40.0, 75.0, 95.0])
         writer.writerow(["Deep Learning Dynamics", 25.0, 68.0, 92.0])
@@ -24,9 +31,16 @@ def export_evaluation_metrics(output_dir: Path) -> None:
 
     # 2. Token consumption and memory overhead
     token_file = output_dir / "token_consumption.csv"
-    with open(token_file, "w", newline="", encoding="utf-8") as f:
+    with token_file.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["Agent State / Phase", "Monolithic Context (Tokens)", "Layered GCO Context (Tokens)", "Savings (%)"])
+        writer.writerow(
+            [
+                "Agent State / Phase",
+                "Monolithic Context (Tokens)",
+                "Layered GCO Context (Tokens)",
+                "Savings (%)",
+            ]
+        )
         writer.writerow(["Pedagogical Analysis", 8500, 3200, 62.35])
         writer.writerow(["Visual Architecting", 12400, 4100, 66.94])
         writer.writerow(["Animation Synthesis", 14800, 4800, 67.57])
@@ -35,9 +49,16 @@ def export_evaluation_metrics(output_dir: Path) -> None:
 
     # 3. Latency and API cost comparisons
     latency_file = output_dir / "latency_cost.csv"
-    with open(latency_file, "w", newline="", encoding="utf-8") as f:
+    with latency_file.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["Metric", "Multimodal Vision Agent Loop", "Programmatic AST Verification Loop", "Improvement (%)"])
+        writer.writerow(
+            [
+                "Metric",
+                "Multimodal Vision Agent Loop",
+                "Programmatic AST Verification Loop",
+                "Improvement (%)",
+            ]
+        )
         writer.writerow(["Average Iteration Latency (s)", 24.50, 6.30, 74.29])
         writer.writerow(["Input API Cost per 1k runs ($)", 45.20, 7.80, 82.74])
         writer.writerow(["Output API Cost per 1k runs ($)", 18.40, 3.20, 82.61])
@@ -48,7 +69,7 @@ def export_latex_tables(chapters_dir: Path) -> None:
     """Exports standalone LaTeX table files to be imported into the thesis."""
     # 1. Compilation Table
     comp_table = chapters_dir / "compilation_table.tex"
-    with open(comp_table, "w", encoding="utf-8") as f:
+    with comp_table.open("w", encoding="utf-8") as f:
         f.write(r"""\begin{table}[htbp]
 \centering
 \caption{Code Compilation and Scene Repair Success Rates}
@@ -73,7 +94,7 @@ General Science          & 47.0 & 77.0 & 98.0  \\
 
     # 2. Token Savings Table
     token_table = chapters_dir / "token_table.tex"
-    with open(token_table, "w", encoding="utf-8") as f:
+    with token_table.open("w", encoding="utf-8") as f:
         f.write(r"""\begin{table}[htbp]
 \centering
 \caption{Context Window Optimization via Layered Pydantic GCO Slices}
@@ -97,7 +118,7 @@ Error Self-Correction        & 16,200  & 5,200 & 67.90\% \\
 
     # 3. Latency & Cost Table
     cost_table = chapters_dir / "cost_table.tex"
-    with open(cost_table, "w", encoding="utf-8") as f:
+    with cost_table.open("w", encoding="utf-8") as f:
         f.write(r"""\begin{table}[htbp]
 \centering
 \caption{Performance and Operational Cost Comparison}
@@ -138,7 +159,9 @@ def main() -> None:
         print(f"Thesis directory detected. Exporting LaTeX tables to: {chapters_dir}")
         export_latex_tables(chapters_dir)
     else:
-        print(f"Thesis directory not detected. Exporting LaTeX tables to fallback: {output_dir}")
+        print(
+            f"Thesis directory not detected. Exporting LaTeX tables to fallback: {output_dir}"
+        )
         export_latex_tables(output_dir)
 
     print("Performance evaluation metrics and LaTeX tables successfully exported!")
