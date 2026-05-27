@@ -158,18 +158,18 @@ test-backend: ## QA Run backend unit and integration tests (pytest). args="-k my
 
 diagnose: ## QA Run agent logic diagnostics using MOCKS.
 	@args="$${args:---model-id mock-analyst}"; \
-	$(INFISICAL) bash -c '$(BACKEND_SH) uv run python src/scripts/test_agents.py $$args'
+	$(INFISICAL) bash -lc '$(BACKEND_SH) uv run python src/scripts/test_agents.py $$args'
 
 generate-mock: ## QA Run E2E simulation using MOCK models for logic verification.
 	@topic="$${topic:-derivatives}"; \
 	audience="$${audience:-General Audience}"; \
-	$(INFISICAL) bash -c '$(BACKEND_SH) uv run python src/scripts/e2e_cli.py --topic "$$topic" --audience "$$audience"'
+	$(INFISICAL) bash -lc '$(BACKEND_SH) uv run python src/scripts/e2e_cli.py --topic "$$topic" --audience "$$audience"'
 
 generate: ## QA Run ACTUAL pedagogical generation with real models. model="openai/gpt-oss-120b" topic="math"
 	@topic="$${topic:-derivatives}"; \
 	audience="$${audience:-General Audience}"; \
 	model="$${model:-deepseek/deepseek-v4-pro:thinking}"; \
-	$(INFISICAL) bash -c '$(BACKEND_SH) uv run python src/scripts/e2e_cli.py --topic "$$topic" --audience "$$audience" --no-mock --model-id "$$model" --analyst-model "$$model" --architect-model "$$model" --animator-model "$$model" --reviewer-model "$$model"'
+	$(INFISICAL) bash -lc '$(BACKEND_SH) uv run python src/scripts/e2e_cli.py --topic "$$topic" --audience "$$audience" --no-mock --model-id "$$model" --analyst-model "$$model" --architect-model "$$model" --animator-model "$$model"'
 
 lint: lint-frontend lint-backend ## QA Run all linters
 lint-frontend: ## QA Run frontend linter (oxlint)
