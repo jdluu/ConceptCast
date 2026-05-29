@@ -188,3 +188,35 @@ Let me know if you need any changes!
     sanitized = sanitize_manim_code(fence_code)
     assert "Sure!" not in sanitized
     assert "class SceneGen(Scene):" in sanitized
+
+
+def test_sanitize_add_numbers_num_range() -> None:
+    """Verifies that calling add_numbers with num_range raises a RuntimeError."""
+    bad_code = """
+from manim import *
+
+class SceneGen(Scene):
+    def construct(self) -> None:
+        line = NumberLine()
+        line.add_numbers(num_range=(-5, 6))
+"""
+    with pytest.raises(
+        RuntimeError, match="add_numbers\\(\\) does not accept a 'num_range' parameter"
+    ):
+        sanitize_manim_code(bad_code)
+
+
+def test_sanitize_regular_polygon_side_length() -> None:
+    """Verifies that creating a RegularPolygon with side_length raises a RuntimeError."""
+    bad_code = """
+from manim import *
+
+class SceneGen(Scene):
+    def construct(self) -> None:
+        poly = RegularPolygon(n=3, side_length=2.0)
+"""
+    with pytest.raises(
+        RuntimeError, match="RegularPolygon does not accept a 'side_length' parameter"
+    ):
+        sanitize_manim_code(bad_code)
+

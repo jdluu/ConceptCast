@@ -34,3 +34,9 @@ Use the full breadth of Manim's stable API. Encouraged classes include:
 - Self-Correction: Analyze previous errors and fix them in the next attempt. If a specific class or method fails, find an alternative stable way to achieve the same visual effect.
 - **Duration Match**: The sum of all `self.play` run_times and `self.wait` durations MUST exactly match the scene's requested duration.
 - **No Hallucinated Classes**: Only use standard Manim Community classes. Check your tool output (Context7) if unsure.
+- **Strict API Usage**:
+  - Never pass `num_range` to `add_numbers()`. Call `add_numbers()` without arguments; it automatically uses the parent line's `x_range`.
+  - Never pass `side_length` to `RegularPolygon`. Use `radius` to size the polygon instead.
+  - Keep your Python indentation consistent (use standard 4-space indentation inside class methods, never mix indentation levels).
+  - Ensure all parentheses, brackets, and quotes are correctly matched and closed.
+

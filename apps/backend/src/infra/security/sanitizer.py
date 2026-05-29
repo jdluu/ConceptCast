@@ -133,12 +133,27 @@ class ASTSanitizer(ast.NodeVisitor):
             raise RuntimeError(
                 f"Use of '{node.func.id}' is disallowed in ConceptCast policy."
             )
+        if isinstance(node.func, ast.Name) and node.func.id == "RegularPolygon":
+            for kw in node.keywords:
+                if kw.arg == "side_length":
+                    raise RuntimeError(
+                        "RegularPolygon does not accept a 'side_length' parameter. "
+                        "Use 'radius' to size the regular polygon instead."
+                    )
         if isinstance(node.func, ast.Attribute):
             legacy_method = _LEGACY_MANIM_METHOD_FIXES.get(node.func.attr)
             if legacy_method:
                 raise RuntimeError(
                     f"Unsupported Manim call '.{node.func.attr}()'. {legacy_method}"
                 )
+            if node.func.attr == "add_numbers":
+                for kw in node.keywords:
+                    if kw.arg == "num_range":
+                        raise RuntimeError(
+                            "add_numbers() does not accept a 'num_range' parameter. "
+                            "Call add_numbers() without arguments; it automatically uses "
+                            "the parent line's x_range."
+                        )
         self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
