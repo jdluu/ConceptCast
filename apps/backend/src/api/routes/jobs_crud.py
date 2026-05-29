@@ -76,6 +76,11 @@ async def create_job(
                 JobRecord.user_prompt == request.topic,
                 JobRecord.target_audience == request.target_audience,
                 JobRecord.mode == mode,
+                JobRecord.provider == request.provider,
+                JobRecord.model_id == request.model_id,
+                JobRecord.analyst_model == request.analyst_model,
+                JobRecord.architect_model == request.architect_model,
+                JobRecord.animator_model == request.animator_model,
                 JobRecord.status != "failed",
             )
             .order_by(JobRecord.created_at.desc())
