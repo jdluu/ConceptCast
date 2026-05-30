@@ -241,22 +241,6 @@ def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
 
     cleaned = _LOWERCASE_COLOR_RE.sub(_fix_color_match, cleaned)
 
-    has_scene_gen = any(
-        isinstance(node, ast.ClassDef) and node.name == "SceneGen"
-        for node in ast.walk(tree)
-    )
-    if not has_scene_gen:
-        raise RuntimeError("Required 'SceneGen' class missing.")
-
-    scene_gen_classes = [
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ClassDef) and node.name == "SceneGen"
-    ]
-    if len(scene_gen_classes) != 1:
-        raise RuntimeError("Exactly one class named 'SceneGen' is required.")
-    scene_gen = scene_gen_classes[0]
-
     def _base_name(base: ast.expr) -> str | None:
         if isinstance(base, ast.Name):
             return base.id
@@ -264,9 +248,18 @@ def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
             return base.attr
         return None
 
-    base_names = {_base_name(base) for base in scene_gen.bases}
-    if "Scene" not in base_names:
-        raise RuntimeError("SceneGen must inherit from Scene.")
+    scene_gen_classes = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef) and any(
+            _base_name(b) in {"Scene", "ThreeDScene"} for b in node.bases
+        )
+    ]
+    if not scene_gen_classes:
+        raise RuntimeError("Required class inheriting from Scene or ThreeDScene missing.")
+    if len(scene_gen_classes) != 1:
+        raise RuntimeError("Exactly one class inheriting from Scene or ThreeDScene is required.")
+    scene_gen = scene_gen_classes[0]
 
     has_construct = any(
         isinstance(node, ast.FunctionDef)
@@ -276,6 +269,6 @@ def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
         for node in scene_gen.body
     )
     if not has_construct:
-        raise RuntimeError("SceneGen must define construct(self).")
+        raise RuntimeError(f"{scene_gen.name} must define construct(self).")
 
     return cleaned

@@ -99,20 +99,20 @@ class SceneGen(Scene):
 
 
 def test_sanitize_missing_scene_gen() -> None:
-    """Verifies that omitting the SceneGen class raises a RuntimeError."""
+    """Verifies that omitting a class inheriting from Scene raises a RuntimeError."""
     no_scene_gen = """
 from manim import *
 
-class MyScene(Scene):
+class MyScene(object):
     def construct(self) -> None:
         pass
 """
-    with pytest.raises(RuntimeError, match="Required 'SceneGen' class missing"):
+    with pytest.raises(RuntimeError, match="Required class inheriting from Scene or ThreeDScene missing"):
         sanitize_manim_code(no_scene_gen)
 
 
 def test_sanitize_multiple_scene_gen() -> None:
-    """Verifies that having more than one SceneGen class raises a RuntimeError."""
+    """Verifies that having more than one class inheriting from Scene/ThreeDScene raises a RuntimeError."""
     multiple_scene_gen = """
 from manim import *
 
@@ -120,18 +120,18 @@ class SceneGen(Scene):
     def construct(self) -> None:
         pass
 
-class SceneGen(Scene):
+class AnotherScene(Scene):
     def construct(self) -> None:
         pass
 """
     with pytest.raises(
-        RuntimeError, match="Exactly one class named 'SceneGen' is required"
+        RuntimeError, match="Exactly one class inheriting from Scene or ThreeDScene is required"
     ):
         sanitize_manim_code(multiple_scene_gen)
 
 
 def test_sanitize_scene_gen_base() -> None:
-    """Verifies that SceneGen must inherit from Scene."""
+    """Verifies that a class that does not inherit from Scene or ThreeDScene is not matched."""
     bad_base = """
 from manim import *
 
@@ -139,20 +139,20 @@ class SceneGen(object):
     def construct(self) -> None:
         pass
 """
-    with pytest.raises(RuntimeError, match="SceneGen must inherit from Scene"):
+    with pytest.raises(RuntimeError, match="Required class inheriting from Scene or ThreeDScene missing"):
         sanitize_manim_code(bad_base)
 
 
 def test_sanitize_scene_gen_construct() -> None:
-    """Verifies that SceneGen must define construct(self)."""
+    """Verifies that the class must define construct(self)."""
     bad_construct = """
 from manim import *
 
-class SceneGen(Scene):
+class CustomScene(Scene):
     def setup(self) -> None:
         pass
 """
-    with pytest.raises(RuntimeError, match="SceneGen must define construct\\(self\\)"):
+    with pytest.raises(RuntimeError, match="CustomScene must define construct\\(self\\)"):
         sanitize_manim_code(bad_construct)
 
 

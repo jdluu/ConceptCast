@@ -212,9 +212,14 @@ class SpatialPositionTracker(ast.NodeVisitor):
 
     def visit_Assign(self, node: ast.Assign) -> None:
         self.generic_visit(node)
+        # Ignore literal constants (like color hex strings, numbers, etc.)
+        if isinstance(node.value, ast.Constant):
+            return
         for target in node.targets:
             if isinstance(target, ast.Name):
                 var_name = target.id
+                if var_name == "self":
+                    continue
                 if var_name not in self.positions:
                     self.positions[var_name] = [0.0, 0.0]
                 if var_name not in self.dimensions:
@@ -228,11 +233,7 @@ class SpatialPositionTracker(ast.NodeVisitor):
             if isinstance(node.func.value, ast.Name):
                 target_var = node.func.value.id
 
-            if target_var:
-                if target_var not in self.positions:
-                    self.positions[target_var] = [0.0, 0.0]
-                if target_var not in self.dimensions:
-                    self.dimensions[target_var] = [2.0, 1.5]
+            if target_var and target_var in self.positions:
 
                 if method_name == "shift" and node.args:
                     vec = evaluate_vector_ast(node.args[0])

@@ -1,0 +1,68 @@
+import pytest
+from infra.ai.tools.analysis import statically_check_layout_collisions
+from domain.models.workflow import GlobalContext, SceneOccupancy, BoundingBox
+from domain.models.curriculum import CurriculumPlan
+
+def create_mock_ctx():
+    plan = CurriculumPlan(
+        concept_title="derivatives",
+        target_audience="General Audience",
+        teaching_steps=[]
+    )
+    return GlobalContext(
+        topic="derivatives",
+        target_audience="General Audience",
+        plan=plan,
+        style={},
+        lexicon={},
+        decisions=[]
+    )
+
+def test_statically_check_layout_collisions_no_occupancy():
+    ctx = create_mock_ctx()
+    code = """
+class SceneGen(Scene):
+    def construct(self):
+        circle = Circle()
+"""
+    errors = statically_check_layout_collisions(code, scene_id=1, ctx=ctx)
+    assert len(errors) == 0
+
+def test_statically_check_layout_collisions_with_constant_ignoring():
+    # Scene occupancies has a reserved box at ORIGIN [0.0, 0.0]
+    box = BoundingBox(center="ORIGIN", width=1.0, height=1.0, label="center_text")
+    occupancy = SceneOccupancy(scene_id=1, reserved_boxes=[box])
+    
+    ctx = create_mock_ctx()
+    ctx.scene_occupancy = {1: occupancy}
+    
+    # This code defines non-visual constant assignments (colors, floats, self) which should be ignored
+    code = """
+class SceneGen(Scene):
+    def construct(self):
+        self.camera.background_color = "#181825"
+        cube_color = "#fab387"
+        shadow_color = "#11111b"
+        duration = 5.0
+"""
+    errors = statically_check_layout_collisions(code, scene_id=1, ctx=ctx)
+    # They should not be flagged as collisions at ORIGIN!
+    assert len(errors) == 0
+
+def test_statically_check_layout_collisions_with_real_collision():
+    # Scene occupancies has a reserved box at ORIGIN [0.0, 0.0]
+    box = BoundingBox(center="ORIGIN", width=2.0, height=1.5, label="center_text")
+    occupancy = SceneOccupancy(scene_id=1, reserved_boxes=[box])
+    
+    ctx = create_mock_ctx()
+    ctx.scene_occupancy = {1: occupancy}
+    
+    # This code instantiates a real Mobject at ORIGIN, causing a collision
+    code = """
+class SceneGen(Scene):
+    def construct(self):
+        circle = Circle() # Default position is ORIGIN [0.0, 0.0]
+"""
+    errors = statically_check_layout_collisions(code, scene_id=1, ctx=ctx)
+    assert len(errors) == 1
+    assert "Layout collision: variable 'circle'" in errors[0]
