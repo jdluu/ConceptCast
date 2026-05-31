@@ -67,6 +67,9 @@ _LOWERCASE_COLOR_RE = re.compile(
 _CODE_FENCE_BLOCK_RE = re.compile(
     r"```(?:python|py)?\s*\n(.*?)```", re.IGNORECASE | re.DOTALL
 )
+_DIVIDER_LINE_RE = re.compile(
+    r"^(\s*)([-=*~_]{3,})\s*$"
+)
 
 
 class ASTSanitizer(ast.NodeVisitor):
@@ -172,6 +175,97 @@ class ASTSanitizer(ast.NodeVisitor):
         self.generic_visit(node)
 
 
+def format_python_code(code: str) -> str:
+    """Attempts to auto-format Python code using Ruff to resolve minor syntax formatting issues.
+
+    If formatting fails (e.g. due to actual syntax errors), returns the original code
+    so that standard validation can return the exact syntax tracebacks to the model.
+    """
+    import subprocess
+    from pathlib import Path
+    from infra.settings import PROJECT_ROOT
+
+    # Heuristically locate the local ruff executable inside the virtualenv
+    ruff_path = PROJECT_ROOT / "apps" / "backend" / ".venv" / "bin" / "ruff"
+    if not ruff_path.exists():
+        ruff_path = Path("ruff")
+
+    try:
+        res = subprocess.run(
+            [str(ruff_path), "format", "-"],
+            input=code,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        return res.stdout
+    except Exception:
+        # Graceful fallback: return original code on formatting failure
+        return code
+
+
+def normalize_indentation(code: str) -> str:
+    """Standardizes class, method, and body indentation to be syntactically consistent.
+
+    This ensures that Ruff format can parse and clean up the code successfully.
+    """
+    lines = code.splitlines()
+    new_lines = []
+
+    in_class = False
+    in_method = False
+    shift = 0
+
+    for line in lines:
+        stripped = line.lstrip()
+        if not stripped:
+            new_lines.append(line)
+            continue
+
+        indent = len(line) - len(stripped)
+
+        # Detect start of class block
+        if stripped.startswith("class ") and ("(Scene" in stripped or "(ThreeDScene" in stripped):
+            in_class = True
+            in_method = False
+            shift = -indent
+            new_lines.append(stripped)
+            continue
+
+        # Detect end of class block on top-level definitions
+        if in_class and indent == 0 and not stripped.startswith("#") and not stripped.startswith("\"\"\"") and not stripped.startswith("'''"):
+            if stripped.startswith("class ") or stripped.startswith("def ") or stripped.startswith("if __name__"):
+                in_class = False
+                in_method = False
+                shift = 0
+
+        if in_class:
+            if stripped.startswith("def "):
+                in_method = True
+                shift = 4 - indent
+                new_lines.append("    " + stripped)
+                continue
+
+            # If we are inside the class but before any method (e.g. class docstrings)
+            if not in_method:
+                if indent < 4:
+                    new_lines.append("    " + stripped)
+                else:
+                    new_lines.append(line)
+                continue
+
+        # Apply shift if active
+        if shift != 0:
+            if shift > 0:
+                new_lines.append(" " * shift + line)
+            else:
+                new_lines.append(line[min(-shift, indent):])
+        else:
+            new_lines.append(line)
+
+    return "\n".join(new_lines)
+
+
 def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
     """Extracts, parses, and sanitizes AI-generated Manim Python code.
 
@@ -222,6 +316,28 @@ def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
 
     if not cleaned:
         raise RuntimeError("Animator output was empty.")
+
+    # Normalize non-standard unicode spaces and dashes in raw code
+    cleaned = cleaned.replace("\u00a0", " ").replace("\u202f", " ")
+
+    # Auto-repair stray divider/comment lines missing leading '#'
+    repaired_lines = []
+    for line in cleaned.splitlines():
+        match = _DIVIDER_LINE_RE.match(line)
+        if match:
+            repaired_lines.append(f"{match.group(1)}# {match.group(2)}")
+        elif ("–" in line or "—" in line) and not line.strip().startswith("#") and '"' not in line and "'" not in line:
+            # Auto-repair comment lines missing leading '#' but containing en-dash/em-dash
+            repaired_lines.append(f"{line[:len(line)-len(line.lstrip())]}# {line.strip()}")
+        else:
+            repaired_lines.append(line)
+    cleaned = "\n".join(repaired_lines)
+
+    # Normalize class/method indentation to be syntactically consistent
+    cleaned = normalize_indentation(cleaned)
+
+    # Auto-format to resolve minor formatting/whitespace errors
+    cleaned = format_python_code(cleaned)
 
     try:
         tree = ast.parse(cleaned)

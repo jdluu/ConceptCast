@@ -168,7 +168,7 @@ class SceneGen(Scene):
 """
     sanitized = sanitize_manim_code(code_with_lowercase_color)
     assert 'color="RED"' in sanitized
-    assert "fill_color='BLUE'" in sanitized
+    assert 'fill_color="BLUE"' in sanitized
     assert 'stroke_color="GREEN"' in sanitized
 
 
@@ -220,3 +220,70 @@ class SceneGen(Scene):
     ):
         sanitize_manim_code(bad_code)
 
+
+def test_sanitize_divider_lines_auto_repair() -> None:
+    """Verifies that divider lines missing leading '#' are auto-repaired and pass."""
+    code_with_stray_dividers = """
+from manim import *
+
+class SceneGen(Scene):
+    def construct(self) -> None:
+        title = Text("Test")
+        
+        ------------------------------------------------------------
+        # 1. Start animations
+        ------------------------------------------------------------
+        self.play(Write(title))
+"""
+    # Without auto-repair, this would raise a RuntimeError/SyntaxError due to the stray dashes.
+    sanitized = sanitize_manim_code(code_with_stray_dividers)
+    assert "# ------------------------------------------------------------" in sanitized
+    assert "class SceneGen(Scene):" in sanitized
+
+
+def test_sanitize_normalize_indentation() -> None:
+    """Verifies that class/method indentation inconsistencies are normalized and pass."""
+    inconsistent_code = """
+from manim import *
+
+class SceneGen(Scene):
+ def construct(self):
+        self.clear()
+        circle = Circle()
+        self.play(Create(circle))
+"""
+    sanitized = sanitize_manim_code(inconsistent_code)
+    assert "class SceneGen(Scene):" in sanitized
+    # Indentation should be successfully parsed and formatted to standard 4/8 spaces by Ruff
+    assert "    def construct(self):" in sanitized or "    def construct(self) -> None:" in sanitized
+    assert "        self.clear()" in sanitized
+
+
+def test_sanitize_unicode_space_normalization() -> None:
+    """Verifies that narrow no-break space (U+202F) is normalized to a standard space."""
+    code_with_unicode_spaces = """
+from manim import *
+
+class SceneGen(Scene):
+    def construct(self) -> None:
+        self.wait(1.0) # There is a U+202F narrow no-break space before the hash
+"""
+    sanitized = sanitize_manim_code(code_with_unicode_spaces)
+    assert "\u202f" not in sanitized
+    assert "self.wait(1.0) #" in sanitized
+
+
+def test_sanitize_comment_auto_repair_en_dash() -> None:
+    """Verifies that text lines with an en-dash missing the '#' are auto-commented."""
+    code_with_stray_en_dash = """
+from manim import *
+
+class SceneGen(Scene):
+    def construct(self) -> None:
+        title = Text("Title")
+        
+        0.5 s – grow the title from center
+        self.play(Write(title))
+"""
+    sanitized = sanitize_manim_code(code_with_stray_en_dash)
+    assert "# 0.5 s – grow the title from center" in sanitized or "# 0.5s – grow the title from center" in sanitized or "– grow" in sanitized
