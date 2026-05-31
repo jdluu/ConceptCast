@@ -54,6 +54,78 @@ PROVIDER_REGISTRY = (
 )
 
 
+from contextlib import asynccontextmanager
+from pydantic_ai.messages import ModelMessage
+from pydantic_ai.models import ModelRequestParameters, ModelResponse
+from pydantic_ai.settings import ModelSettings
+
+class NanoOpenAIChatModel(OpenAIChatModel):
+    """Custom OpenAIChatModel for Nano GPT that recovers from API parameter errors.
+
+    If a model (e.g. zai-org/glm-5.1:thinking) returns a 400 Bad Request indicating
+    invalid parameters or unsupported features under the thinking proxy, this model
+    dynamically retries by stripping the ':thinking' suffix.
+    """
+
+    async def request(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+    ) -> ModelResponse:
+        try:
+            return await super().request(messages, model_settings, model_request_parameters)
+        except Exception as e:
+            err_str = str(e).lower()
+            if (
+                ":thinking" in self.model_name
+                and ("400" in err_str or "invalid request" in err_str or "parameter" in err_str)
+            ):
+                original_model = self.model_name
+                fallback_model = self.model_name.replace(":thinking", "")
+                self._model_name = fallback_model
+                try:
+                    res = await super().request(messages, model_settings, model_request_parameters)
+                    self._model_name = original_model
+                    return res
+                except Exception:
+                    self._model_name = original_model
+                    raise
+            raise
+
+    @asynccontextmanager
+    async def request_stream(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+        run_context=None,
+    ):
+        try:
+            async with super().request_stream(
+                messages, model_settings, model_request_parameters, run_context=run_context
+            ) as stream:
+                yield stream
+        except Exception as e:
+            err_str = str(e).lower()
+            if (
+                ":thinking" in self.model_name
+                and ("400" in err_str or "invalid request" in err_str or "parameter" in err_str)
+            ):
+                original_model = self.model_name
+                fallback_model = self.model_name.replace(":thinking", "")
+                self._model_name = fallback_model
+                try:
+                    async with super().request_stream(
+                        messages, model_settings, model_request_parameters, run_context=run_context
+                    ) as stream:
+                        yield stream
+                finally:
+                    self._model_name = original_model
+            else:
+                raise
+
+
 class NanoConceptModel(BaseConceptModel):
     """Implementation of BaseConceptModel for NanoGPT."""
 
@@ -87,7 +159,7 @@ class NanoProvider(BaseProvider):
         )
 
         return NanoConceptModel(
-            model=OpenAIChatModel(m_id, provider=provider),
+            model=NanoOpenAIChatModel(m_id, provider=provider),
             model_id=m_id,
         )
 
