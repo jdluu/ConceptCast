@@ -72,6 +72,10 @@ class ConceptAgent(Generic[T]):
         if pre_run_hook:
             pre_run_hook(agent)
 
+        # Disable streaming dynamically for the Nano provider to prevent keep-alive/SSE character dropouts
+        from infra.ai.factory import NanoConceptModel
+        stream = not isinstance(model, NanoConceptModel)
+
         result, usage = await run_agent_streamed(
             self.name,
             agent,
@@ -80,5 +84,6 @@ class ConceptAgent(Generic[T]):
             deps=ctx,
             message_history=message_history,
             usage_limits=usage_limits,
+            stream=stream,
         )
         return result, usage

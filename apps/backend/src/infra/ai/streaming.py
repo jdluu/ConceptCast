@@ -33,6 +33,7 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
     accumulated_usage: RunUsage | None = None,
     message_history: list[ModelMessage] | None = None,
     usage_limits: UsageLimits | None = None,
+    stream: bool = True,
     **run_kwargs: Any,
 ) -> tuple[Any, RunUsage]:
     """Runs an agent and streams intermediate thoughts and final output.
@@ -86,6 +87,54 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
             return json.dumps(payload, default=str, indent=2)
         except Exception:
             return str(payload)
+
+    if not stream:
+        try:
+            res = await agent.run(
+                prompt,
+                message_history=message_history,
+                usage_limits=usage_limits,
+                **run_kwargs,
+            )
+            final = res.output
+            usage = res.usage()
+            if on_thought and final is not None:
+                payload_json = _serialize_structured_output(final)
+                if payload_json:
+                    await on_thought(
+                        agent_name,
+                        "structured_output",
+                        f"Structured output result:\n{payload_json}\n",
+                    )
+        except exceptions.UnexpectedModelBehavior as e:
+            logger.error(
+                "agent_unexpected_model_behavior",
+                agent_name=agent_name,
+                error=str(e),
+            )
+            raise ValueError(
+                f"Model failed output validation after multiple retries: {e}"
+            ) from e
+        except ValidationError as e:
+            logger.error(
+                "agent_invalid_output_format",
+                agent_name=agent_name,
+                error=str(e),
+            )
+            raise ValueError(f"Agent output did not match expected schema: {e}") from e
+        except Exception as e:
+            logger.error("agent_runtime_error", agent_name=agent_name, error=str(e))
+            raise
+
+        if accumulated_usage:
+            usage = RunUsage(
+                input_tokens=(usage.input_tokens or 0)
+                + (accumulated_usage.input_tokens or 0),
+                output_tokens=(usage.output_tokens or 0)
+                + (accumulated_usage.output_tokens or 0),
+                requests=(usage.requests or 0) + (accumulated_usage.requests or 0),
+            )
+        return cast(Any, final), usage
 
     try:
         async for event in agent.run_stream_events(
