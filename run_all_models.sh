@@ -5,14 +5,15 @@
 set -euo pipefail
 
 MODELS=(
-  "openai/gpt-oss-120b"
   "openai/gpt-oss-20b"
-  "deepseek/deepseek-v4-flash:thinking"
+  "openai/gpt-oss-120b"
   "google/gemma-4-31b-it:thinking"
+  "deepseek/deepseek-v4-flash:thinking"
   "qwen/qwen3.5-122b-a10b:thinking"
-  "moonshotai/kimi-k2.6:thinking"
-  "zai-org/glm-5.1:thinking"
   "minimax/minimax-m2.7"
+  "zai-org/glm-5.1:thinking"
+  "moonshotai/kimi-k2.6:thinking"
+  "deepseek/deepseek-v4-pro:thinking"
 )
 
 TOPIC="derivatives"
