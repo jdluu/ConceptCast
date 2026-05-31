@@ -81,7 +81,7 @@ class WorkflowMetrics(BaseModel):
 
     total_tokens: int = 0
     estimated_cost: float = 0.0
-    start_time: datetime = Field(default_factory=datetime.utcnow)
+    start_time: datetime = Field(default_factory=lambda: datetime.now(UTC))
     step_durations: dict[str, float] = Field(default_factory=dict)
 
 
