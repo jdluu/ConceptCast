@@ -304,6 +304,7 @@ def statically_check_layout_collisions(
     tracker = SpatialPositionTracker()
     tracker.visit(tree)
 
+    containers = {"axes", "graph", "grid", "plot", "number_line", "body", "bg", "background", "canvas", "frame"}
     occupancy = ctx.scene_occupancy[scene_id]
     for var_name, pos in tracker.positions.items():
         dim = tracker.dimensions[var_name]
@@ -311,6 +312,12 @@ def statically_check_layout_collisions(
         cw, ch = dim[0], dim[1]
 
         for box in occupancy.reserved_boxes:
+            v_lower, b_lower = var_name.lower(), box.label.lower()
+            if v_lower in b_lower or b_lower in v_lower:
+                continue
+            if any(c in v_lower or c in b_lower for c in containers):
+                continue
+
             rx, ry = parse_coordinate_string(box.center)
             rw, rh = box.width, box.height
 

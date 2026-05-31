@@ -66,3 +66,28 @@ class SceneGen(Scene):
     errors = statically_check_layout_collisions(code, scene_id=1, ctx=ctx)
     assert len(errors) == 1
     assert "Layout collision: variable 'circle'" in errors[0]
+
+
+def test_statically_check_layout_collisions_container_exemption():
+    # Scene occupancy has reserved container boxes:
+    # 1. graph_axes centered at ORIGIN (width 6, height 5)
+    # 2. machine_body centered at ORIGIN (width 3, height 2)
+    box1 = BoundingBox(center="ORIGIN", width=6.0, height=5.0, label="graph_axes")
+    box2 = BoundingBox(center="ORIGIN", width=3.0, height=2.0, label="machine_body")
+    occupancy = SceneOccupancy(scene_id=1, reserved_boxes=[box1, box2])
+    
+    ctx = create_mock_ctx()
+    ctx.scene_occupancy = {1: occupancy}
+    
+    # This code instantiates elements inside these containers at default ORIGIN
+    # which would normally overlap, but should be ignored by the exemptions
+    code = """
+class SceneGen(Scene):
+    def construct(self):
+        axes = Axes()             # Substring and container keyword
+        machine = Square()         # Substring
+        gear1 = Circle()           # Contained in machine_body (container body)
+        point_B = Dot()           # Contained in graph_axes (container axes)
+"""
+    errors = statically_check_layout_collisions(code, scene_id=1, ctx=ctx)
+    assert len(errors) == 0
