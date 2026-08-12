@@ -71,28 +71,10 @@ _DIVIDER_LINE_RE = re.compile(r"^(\s*)([-=*~_]{3,})\s*$")
 
 
 class ASTSanitizer(ast.NodeVisitor):
-    """AST-based sanitizer for validating AI-generated Manim code.
-
-    This visitor inspects the Abstract Syntax Tree (AST) of the generated code
-     to ensure it does not perform unsafe operations such as arbitrary IO,
-    system calls, dynamic execution (exec/eval), or access to dangerous
-    dunder attributes.
-
-    Attributes:
-        _ALLOWED_MODULES (Set[str]): Modules permitted for import.
-        _BANNED_BUILTINS (Set[str]): Builtin functions explicitly forbidden.
-        _DANGEROUS_ATTRIBUTES (Set[str]): Attributes forbidden from access.
-    """
+    """AST-based sanitizer for validating AI-generated Manim code."""
 
     def visit_Import(self, node: ast.Import) -> None:
-        """Validates that all imported modules are within the allowed whitelist.
-
-        Args:
-            node (ast.Import): The import node to inspect.
-
-        Raises:
-            RuntimeError: If a module name is not in the allowed list.
-        """
+        """Validates that all imported modules are within the allowed whitelist."""
         for alias in node.names:
             base_module = alias.name.split(".")[0]
             if base_module not in _ALLOWED_MODULES:
@@ -100,14 +82,8 @@ class ASTSanitizer(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        """Validates that 'from x import y' statements target allowed modules.
+        """Validates that 'from x import y' statements target allowed modules."""
 
-        Args:
-            node (ast.ImportFrom): The import-from node to inspect.
-
-        Raises:
-            RuntimeError: If the source module is not in the allowed list.
-        """
         if node.module:
             base_module = node.module.split(".")[0]
             if base_module not in _ALLOWED_MODULES:
