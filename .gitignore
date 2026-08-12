@@ -63,6 +63,15 @@ data/*.db-wal
 cli_reports/
 media/
 
-# --- Thesis ---
+# --- Thesis & Standalone Repositories ---
 Thesis/
+results/
+
+# --- Agent & Antigravity Metadata ---
+.agents/
+.antigravitycli/
+skills-lock.json
+detailed_agent_prompt.md
+
+
 

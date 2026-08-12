@@ -234,7 +234,6 @@ class SpatialPositionTracker(ast.NodeVisitor):
                 target_var = node.func.value.id
 
             if target_var and target_var in self.positions:
-
                 if method_name == "shift" and node.args:
                     vec = evaluate_vector_ast(node.args[0])
                     if vec:
@@ -304,7 +303,18 @@ def statically_check_layout_collisions(
     tracker = SpatialPositionTracker()
     tracker.visit(tree)
 
-    containers = {"axes", "graph", "grid", "plot", "number_line", "body", "bg", "background", "canvas", "frame"}
+    containers = {
+        "axes",
+        "graph",
+        "grid",
+        "plot",
+        "number_line",
+        "body",
+        "bg",
+        "background",
+        "canvas",
+        "frame",
+    }
     occupancy = ctx.scene_occupancy[scene_id]
     for var_name, pos in tracker.positions.items():
         dim = tracker.dimensions[var_name]

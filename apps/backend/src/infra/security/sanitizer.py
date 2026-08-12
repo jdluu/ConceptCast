@@ -67,9 +67,7 @@ _LOWERCASE_COLOR_RE = re.compile(
 _CODE_FENCE_BLOCK_RE = re.compile(
     r"```(?:python|py)?\s*\n(.*?)```", re.IGNORECASE | re.DOTALL
 )
-_DIVIDER_LINE_RE = re.compile(
-    r"^(\s*)([-=*~_]{3,})\s*$"
-)
+_DIVIDER_LINE_RE = re.compile(r"^(\s*)([-=*~_]{3,})\s*$")
 
 
 class ASTSanitizer(ast.NodeVisitor):
@@ -183,6 +181,7 @@ def format_python_code(code: str) -> str:
     """
     import subprocess
     from pathlib import Path
+
     from infra.settings import PROJECT_ROOT
 
     # Heuristically locate the local ruff executable inside the virtualenv
@@ -204,7 +203,7 @@ def format_python_code(code: str) -> str:
         return code
 
 
-def normalize_indentation(code: str) -> str:
+def normalize_indentation(code: str) -> str:  # noqa: PLR0912
     """Standardizes class, method, and body indentation to be syntactically consistent.
 
     This ensures that Ruff format can parse and clean up the code successfully.
@@ -225,7 +224,9 @@ def normalize_indentation(code: str) -> str:
         indent = len(line) - len(stripped)
 
         # Detect start of class block
-        if stripped.startswith("class ") and ("(Scene" in stripped or "(ThreeDScene" in stripped):
+        if stripped.startswith("class ") and (
+            "(Scene" in stripped or "(ThreeDScene" in stripped
+        ):
             in_class = True
             in_method = False
             shift = -indent
@@ -233,11 +234,22 @@ def normalize_indentation(code: str) -> str:
             continue
 
         # Detect end of class block on top-level definitions
-        if in_class and indent == 0 and not stripped.startswith("#") and not stripped.startswith("\"\"\"") and not stripped.startswith("'''"):
-            if stripped.startswith("class ") or stripped.startswith("def ") or stripped.startswith("if __name__"):
-                in_class = False
-                in_method = False
-                shift = 0
+        if (
+            in_class
+            and indent == 0
+            and not stripped.startswith("#")
+            and not stripped.startswith('"""')
+            and not stripped.startswith("'''")
+            and (
+                stripped.startswith("class ")
+                or stripped.startswith("def ")
+                or stripped.startswith("if __name__")
+            )
+        ):
+            in_class = False
+            in_method = False
+            shift = 0
+
 
         if in_class:
             if stripped.startswith("def "):
@@ -259,7 +271,7 @@ def normalize_indentation(code: str) -> str:
             if shift > 0:
                 new_lines.append(" " * shift + line)
             else:
-                new_lines.append(line[min(-shift, indent):])
+                new_lines.append(line[min(-shift, indent) :])
         else:
             new_lines.append(line)
 
@@ -326,9 +338,16 @@ def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
         match = _DIVIDER_LINE_RE.match(line)
         if match:
             repaired_lines.append(f"{match.group(1)}# {match.group(2)}")
-        elif ("–" in line or "—" in line) and not line.strip().startswith("#") and '"' not in line and "'" not in line:
+        elif (
+            ("–" in line or "—" in line)
+            and not line.strip().startswith("#")
+            and '"' not in line
+            and "'" not in line
+        ):
             # Auto-repair comment lines missing leading '#' but containing en-dash/em-dash
-            repaired_lines.append(f"{line[:len(line)-len(line.lstrip())]}# {line.strip()}")
+            repaired_lines.append(
+                f"{line[: len(line) - len(line.lstrip())]}# {line.strip()}"
+            )
         else:
             repaired_lines.append(line)
     cleaned = "\n".join(repaired_lines)
@@ -367,14 +386,17 @@ def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
     scene_gen_classes = [
         node
         for node in ast.walk(tree)
-        if isinstance(node, ast.ClassDef) and any(
-            _base_name(b) in {"Scene", "ThreeDScene"} for b in node.bases
-        )
+        if isinstance(node, ast.ClassDef)
+        and any(_base_name(b) in {"Scene", "ThreeDScene"} for b in node.bases)
     ]
     if not scene_gen_classes:
-        raise RuntimeError("Required class inheriting from Scene or ThreeDScene missing.")
+        raise RuntimeError(
+            "Required class inheriting from Scene or ThreeDScene missing."
+        )
     if len(scene_gen_classes) != 1:
-        raise RuntimeError("Exactly one class inheriting from Scene or ThreeDScene is required.")
+        raise RuntimeError(
+            "Exactly one class inheriting from Scene or ThreeDScene is required."
+        )
     scene_gen = scene_gen_classes[0]
 
     has_construct = any(

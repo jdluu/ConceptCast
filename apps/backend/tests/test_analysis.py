@@ -1,13 +1,13 @@
-import pytest
-from infra.ai.tools.analysis import statically_check_layout_collisions
-from domain.models.workflow import GlobalContext, SceneOccupancy, BoundingBox
 from domain.models.curriculum import CurriculumPlan
+from domain.models.workflow import BoundingBox, GlobalContext, SceneOccupancy
+from infra.ai.tools.analysis import statically_check_layout_collisions
+
 
 def create_mock_ctx():
     plan = CurriculumPlan(
         concept_title="derivatives",
         target_audience="General Audience",
-        teaching_steps=[]
+        teaching_steps=[],
     )
     return GlobalContext(
         topic="derivatives",
@@ -15,8 +15,9 @@ def create_mock_ctx():
         plan=plan,
         style={},
         lexicon={},
-        decisions=[]
+        decisions=[],
     )
+
 
 def test_statically_check_layout_collisions_no_occupancy():
     ctx = create_mock_ctx()
@@ -28,14 +29,15 @@ class SceneGen(Scene):
     errors = statically_check_layout_collisions(code, scene_id=1, ctx=ctx)
     assert len(errors) == 0
 
+
 def test_statically_check_layout_collisions_with_constant_ignoring():
     # Scene occupancies has a reserved box at ORIGIN [0.0, 0.0]
     box = BoundingBox(center="ORIGIN", width=1.0, height=1.0, label="center_text")
     occupancy = SceneOccupancy(scene_id=1, reserved_boxes=[box])
-    
+
     ctx = create_mock_ctx()
     ctx.scene_occupancy = {1: occupancy}
-    
+
     # This code defines non-visual constant assignments (colors, floats, self) which should be ignored
     code = """
 class SceneGen(Scene):
@@ -49,14 +51,15 @@ class SceneGen(Scene):
     # They should not be flagged as collisions at ORIGIN!
     assert len(errors) == 0
 
+
 def test_statically_check_layout_collisions_with_real_collision():
     # Scene occupancies has a reserved box at ORIGIN [0.0, 0.0]
     box = BoundingBox(center="ORIGIN", width=2.0, height=1.5, label="center_text")
     occupancy = SceneOccupancy(scene_id=1, reserved_boxes=[box])
-    
+
     ctx = create_mock_ctx()
     ctx.scene_occupancy = {1: occupancy}
-    
+
     # This code instantiates a real Mobject at ORIGIN, causing a collision
     code = """
 class SceneGen(Scene):
@@ -75,10 +78,10 @@ def test_statically_check_layout_collisions_container_exemption():
     box1 = BoundingBox(center="ORIGIN", width=6.0, height=5.0, label="graph_axes")
     box2 = BoundingBox(center="ORIGIN", width=3.0, height=2.0, label="machine_body")
     occupancy = SceneOccupancy(scene_id=1, reserved_boxes=[box1, box2])
-    
+
     ctx = create_mock_ctx()
     ctx.scene_occupancy = {1: occupancy}
-    
+
     # This code instantiates elements inside these containers at default ORIGIN
     # which would normally overlap, but should be ignored by the exemptions
     code = """

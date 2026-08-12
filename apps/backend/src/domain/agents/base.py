@@ -74,6 +74,7 @@ class ConceptAgent(Generic[T]):
 
         # Disable streaming dynamically for the Nano provider to prevent keep-alive/SSE character dropouts
         from infra.ai.factory import NanoConceptModel
+
         stream = not isinstance(model, NanoConceptModel)
 
         result, usage = await run_agent_streamed(

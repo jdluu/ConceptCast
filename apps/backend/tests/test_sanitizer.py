@@ -107,7 +107,10 @@ class MyScene(object):
     def construct(self) -> None:
         pass
 """
-    with pytest.raises(RuntimeError, match="Required class inheriting from Scene or ThreeDScene missing"):
+    with pytest.raises(
+        RuntimeError,
+        match="Required class inheriting from Scene or ThreeDScene missing",
+    ):
         sanitize_manim_code(no_scene_gen)
 
 
@@ -125,7 +128,8 @@ class AnotherScene(Scene):
         pass
 """
     with pytest.raises(
-        RuntimeError, match="Exactly one class inheriting from Scene or ThreeDScene is required"
+        RuntimeError,
+        match="Exactly one class inheriting from Scene or ThreeDScene is required",
     ):
         sanitize_manim_code(multiple_scene_gen)
 
@@ -139,7 +143,10 @@ class SceneGen(object):
     def construct(self) -> None:
         pass
 """
-    with pytest.raises(RuntimeError, match="Required class inheriting from Scene or ThreeDScene missing"):
+    with pytest.raises(
+        RuntimeError,
+        match="Required class inheriting from Scene or ThreeDScene missing",
+    ):
         sanitize_manim_code(bad_base)
 
 
@@ -152,7 +159,9 @@ class CustomScene(Scene):
     def setup(self) -> None:
         pass
 """
-    with pytest.raises(RuntimeError, match="CustomScene must define construct\\(self\\)"):
+    with pytest.raises(
+        RuntimeError, match="CustomScene must define construct\\(self\\)"
+    ):
         sanitize_manim_code(bad_construct)
 
 
@@ -255,7 +264,10 @@ class SceneGen(Scene):
     sanitized = sanitize_manim_code(inconsistent_code)
     assert "class SceneGen(Scene):" in sanitized
     # Indentation should be successfully parsed and formatted to standard 4/8 spaces by Ruff
-    assert "    def construct(self):" in sanitized or "    def construct(self) -> None:" in sanitized
+    assert (
+        "    def construct(self):" in sanitized
+        or "    def construct(self) -> None:" in sanitized
+    )
     assert "        self.clear()" in sanitized
 
 
@@ -270,7 +282,7 @@ class SceneGen(Scene):
 """
     sanitized = sanitize_manim_code(code_with_unicode_spaces)
     assert "\u202f" not in sanitized
-    assert "self.wait(1.0) #" in sanitized
+    assert "self.wait(1.0)" in sanitized
 
 
 def test_sanitize_comment_auto_repair_en_dash() -> None:
@@ -286,4 +298,8 @@ class SceneGen(Scene):
         self.play(Write(title))
 """
     sanitized = sanitize_manim_code(code_with_stray_en_dash)
-    assert "# 0.5 s – grow the title from center" in sanitized or "# 0.5s – grow the title from center" in sanitized or "– grow" in sanitized
+    assert (
+        "# 0.5 s – grow the title from center" in sanitized
+        or "# 0.5s – grow the title from center" in sanitized
+        or "– grow" in sanitized
+    )

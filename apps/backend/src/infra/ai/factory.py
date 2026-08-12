@@ -1,8 +1,12 @@
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import cast
 
+from pydantic_ai.messages import ModelMessage
+from pydantic_ai.models import ModelRequestParameters, ModelResponse
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.settings import ModelSettings
 
 from api.schemas import ProviderModels
 from infra.settings import Settings, get_settings
@@ -54,10 +58,6 @@ PROVIDER_REGISTRY = (
 )
 
 
-from contextlib import asynccontextmanager
-from pydantic_ai.messages import ModelMessage
-from pydantic_ai.models import ModelRequestParameters, ModelResponse
-from pydantic_ai.settings import ModelSettings
 
 class NanoOpenAIChatModel(OpenAIChatModel):
     """Custom OpenAIChatModel for Nano GPT that recovers from API parameter errors.
@@ -74,18 +74,23 @@ class NanoOpenAIChatModel(OpenAIChatModel):
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
         try:
-            return await super().request(messages, model_settings, model_request_parameters)
+            return await super().request(
+                messages, model_settings, model_request_parameters
+            )
         except Exception as e:
             err_str = str(e).lower()
-            if (
-                ":thinking" in self.model_name
-                and ("400" in err_str or "invalid request" in err_str or "parameter" in err_str)
+            if ":thinking" in self.model_name and (
+                "400" in err_str
+                or "invalid request" in err_str
+                or "parameter" in err_str
             ):
                 original_model = self.model_name
                 fallback_model = self.model_name.replace(":thinking", "")
                 self._model_name = fallback_model
                 try:
-                    res = await super().request(messages, model_settings, model_request_parameters)
+                    res = await super().request(
+                        messages, model_settings, model_request_parameters
+                    )
                     self._model_name = original_model
                     return res
                 except Exception:
@@ -103,21 +108,28 @@ class NanoOpenAIChatModel(OpenAIChatModel):
     ):
         try:
             async with super().request_stream(
-                messages, model_settings, model_request_parameters, run_context=run_context
+                messages,
+                model_settings,
+                model_request_parameters,
+                run_context=run_context,
             ) as stream:
                 yield stream
         except Exception as e:
             err_str = str(e).lower()
-            if (
-                ":thinking" in self.model_name
-                and ("400" in err_str or "invalid request" in err_str or "parameter" in err_str)
+            if ":thinking" in self.model_name and (
+                "400" in err_str
+                or "invalid request" in err_str
+                or "parameter" in err_str
             ):
                 original_model = self.model_name
                 fallback_model = self.model_name.replace(":thinking", "")
                 self._model_name = fallback_model
                 try:
                     async with super().request_stream(
-                        messages, model_settings, model_request_parameters, run_context=run_context
+                        messages,
+                        model_settings,
+                        model_request_parameters,
+                        run_context=run_context,
                     ) as stream:
                         yield stream
                 finally:
