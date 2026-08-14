@@ -210,6 +210,27 @@ def test_extract_storyboard_json_normalizes_coordinate_and_extent_boxes() -> Non
     assert obj.bounding_box == (4.0, 4.0)
 
 
+def test_extract_storyboard_json_normalizes_xywh_bounding_boxes() -> None:
+    qwen = {
+        **VALID,
+        "scenes": [
+            {
+                **VALID["scenes"][0],
+                "objects": [
+                    {
+                        "id": "box",
+                        "type": "Rectangle",
+                        "position": "ORIGIN",
+                        "bounding_box": {"x": 0, "y": 0, "width": 5, "height": 2},
+                    }
+                ],
+            }
+        ],
+    }
+    obj = extract_storyboard_json(json.dumps(qwen)).scenes[0].objects[0]
+    assert obj.bounding_box == (5.0, 2.0)
+
+
 def test_extract_storyboard_json_rejects_missing_required_field() -> None:
     invalid_scene = {**VALID["scenes"][0]}
     invalid_scene.pop("description")

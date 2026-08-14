@@ -140,6 +140,14 @@ def _normalize_qwen_payload(payload: Any) -> dict[str, Any]:  # noqa: C901, PLR0
                     left, bottom, right, top = bounding_box
                     if all(isinstance(value, int | float) for value in bounding_box):
                         obj_copy["bounding_box"] = (right - left, top - bottom)
+                elif isinstance(bounding_box, dict) and all(
+                    isinstance(bounding_box.get(key), int | float)
+                    for key in ("width", "height")
+                ):
+                    obj_copy["bounding_box"] = (
+                        bounding_box["width"],
+                        bounding_box["height"],
+                    )
                 normalized_objects.append(obj_copy)
             scene_copy["objects"] = normalized_objects
         normalized_scenes.append(scene_copy)
