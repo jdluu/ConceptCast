@@ -35,6 +35,26 @@ _CODE_BLOCK_PATTERN = re.compile(r"```(?:python|json)?\s*\n(.*?)```", re.DOTALL)
 _CODE_JSON_KEYS = ("code", "python_code", "manim_code")
 
 
+def _recover_compilable_source(raw: str) -> str | None:
+    """Recover a complete Python suffix when prose surrounds unfenced code."""
+    lines = raw.strip().splitlines()
+    starts = [
+        index
+        for index, line in enumerate(lines)
+        if line.lstrip().startswith(("from manim import", "import manim"))
+    ]
+    for start in starts:
+        source_lines = lines[start:]
+        for end in range(len(source_lines), 0, -1):
+            candidate = "\n".join(source_lines[:end]).strip()
+            try:
+                compile(candidate, "<generated_manim>", "exec")
+            except SyntaxError:
+                continue
+            return candidate
+    return None
+
+
 def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
     """Extracts the last complete Python code block from model output.
 
@@ -82,6 +102,10 @@ def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
             value = payload.get(key)
             if isinstance(value, str) and value.strip():
                 return value.strip().rstrip("\n")
+
+    recovered = _recover_compilable_source(raw)
+    if recovered is not None:
+        return recovered
 
     # Fallback: strip leading/trailing fences that were not properly paired
     cleaned = raw.strip()

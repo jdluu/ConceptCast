@@ -19,6 +19,12 @@ def test_extract_python_code_does_not_select_arbitrary_json_text() -> None:
     assert extract_python_code(raw) == raw
 
 
+def test_extract_python_code_recovers_unfenced_source_from_prose() -> None:
+    code = "from manim import *\nclass SceneGen(Scene):\n    pass\n"
+    raw = "Here is the corrected code:\n" + code + "\nThis is an explanation."
+    assert extract_python_code(raw) == code.strip()
+
+
 def test_extract_python_code_prefers_compilable_fenced_candidate() -> None:
     code = "from manim import *\nclass SceneGen(Scene):\n    pass\n"
     raw = "```python\nexplanation: invalid\n```\n```python\n" + code + "\n```"
