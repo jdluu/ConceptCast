@@ -303,3 +303,34 @@ class SceneGen(Scene):
         or "# 0.5s – grow the title from center" in sanitized
         or "– grow" in sanitized
     )
+
+
+def test_sanitize_auto_imports_only_curated_names() -> None:
+    """Known standard-library/numpy names are repaired without guessing."""
+    code = """
+from manim import *
+
+class SceneGen(Scene):
+    def construct(self) -> None:
+        point = np.array([Path('.').name, pi])
+        self.add(Text(str(point)))
+"""
+    sanitized = sanitize_manim_code(code)
+    assert "import numpy as np" in sanitized
+    assert "from pathlib import Path" in sanitized
+    assert "from math import pi" in sanitized
+
+
+def test_sanitize_reports_self_at_class_scope() -> None:
+    """Class-scope self usage receives a targeted, non-mutating diagnostic."""
+    code = """
+from manim import *
+
+class SceneGen(Scene):
+    self.clear()
+
+    def construct(self) -> None:
+        self.wait(1)
+"""
+    with pytest.raises(RuntimeError, match="Name 'self' is used outside a method"):
+        sanitize_manim_code(code)

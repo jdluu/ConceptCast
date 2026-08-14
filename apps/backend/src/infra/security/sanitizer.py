@@ -16,6 +16,7 @@ _ALLOWED_MODULES = {
     "functools",
     "string",
     "typing",
+    "pathlib",
 }
 
 # Builtin functions that are explicitly banned
@@ -59,6 +60,14 @@ _DISALLOWED_MANIM_CLASSES = {
     "SVGMobject",
 }
 
+# Imports whose omission has one unambiguous repair. Keep this deliberately
+# small: guessing at arbitrary names can silently change scene behavior.
+_SAFE_AUTO_IMPORTS = {
+    "Path": "from pathlib import Path",
+    "np": "import numpy as np",
+    "pi": "from math import pi",
+}
+
 # Regex to detect lowercase color kwarg values, e.g. color="red" which
 # will raise at runtime. Manim constants are always CAPS (RED, BROWN, etc.).
 _LOWERCASE_COLOR_RE = re.compile(
@@ -72,6 +81,31 @@ _DIVIDER_LINE_RE = re.compile(r"^(\s*)([-=*~_]{3,})\s*$")
 
 class ASTSanitizer(ast.NodeVisitor):
     """AST-based sanitizer for validating AI-generated Manim code."""
+
+    def __init__(self) -> None:
+        self._function_depth = 0
+        super().__init__()
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        """Allow ``self`` inside methods, including nested functions."""
+        self._function_depth += 1
+        self.generic_visit(node)
+        self._function_depth -= 1
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        """Apply the same scope tracking to async methods."""
+        self._function_depth += 1
+        self.generic_visit(node)
+        self._function_depth -= 1
+
+    def visit_Name(self, node: ast.Name) -> None:
+        """Reject ``self`` at module/class scope with an actionable message."""
+        if node.id == "self" and self._function_depth == 0:
+            raise RuntimeError(
+                "Name 'self' is used outside a method. "
+                "Move this statement into construct(self) or another method."
+            )
+        self.generic_visit(node)
 
     def visit_Import(self, node: ast.Import) -> None:
         """Validates that all imported modules are within the allowed whitelist."""
@@ -226,7 +260,6 @@ def normalize_indentation(code: str) -> str:  # noqa: PLR0912
             in_method = False
             shift = 0
 
-
         if in_class:
             if stripped.startswith("def "):
                 in_method = True
@@ -252,6 +285,47 @@ def normalize_indentation(code: str) -> str:  # noqa: PLR0912
             new_lines.append(line)
 
     return "\n".join(new_lines)
+
+
+def _auto_import_known_names(code: str, tree: ast.Module) -> str:
+    """Add only a curated import when its name is loaded but unbound."""
+    bound_names = {
+        node.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del))
+    }
+    bound_names.update(
+        alias.asname or alias.name.split(".")[0]
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    )
+    bound_names.update(
+        alias.asname or alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom)
+        for alias in node.names
+        if alias.name != "*"
+    )
+    bound_names.update(
+        arg.arg
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda))
+        for arg in (*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs)
+    )
+    loaded_names = {
+        node.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+    }
+    missing = [
+        name
+        for name in _SAFE_AUTO_IMPORTS
+        if name in loaded_names and name not in bound_names
+    ]
+    if not missing:
+        return code
+    return "\n".join(_SAFE_AUTO_IMPORTS[name] for name in missing) + "\n" + code
 
 
 def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
@@ -338,6 +412,16 @@ def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
         tree = ast.parse(cleaned)
     except SyntaxError as e:
         raise RuntimeError(f"Python syntax error: {e}") from e
+
+    # Apply only imports with a single safe interpretation, then re-parse and
+    # validate the transformed source.
+    repaired = _auto_import_known_names(cleaned, tree)
+    if repaired != cleaned:
+        cleaned = repaired
+        try:
+            tree = ast.parse(cleaned)
+        except SyntaxError as e:
+            raise RuntimeError(f"Python syntax error after auto-fix: {e}") from e
 
     ASTSanitizer().visit(tree)
 
