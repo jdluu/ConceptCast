@@ -43,6 +43,10 @@ TOPIC_SLUG="$(printf '%s' "$TOPIC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
 TOPIC_LOG_DIR="$DATA_REPO/reports/$TOPIC_SLUG"
 mkdir -p "$TOPIC_LOG_DIR"
 
+# Refuse to launch jobs until backend and Redis are reachable. This prevents
+# queue-delivery failures from being recorded as model failures.
+"$REPO_ROOT/scripts/wait_for_conceptcast.sh"
+
 echo "================================================================================"
 echo "ConceptCast Benchmark Run (parallel)"
 echo "  Topic:       $TOPIC"
@@ -88,7 +92,8 @@ echo "Syncing database + raw reports into data repository (results/)..."
 echo "================================================================================"
 
 if [ -f "$REPO_ROOT/data/conceptcast.db" ]; then
-  cp "$REPO_ROOT/data/conceptcast.db" "$DATA_REPO/data/conceptcast.db"
+  python3 "$REPO_ROOT/scripts/snapshot_sqlite.py" \
+    "$REPO_ROOT/data/conceptcast.db" "$DATA_REPO/data/conceptcast.db"
   echo "  [ok] data/conceptcast.db -> results/data/conceptcast.db"
 else
   echo "  [warn] data/conceptcast.db not found (backend may write elsewhere)"
@@ -103,6 +108,39 @@ if ls "$REPO_ROOT/reports/"*.json >/dev/null 2>&1; then
   cp "$REPO_ROOT/reports/"*.json "$DATA_REPO/reports/"
   echo "  [ok] reports/*.json -> results/reports/"
 fi
+
+# Record the exact matrix and source revision alongside the raw outputs.
+python3 - "$DATA_REPO/benchmark-manifest.json" "$TOPIC" "$AUDIENCE" "$PARALLELISM" "$REPO_ROOT" <<'PY'
+import json
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+path = Path(sys.argv[1])
+manifest = json.loads(path.read_text()) if path.exists() else {"runs": []}
+try:
+    commit = subprocess.check_output(
+        ["git", "-C", sys.argv[5], "rev-parse", "HEAD"], text=True
+    ).strip()
+except subprocess.CalledProcessError:
+    commit = "unknown"
+manifest["runs"].append({
+    "topic": sys.argv[2],
+    "audience": sys.argv[3],
+    "parallelism": int(sys.argv[4]),
+    "models": [
+        "openai/gpt-oss-20b", "openai/gpt-oss-120b",
+        "google/gemma-4-31b-it:thinking", "deepseek/deepseek-v4-flash:thinking",
+        "qwen/qwen3.5-122b-a10b:thinking", "minimax/minimax-m2.7",
+        "zai-org/glm-5.1:thinking", "moonshotai/kimi-k2.6:thinking",
+        "deepseek/deepseek-v4-pro:thinking",
+    ],
+    "code_commit": commit,
+    "started_at": datetime.now(timezone.utc).isoformat(),
+})
+path.write_text(json.dumps(manifest, indent=2) + "\n")
+PY
 
 echo ""
 echo "Done. Review and commit the data repository:"
