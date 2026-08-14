@@ -139,6 +139,7 @@ def extract_animator_context(
     ctx: GlobalContext,
     target_scene: Scene | Storyboard | None = None,
     scene_id: int | None = None,
+    include_errors: bool = True,
 ) -> str:
     """Extracts relevant context for the Animator Agent.
 
@@ -157,6 +158,8 @@ def extract_animator_context(
     """
     animator_errors = [e for e in ctx.error_buffer if e.agent == "animator"]
     recent_errors = []
+    if not include_errors:
+        animator_errors = []
     for idx, err in enumerate(animator_errors):
         if idx >= len(animator_errors) - 2:
             recent_errors.append(err)

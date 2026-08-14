@@ -154,7 +154,15 @@ async def generate_manim_code(
         agent.tool()(get_aesthetic_palette)
 
     if ctx:
-        prompt = extract_animator_context(ctx, target_scene, scene_id=scene_id)
+        prompt = extract_animator_context(
+            ctx,
+            target_scene,
+            scene_id=scene_id,
+            include_errors=not (
+                isinstance(model, NanoConceptModel)
+                and model.model_id.startswith("qwen/")
+            ),
+        )
     else:
         prompt = f"Write Manim code for scene: {json.dumps(target_scene.model_dump())}"
 
