@@ -14,6 +14,7 @@ from pydantic_ai.usage import RunUsage, UsageLimits
 from api.schemas import JobRequest, Scene, Storyboard
 from domain.agents.animator import generate_manim_code
 from domain.models.workflow import GlobalContext
+from infra.ai.factory import NanoConceptModel
 from infra.ai.tools.analysis import statically_check_layout_collisions
 from infra.engines.video import render_preview
 from infra.exceptions import AnimationGenerationError
@@ -173,7 +174,12 @@ async def step_animating(  # noqa: C901, PLR0912, PLR0915
                     on_thought=on_thought,
                     retry_hint=effective_hint,
                     ctx=ctx,
-                    message_history=message_history,
+                    message_history=(
+                        []
+                        if isinstance(model, NanoConceptModel)
+                        and model.model_id.startswith("qwen/")
+                        else message_history
+                    ),
                     scene_id=scene.scene_id,
                     usage_limits=animator_limits,
                 )
