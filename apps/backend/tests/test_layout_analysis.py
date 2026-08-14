@@ -35,6 +35,20 @@ class SceneGen(Scene):
     assert statically_check_layout_collisions(code, 1, ctx) == []
 
 
+def test_layout_check_tracks_chained_constructor_positioning() -> None:
+    ctx = _ctx()
+    box = BoundingBox(label="reserved_area", center="ORIGIN", width=1, height=1)
+    ctx.scene_occupancy[1] = SceneOccupancy(scene_id=1, reserved_boxes=[box])
+    code = """
+from manim import *
+class SceneGen(Scene):
+    def construct(self):
+        title = Text("Title").to_edge(UP)
+        self.play(Write(title))
+"""
+    assert statically_check_layout_collisions(code, 1, ctx) == []
+
+
 def test_layout_check_still_tracks_mobject_assignments() -> None:
     ctx = _ctx()
     box = BoundingBox(label="reserved_area", center="ORIGIN", width=10.0, height=10.0)

@@ -211,21 +211,23 @@ class SpatialPositionTracker(ast.NodeVisitor):
         self.dimensions: dict[str, list[float]] = {}
 
     def visit_Assign(self, node: ast.Assign) -> None:
+        # Register the target before visiting chained constructor calls, so
+        # Text(...).to_edge(...) and similar positioning is not lost.
+        if not isinstance(node.value, ast.Constant) and self._looks_like_mobject(
+            node.value
+        ):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    var_name = target.id
+                    if var_name == "self":
+                        continue
+                    if var_name not in self.positions:
+                        self.positions[var_name] = self._constructor_position(
+                            node.value
+                        )
+                    if var_name not in self.dimensions:
+                        self.dimensions[var_name] = [2.0, 1.5]
         self.generic_visit(node)
-        # Ignore literal constants (like color hex strings, numbers, etc.)
-        if isinstance(node.value, ast.Constant):
-            return
-        if not self._looks_like_mobject(node.value):
-            return
-        for target in node.targets:
-            if isinstance(target, ast.Name):
-                var_name = target.id
-                if var_name == "self":
-                    continue
-                if var_name not in self.positions:
-                    self.positions[var_name] = self._constructor_position(node.value)
-                if var_name not in self.dimensions:
-                    self.dimensions[var_name] = [2.0, 1.5]  # Standard width & height
 
     @staticmethod
     def _looks_like_mobject(value: ast.AST) -> bool:
@@ -252,6 +254,17 @@ class SpatialPositionTracker(ast.NodeVisitor):
         """Reads explicit point/center/position constructor keywords."""
         if not isinstance(value, ast.Call):
             return [0.0, 0.0]
+        if (
+            isinstance(value.func, ast.Attribute)
+            and value.func.attr == "to_edge"
+            and value.args
+        ):
+            direction = evaluate_vector_ast(value.args[0])
+            if direction:
+                return [
+                    5.5 if direction[0] > 0 else -5.5 if direction[0] < 0 else 0.0,
+                    3.0 if direction[1] > 0 else -3.0 if direction[1] < 0 else 0.0,
+                ]
         for keyword in value.keywords:
             if keyword.arg in {"point", "center", "position", "start"}:
                 vector = evaluate_vector_ast(keyword.value)
