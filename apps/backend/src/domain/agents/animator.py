@@ -38,13 +38,15 @@ _CODE_JSON_KEYS = ("code", "python_code", "manim_code")
 def _recover_compilable_source(raw: str) -> str | None:
     """Recover a complete Python suffix when prose surrounds unfenced code."""
     lines = raw.strip().splitlines()
-    starts = [
-        index
-        for index, line in enumerate(lines)
-        if line.lstrip().startswith(("from manim import", "import manim"))
-    ]
-    for start in starts:
-        source_lines = lines[start:]
+    starts: list[tuple[int, int]] = []
+    for index, line in enumerate(lines):
+        for marker in ("from manim import", "import manim"):
+            column = line.find(marker)
+            if column >= 0:
+                starts.append((index, column))
+                break
+    for start, column in starts:
+        source_lines = [lines[start][column:], *lines[start + 1 :]]
         for end in range(len(source_lines), 0, -1):
             candidate = "\n".join(source_lines[:end]).strip()
             try:

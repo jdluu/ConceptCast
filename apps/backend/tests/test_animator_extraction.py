@@ -25,6 +25,12 @@ def test_extract_python_code_recovers_unfenced_source_from_prose() -> None:
     assert extract_python_code(raw) == code.strip()
 
 
+def test_extract_python_code_recovers_source_after_same_line_prose() -> None:
+    code = "from manim import *\nclass SceneGen(Scene):\n    pass\n"
+    raw = "The code passed linting, so I can return it as the final output" + code
+    assert extract_python_code(raw) == code.strip()
+
+
 def test_extract_python_code_prefers_compilable_fenced_candidate() -> None:
     code = "from manim import *\nclass SceneGen(Scene):\n    pass\n"
     raw = "```python\nexplanation: invalid\n```\n```python\n" + code + "\n```"
