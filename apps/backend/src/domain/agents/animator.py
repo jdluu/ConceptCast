@@ -16,6 +16,7 @@ from pydantic_ai.usage import RunUsage, UsageLimits
 from api.schemas import Scene, Storyboard
 from domain.models.workflow import GlobalContext
 from infra.ai.base import BaseConceptModel
+from infra.ai.factory import NanoConceptModel
 from infra.ai.tools import (
     get_aesthetic_palette,
     lint_manim_code,
@@ -133,6 +134,14 @@ async def generate_manim_code(
 
     if retry_hint:
         prompt = f"{prompt}\n\nIMPORTANT REVISION FEEDBACK: {retry_hint}"
+
+    if isinstance(model, NanoConceptModel) and model.model_id.startswith("qwen/"):
+        prompt = (
+            f"{prompt}\n\nOUTPUT CONTRACT: Return only the complete Python source code "
+            "for SceneGen. Do not return JSON, Markdown fences, explanations, "
+            "analysis, checkmarks, or text before or after the code. Preserve the "
+            "storyboard's visual richness and animation intent."
+        )
 
     result, usage = await animator_agent.run(
         model=model,
