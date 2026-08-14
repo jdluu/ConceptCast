@@ -223,7 +223,7 @@ class SpatialPositionTracker(ast.NodeVisitor):
                 if var_name == "self":
                     continue
                 if var_name not in self.positions:
-                    self.positions[var_name] = [0.0, 0.0]
+                    self.positions[var_name] = self._constructor_position(node.value)
                 if var_name not in self.dimensions:
                     self.dimensions[var_name] = [2.0, 1.5]  # Standard width & height
 
@@ -246,6 +246,27 @@ class SpatialPositionTracker(ast.NodeVisitor):
         ):
             return False
         return isinstance(value, ast.Attribute) and value.attr == "animate"
+
+    @staticmethod
+    def _constructor_position(value: ast.AST) -> list[float]:
+        """Reads explicit point/center/position constructor keywords."""
+        if not isinstance(value, ast.Call):
+            return [0.0, 0.0]
+        for keyword in value.keywords:
+            if keyword.arg in {"point", "center", "position", "start"}:
+                vector = evaluate_vector_ast(keyword.value)
+                if vector:
+                    return vector
+                if isinstance(keyword.value, ast.List) and len(keyword.value.elts) >= 2:
+                    numbers = [
+                        element.value
+                        for element in keyword.value.elts[:2]
+                        if isinstance(element, ast.Constant)
+                        and isinstance(element.value, int | float)
+                    ]
+                    if len(numbers) == 2:
+                        return [float(number) for number in numbers]
+        return [0.0, 0.0]
 
     def visit_Call(self, node: ast.Call) -> None:  # noqa: C901, PLR0912
         self.generic_visit(node)

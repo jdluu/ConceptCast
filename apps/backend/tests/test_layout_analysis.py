@@ -21,6 +21,20 @@ class SceneGen(Scene):
     assert statically_check_layout_collisions(code, 1, ctx) == []
 
 
+def test_layout_check_reads_constructor_point_coordinates() -> None:
+    ctx = _ctx()
+    box = BoundingBox(label="reserved_area", center="ORIGIN", width=0.5, height=0.5)
+    ctx.scene_occupancy[1] = SceneOccupancy(scene_id=1, reserved_boxes=[box])
+    code = """
+from manim import *
+class SceneGen(Scene):
+    def construct(self):
+        dot = Dot(point=[3, 3, 0])
+        self.play(Create(dot))
+"""
+    assert statically_check_layout_collisions(code, 1, ctx) == []
+
+
 def test_layout_check_still_tracks_mobject_assignments() -> None:
     ctx = _ctx()
     box = BoundingBox(label="reserved_area", center="ORIGIN", width=10.0, height=10.0)
