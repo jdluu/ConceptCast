@@ -47,6 +47,9 @@ class JobSummary(BaseModel):
     failure_stage: str | None = None
     failure_type: str | None = None
     failure_summary: str | None = None
+    architect_fallback_used: bool = False
+    architect_attempts: int = 0
+    architect_original_error: str | None = None
 
 
 class JobListResponse(BaseModel):
@@ -102,6 +105,9 @@ class JobStatus(BaseModel):
     failure_stage: str | None = None
     failure_type: str | None = None
     failure_summary: str | None = None
+    architect_fallback_used: bool = False
+    architect_attempts: int = 0
+    architect_original_error: str | None = None
 
 
 class JobRequest(BaseModel):

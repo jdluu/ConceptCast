@@ -87,6 +87,7 @@ def map_job_record_to_status(job: JobRecord) -> JobStatus:
         JobStatus: A validated schema for API responses.
     """
     normalized_status = "planning" if job.status == "validating" else job.status
+    provenance = job.validation if isinstance(job.validation, dict) else {}
     status_literal = cast(
         Literal[
             "planning",
@@ -160,6 +161,9 @@ def map_job_record_to_status(job: JobRecord) -> JobStatus:
         failure_stage=failure_stage,
         failure_type=failure_type,
         failure_summary=failure_summary,
+        architect_fallback_used=bool(provenance.get("architect_fallback_used", False)),
+        architect_attempts=int(provenance.get("architect_attempts", 0) or 0),
+        architect_original_error=provenance.get("architect_original_error"),
         status=status_literal,
         streamed_thoughts=thought_logs,
         plan=CurriculumPlan.model_validate(job.plan) if job.plan else None,
@@ -184,6 +188,7 @@ def map_job_record_to_summary(job: JobRecord) -> JobSummary:
         JobSummary: A lightweight schema for list views.
     """
     failure_stage, failure_type, failure_summary = _classify_failure(job)
+    provenance = job.validation if isinstance(job.validation, dict) else {}
 
     metadata_duration = None
     if isinstance(job.video_metadata, dict):
@@ -223,6 +228,9 @@ def map_job_record_to_summary(job: JobRecord) -> JobSummary:
         failure_stage=failure_stage,
         failure_type=failure_type,
         failure_summary=failure_summary,
+        architect_fallback_used=bool(provenance.get("architect_fallback_used", False)),
+        architect_attempts=int(provenance.get("architect_attempts", 0) or 0),
+        architect_original_error=provenance.get("architect_original_error"),
         status=job.status,
         duration_seconds=duration_seconds,
     )

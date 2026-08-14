@@ -147,7 +147,7 @@ def _populate_scene_occupancy(storyboard: Storyboard, ctx: GlobalContext) -> Non
                 )
 
 
-async def step_architecting(  # noqa: PLR0912
+async def step_architecting(  # noqa: PLR0912, PLR0915
     plan: CurriculumPlan,
     request: JobRequest,
     job: JobRecord,
@@ -178,6 +178,9 @@ async def step_architecting(  # noqa: PLR0912
     """
     usage: RunUsage | None = None
     storyboard: Storyboard | None = None
+    architect_fallback_used = False
+    architect_attempts = 0
+    architect_original_error: str | None = None
     if not job.storyboard:
         max_retries = 3
         current_attempt = 0
@@ -193,6 +196,7 @@ async def step_architecting(  # noqa: PLR0912
 
         while current_attempt < max_retries:
             current_attempt += 1
+            architect_attempts = current_attempt
             retry_prefix = (
                 f"[Attempt {current_attempt}/{max_retries}] " if max_retries > 1 else ""
             )
@@ -236,6 +240,8 @@ async def step_architecting(  # noqa: PLR0912
                     error=last_error,
                 )
                 if current_attempt >= max_retries:
+                    architect_fallback_used = True
+                    architect_original_error = last_error
                     logger.warning("architecting_retries_exhausted_using_fallback")
                     await on_thought(
                         "system",
@@ -261,6 +267,8 @@ async def step_architecting(  # noqa: PLR0912
                     f"{retry_prefix}Architect model call failed: {last_error}. Retrying...",
                 )
                 if current_attempt >= max_retries:
+                    architect_fallback_used = True
+                    architect_original_error = last_error
                     logger.warning("architecting_retries_exhausted_using_fallback")
                     await on_thought(
                         "system",
@@ -292,9 +300,18 @@ async def step_architecting(  # noqa: PLR0912
 
         job.storyboard = storyboard.model_dump()
         job.current_step = "architecting_complete"
+        provenance = {
+            "architect_fallback_used": architect_fallback_used,
+            "architect_attempts": architect_attempts,
+            "architect_original_error": architect_original_error,
+        }
         if persist:
             await update_job(
-                {"storyboard": job.storyboard, "current_step": job.current_step}
+                {
+                    "storyboard": job.storyboard,
+                    "current_step": job.current_step,
+                    "validation": provenance,
+                }
             )
         logger.info("architecting_step_complete")
     else:
