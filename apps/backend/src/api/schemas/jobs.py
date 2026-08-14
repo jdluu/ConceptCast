@@ -50,6 +50,7 @@ class JobSummary(BaseModel):
     architect_fallback_used: bool = False
     architect_attempts: int = 0
     architect_original_error: str | None = None
+    architect_transport: str | None = None
 
 
 class JobListResponse(BaseModel):
@@ -108,6 +109,7 @@ class JobStatus(BaseModel):
     architect_fallback_used: bool = False
     architect_attempts: int = 0
     architect_original_error: str | None = None
+    architect_transport: str | None = None
 
 
 class JobRequest(BaseModel):

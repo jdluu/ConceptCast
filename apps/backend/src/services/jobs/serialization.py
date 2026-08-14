@@ -164,6 +164,7 @@ def map_job_record_to_status(job: JobRecord) -> JobStatus:
         architect_fallback_used=bool(provenance.get("architect_fallback_used", False)),
         architect_attempts=int(provenance.get("architect_attempts", 0) or 0),
         architect_original_error=provenance.get("architect_original_error"),
+        architect_transport=provenance.get("architect_transport"),
         status=status_literal,
         streamed_thoughts=thought_logs,
         plan=CurriculumPlan.model_validate(job.plan) if job.plan else None,
@@ -231,6 +232,7 @@ def map_job_record_to_summary(job: JobRecord) -> JobSummary:
         architect_fallback_used=bool(provenance.get("architect_fallback_used", False)),
         architect_attempts=int(provenance.get("architect_attempts", 0) or 0),
         architect_original_error=provenance.get("architect_original_error"),
+        architect_transport=provenance.get("architect_transport"),
         status=job.status,
         duration_seconds=duration_seconds,
     )

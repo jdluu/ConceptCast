@@ -304,6 +304,14 @@ async def step_architecting(  # noqa: PLR0912, PLR0915
             "architect_fallback_used": architect_fallback_used,
             "architect_attempts": architect_attempts,
             "architect_original_error": architect_original_error,
+            "architect_transport": (
+                "json_compat"
+                if (
+                    architect_model.model_id.startswith("qwen/")
+                    and architect_model.__class__.__name__ == "NanoConceptModel"
+                )
+                else "structured_tool"
+            ),
         }
         if persist:
             await update_job(

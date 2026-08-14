@@ -10,8 +10,10 @@ from typing import Any
 from pydantic_ai.usage import RunUsage, UsageLimits
 
 from api.schemas import CurriculumPlan, Storyboard
+from domain.agents.architect_compat import generate_storyboard_json_mode
 from domain.models.workflow import GlobalContext
 from infra.ai.base import BaseConceptModel
+from infra.ai.factory import NanoConceptModel
 from infra.ai.tools import get_aesthetic_palette
 from services.workflow.context_injectors import extract_architect_context
 
@@ -51,6 +53,16 @@ async def generate_storyboard(
 
     def _prepare_agent(agent: Any) -> None:
         agent.tool()(get_aesthetic_palette)
+
+    if isinstance(model, NanoConceptModel) and model.model_id.startswith("qwen/"):
+        return await generate_storyboard_json_mode(
+            system_prompt=architect_agent.system_prompt,
+            prompt=prompt,
+            model=model,
+            on_thought=on_thought,
+            ctx=ctx,
+            usage_limits=usage_limits,
+        )
 
     return await architect_agent.run(
         model=model,
