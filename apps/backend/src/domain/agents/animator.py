@@ -30,7 +30,8 @@ from .base import ConceptAgent
 # Initialize the shared animator agent instance
 animator_agent: ConceptAgent[str] = ConceptAgent("animator", str)
 
-_CODE_BLOCK_PATTERN = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL)
+_CODE_BLOCK_PATTERN = re.compile(r"```(?:python|json)?\s*\n(.*?)```", re.DOTALL)
+_CODE_JSON_KEYS = ("code", "python_code", "manim_code")
 
 
 def extract_python_code(raw: str) -> str:
@@ -48,7 +49,23 @@ def extract_python_code(raw: str) -> str:
     """
     blocks = _CODE_BLOCK_PATTERN.findall(raw)
     if blocks:
-        return str(blocks[-1]).strip()
+        candidate = str(blocks[-1]).strip()
+        if candidate.startswith("{"):
+            raw = candidate
+        else:
+            return candidate.rstrip("\n")
+
+    # Some compatible endpoints wrap the code in a JSON object. Accept only
+    # known code fields; never select arbitrary prose or silently rewrite code.
+    try:
+        payload = json.loads(raw.strip())
+    except json.JSONDecodeError:
+        payload = None
+    if isinstance(payload, dict):
+        for key in _CODE_JSON_KEYS:
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip().rstrip("\n")
 
     # Fallback: strip leading/trailing fences that were not properly paired
     cleaned = raw.strip()
