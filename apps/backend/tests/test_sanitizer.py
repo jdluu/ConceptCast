@@ -332,5 +332,37 @@ class SceneGen(Scene):
     def construct(self) -> None:
         self.wait(1)
 """
-    with pytest.raises(RuntimeError, match="Name 'self' is used outside a method"):
+    with pytest.raises(RuntimeError, match="Executable scene code is at class scope"):
+        sanitize_manim_code(code)
+
+
+def test_sanitize_reports_invalid_next_to_keyword() -> None:
+    """Manim method-specific keyword mistakes are reported before rendering."""
+    code = """
+from manim import *
+
+class SceneGen(Scene):
+    def construct(self) -> None:
+        label = Text("Label")
+        label.next_to(ORIGIN, font_size=32)
+        self.play(Write(label))
+"""
+    with pytest.raises(
+        RuntimeError, match="Unsupported keyword 'font_size' for .next_to"
+    ):
+        sanitize_manim_code(code)
+
+
+def test_sanitize_reports_executable_class_scope_without_self() -> None:
+    """Object creation at class scope is rejected even without a self reference."""
+    code = """
+from manim import *
+
+class SceneGen(Scene):
+    axes = Axes()
+
+    def construct(self) -> None:
+        self.play(Create(axes))
+"""
+    with pytest.raises(RuntimeError, match="Executable scene code is at class scope"):
         sanitize_manim_code(code)

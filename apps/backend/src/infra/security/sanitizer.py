@@ -60,6 +60,12 @@ _DISALLOWED_MANIM_CLASSES = {
     "SVGMobject",
 }
 
+_METHOD_ONLY_CALL_KWARGS = {
+    "next_to": {
+        "font_size": "Set font_size on the Text/MathTex object, not on next_to()."
+    },
+}
+
 # Imports whose omission has one unambiguous repair. Keep this deliberately
 # small: guessing at arbitrary names can silently change scene behavior.
 _SAFE_AUTO_IMPORTS = {
@@ -85,6 +91,29 @@ class ASTSanitizer(ast.NodeVisitor):
     def __init__(self) -> None:
         self._function_depth = 0
         super().__init__()
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        """Reject executable scene statements emitted at class scope."""
+        for statement in node.body:
+            if isinstance(
+                statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+            ):
+                continue
+            if isinstance(statement, ast.Expr) and isinstance(
+                statement.value, ast.Constant
+            ):
+                continue  # class docstring
+            if isinstance(
+                statement, (ast.Expr, ast.AnnAssign, ast.Assign, ast.AugAssign)
+            ) and (
+                isinstance(statement, ast.Expr)
+                or any(isinstance(child, ast.Call) for child in ast.walk(statement))
+            ):
+                raise RuntimeError(
+                    "Executable scene code is at class scope. "
+                    "Move object creation and animation statements into construct(self)."
+                )
+        self.generic_visit(node)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         """Allow ``self`` inside methods, including nested functions."""
@@ -126,7 +155,7 @@ class ASTSanitizer(ast.NodeVisitor):
                 )
         self.generic_visit(node)
 
-    def visit_Call(self, node: ast.Call) -> None:
+    def visit_Call(self, node: ast.Call) -> None:  # noqa: PLR0912
         """Checks for calls to banned builtin functions like 'eval' or 'exec'.
 
         Args:
@@ -150,6 +179,14 @@ class ASTSanitizer(ast.NodeVisitor):
                     raise RuntimeError(
                         "RegularPolygon does not accept a 'side_length' parameter. "
                         "Use 'radius' to size the regular polygon instead."
+                    )
+        if isinstance(node.func, ast.Attribute):
+            invalid_kwargs = _METHOD_ONLY_CALL_KWARGS.get(node.func.attr, {})
+            for kw in node.keywords:
+                if kw.arg in invalid_kwargs:
+                    raise RuntimeError(
+                        f"Unsupported keyword '{kw.arg}' for .{node.func.attr}(). "
+                        f"{invalid_kwargs[kw.arg]}"
                     )
         if isinstance(node.func, ast.Attribute):
             legacy_method = _LEGACY_MANIM_METHOD_FIXES.get(node.func.attr)
