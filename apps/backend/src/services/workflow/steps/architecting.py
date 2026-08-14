@@ -136,6 +136,7 @@ def _populate_scene_occupancy(storyboard: Storyboard, ctx: GlobalContext) -> Non
         ctx: The global context object whose scene_occupancy map will be updated.
     """
     for scene in storyboard.scenes:
+        ctx.scene_occupancy.pop(scene.scene_id, None)
         reservations: list[tuple[str, list[float], float, float]] = []
         for obj in scene.objects:
             if obj.bounding_box is not None:
@@ -275,6 +276,7 @@ async def step_architecting(  # noqa: PLR0912, PLR0915
                     storyboard = _build_deterministic_storyboard(plan)
                     usage = usage or RunUsage()
                     _validate_storyboard_completeness(storyboard, plan)
+                    _populate_scene_occupancy(storyboard, ctx)
                     break
                 continue
             except Exception as e:
@@ -301,6 +303,8 @@ async def step_architecting(  # noqa: PLR0912, PLR0915
                     )
                     storyboard = _build_deterministic_storyboard(plan)
                     usage = RunUsage()
+                    _validate_storyboard_completeness(storyboard, plan)
+                    _populate_scene_occupancy(storyboard, ctx)
                     break
                 continue
 
