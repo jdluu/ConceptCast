@@ -1,4 +1,5 @@
 import asyncio
+import json
 from collections.abc import Awaitable, Callable
 
 import structlog
@@ -135,9 +136,21 @@ def _populate_scene_occupancy(storyboard: Storyboard, ctx: GlobalContext) -> Non
         ctx: The global context object whose scene_occupancy map will be updated.
     """
     for scene in storyboard.scenes:
+        reservations: list[tuple[str, list[float], float, float]] = []
         for obj in scene.objects:
             if obj.bounding_box is not None:
                 width, height = obj.bounding_box
+                center = _parse_position(obj.position)
+                for label, prior, prior_width, prior_height in reservations:
+                    if (
+                        abs(center[0] - prior[0]) * 2 < width + prior_width
+                        and abs(center[1] - prior[1]) * 2 < height + prior_height
+                    ):
+                        raise StoryboardGenerationError(
+                            f"Storyboard reserved boxes overlap in scene {scene.scene_id}: "
+                            f"{obj.name} overlaps {label}."
+                        )
+                reservations.append((obj.name, center, width, height))
                 ctx.reserve_space(
                     scene_id=scene.scene_id,
                     center=obj.position,
@@ -145,6 +158,17 @@ def _populate_scene_occupancy(storyboard: Storyboard, ctx: GlobalContext) -> Non
                     height=height,
                     label=obj.name,
                 )
+
+
+def _parse_position(position: str) -> list[float]:
+    """Parse simple JSON/list positions for storyboard reservation checks."""
+    try:
+        values = json.loads(position)
+    except (TypeError, json.JSONDecodeError):
+        return [0.0, 0.0]
+    if isinstance(values, list) and len(values) >= 2:
+        return [float(values[0]), float(values[1])]
+    return [0.0, 0.0]
 
 
 async def step_architecting(  # noqa: PLR0912, PLR0915
