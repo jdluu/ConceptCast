@@ -353,4 +353,6 @@ async def step_architecting(  # noqa: PLR0912, PLR0915
     else:
         logger.info("architecting_checkpoint_reused")
         storyboard = parse_job_artifact(job.storyboard, Storyboard)
+        _validate_storyboard_completeness(storyboard, plan)
+        _populate_scene_occupancy(storyboard, ctx)
     return storyboard, usage
