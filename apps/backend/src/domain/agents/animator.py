@@ -34,7 +34,7 @@ _CODE_BLOCK_PATTERN = re.compile(r"```(?:python|json)?\s*\n(.*?)```", re.DOTALL)
 _CODE_JSON_KEYS = ("code", "python_code", "manim_code")
 
 
-def extract_python_code(raw: str) -> str:
+def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
     """Extracts the last complete Python code block from model output.
 
     Falls back to the raw content (stripped of markdown fences) when no
@@ -49,11 +49,26 @@ def extract_python_code(raw: str) -> str:
     """
     blocks = _CODE_BLOCK_PATTERN.findall(raw)
     if blocks:
-        candidate = str(blocks[-1]).strip()
-        if candidate.startswith("{"):
-            raw = candidate
-        else:
+        candidates = [str(block).strip() for block in reversed(blocks)]
+        for block_candidate in candidates:
+            candidate = block_candidate
+            if candidate.startswith("{"):
+                try:
+                    payload = json.loads(candidate)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(payload, dict):
+                    for key in _CODE_JSON_KEYS:
+                        value = payload.get(key)
+                        if isinstance(value, str) and value.strip():
+                            candidate = value.strip()
+                            break
+            try:
+                compile(candidate, "<generated_manim>", "exec")
+            except SyntaxError:
+                continue
             return candidate.rstrip("\n")
+        raw = candidates[0]
 
     # Some compatible endpoints wrap the code in a JSON object. Accept only
     # known code fields; never select arbitrary prose or silently rewrite code.

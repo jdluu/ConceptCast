@@ -215,6 +215,8 @@ class SpatialPositionTracker(ast.NodeVisitor):
         # Ignore literal constants (like color hex strings, numbers, etc.)
         if isinstance(node.value, ast.Constant):
             return
+        if not self._looks_like_mobject(node.value):
+            return
         for target in node.targets:
             if isinstance(target, ast.Name):
                 var_name = target.id
@@ -224,6 +226,26 @@ class SpatialPositionTracker(ast.NodeVisitor):
                     self.positions[var_name] = [0.0, 0.0]
                 if var_name not in self.dimensions:
                     self.dimensions[var_name] = [2.0, 1.5]  # Standard width & height
+
+    @staticmethod
+    def _looks_like_mobject(value: ast.AST) -> bool:
+        """Tracks only likely Mobject-producing assignments, not helper data."""
+        if isinstance(value, ast.Call):
+            func = value.func
+            if isinstance(func, ast.Name):
+                name = func.id
+            elif isinstance(func, ast.Attribute):
+                name = func.attr
+            else:
+                return False
+            return name not in {"array", "arange", "linspace", "range", "list"}
+        if isinstance(value, ast.BinOp | ast.UnaryOp):
+            return False
+        if isinstance(
+            value, (ast.List, ast.Tuple, ast.Dict, ast.ListComp, ast.DictComp)
+        ):
+            return False
+        return isinstance(value, ast.Attribute) and value.attr == "animate"
 
     def visit_Call(self, node: ast.Call) -> None:  # noqa: C901, PLR0912
         self.generic_visit(node)

@@ -17,3 +17,9 @@ def test_extract_python_code_accepts_fenced_json_code_wrapper() -> None:
 def test_extract_python_code_does_not_select_arbitrary_json_text() -> None:
     raw = json.dumps({"explanation": "from manim import *"})
     assert extract_python_code(raw) == raw
+
+
+def test_extract_python_code_prefers_compilable_fenced_candidate() -> None:
+    code = "from manim import *\nclass SceneGen(Scene):\n    pass\n"
+    raw = "```python\nexplanation: invalid\n```\n```python\n" + code + "\n```"
+    assert extract_python_code(raw) == code.strip()
