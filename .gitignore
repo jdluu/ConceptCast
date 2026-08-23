@@ -67,6 +67,10 @@ media/
 Thesis/
 results/
 
+# --- Benchmark pilot scratch (superseded by results/ repo) ---
+pilot-*/
+benchmark.log
+
 # --- Agent & Antigravity Metadata ---
 .agents/
 .antigravitycli/

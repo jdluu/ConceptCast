@@ -1,39 +1,135 @@
 # ConceptCast
 
-ConceptCast uses AI to turn complex ideas into clear educational videos. It employs an **Agent Council**—a team of specialized agents sharing a **Global Context Object (GCO)**—to research, storyboard, and script animations using the Manim engine.
+ConceptCast turns complex ideas into clear educational videos using AI. An
+**Agent Council** of specialized agents (Analyst → Architect → Animator)
+shares state through a **Global Context Object (GCO)** to research, storyboard,
+and render animations with the [Manim](https://www.manim.community/) engine,
+protected by an AST-driven validation and diff-repair loop.
 
-## Table of Contents
+This repository contains the application source code. Benchmark data, raw
+execution logs, figures, and reproducibility verifiers live in the companion
+repository [`ConceptCast-results`](https://github.com/jdluu/ConceptCast-results).
 
-- [Overview](#overview)
-- [How it Works](#how-it-works)
-- [Methodology](#methodology)
-- [Documentation & Wiki](#documentation--wiki)
+## Repository Layout
 
+| Path | Purpose |
+|---|---|
+| `apps/backend` | FastAPI service + Pydantic AI agent council |
+| `apps/frontend` | Web UI |
+| `prompts/` | Agent prompts and vendored ManimCE skill docs |
+| `scripts/` | Figure generation, DB snapshotting, wait helpers |
+| `docs/wiki/` | Architecture deep dive and setup guide |
+| `run_topic.sh` / `run_all_*.sh` | Benchmark runners (one topic × 9 models) |
+| `verify_thesis_results.py` | Historical Table 5.1 metrics from the results DB |
 
-## Overview
+## Quick Start
 
-The goal is to support critical thinking rather than replace it. ConceptCast automates the difficult parts of coding visualizations, making it easier to produce high-fidelity tutorials for math, science, and business.
+### Prerequisites
 
-## How it Works
+- Node.js ≥ 22 ([nvm](https://github.com/nvm-sh/nvm) recommended; see `.nvmrc`)
+- [pnpm](https://pnpm.io/) ≥ 9 (`corepack enable` works too)
+- Python ≥ 3.11 with [uv](https://docs.astral.sh/uv/)
+- Redis (the Makefile starts one via container runtime)
+- Podman *or* Docker (sandboxed Manim rendering)
+- A Manim installation locally if you want non-sandboxed rendering fallback
 
-ConceptCast is built with an extensible, object-oriented architecture. It orchestrates multiple AI agents (Analyst, Architect, and Animator) to transform a text topic into a pedagogical curriculum and eventually a rendered video.
+### 1. Clone
 
-The system uses **Pydantic AI**, making it easy to add support for new AI providers by implementing a new provider class. In this implementation, **Nano GPT** is used to access various open-source models. Model identifiers can be easily updated in `apps/backend/src/infra/ai/nano_models.txt`.
+```bash
+git clone https://github.com/jdluu/ConceptCast.git
+cd ConceptCast
 
-## Methodology: Layered Memory
+# Optional but recommended: benchmark data + verifiers
+git clone https://github.com/jdluu/ConceptCast-results.git results
+```
 
-Unlike traditional linear pipelines, ConceptCast uses a **Global Context Object (GCO)** as a shared "production bible."
+> The `results/` path is gitignored here, so cloning it inside the code repo is
+> safe and keeps every relative path in the scripts working.
 
-1.  **Global State (GCO)**: Centralized tracking of visual lexicon, spatial layout, and previous errors.
-2.  **Shared Context**: Targeted injectors provide agents with specific slices of the GCO, ensuring Scene 10 respects the style and layout established in Scene 1.
-3.  **Local Memory**: Agents maintain internal reasoning loops for self-correction and tool usage.
-4.  **Repair-First Architecture**: Agents use multimodal feedback to patch visualization code safely, bypassing restrictive geometric fallbacks.
-5.  **Real-Time Observability**: A Redis-backed Server-Sent Events (SSE) stream provides live insight into agent transitions and generation logs.
-## Documentation & Wiki
+### 2. Configure secrets
 
-For technical enthusiasts and contributors, please refer to our **[Project Wiki](docs/wiki/Home.md)** for:
+Secrets are managed with [Infisical](https://infisical.com/) (project folder
+`/ConceptCast/ai`). Either:
 
-- **[Architecture](docs/wiki/Architecture.md)**: Deep dive into the tech stack and system design.
-- **[Setup Guide](docs/wiki/Setup-Guide.md)**: Installation, development, and testing instructions.
+```bash
+infisical login          # then run everything through: infisical run -- make dev
+```
 
+or skip Infisical entirely by copying the template and filling in local keys:
 
+```bash
+cp env.example .env      # set NANO_API_KEY and CONTEXT7_API_KEY
+```
+
+`.env` is gitignored — never commit real keys.
+
+### 3. Install and run
+
+```bash
+make setup     # installs pnpm deps, backend venv, runs migrations
+make dev       # redis + backend :8000 + worker + frontend :5173
+```
+
+Then open http://localhost:5173.
+
+## Generating Animations
+
+Single generation with a real model:
+
+```bash
+make generate model="openai/gpt-oss-120b" topic="the Fourier transform"
+```
+
+Logic-only smoke test without API calls:
+
+```bash
+make diagnose       # agent logic diagnostics with mocks
+make generate-mock  # full E2E simulation with mock models
+```
+
+Full benchmark sweep (all nine models on one topic, bounded parallelism):
+
+```bash
+./run_topic.sh "eigenvectors"
+PARALLELISM=4 ./run_topic.sh "backpropagation" "General Audience"
+```
+
+Runner outputs land in `results/reports/<topic>/` and
+`results/data/conceptcast.db` when the companion repository is cloned into
+`results/`; otherwise they stay under the gitignored `reports/` and `data/`.
+
+## Verifying Published Results
+
+With the results repository cloned at `results/`:
+
+```bash
+# Controlled four-topic benchmark tables (thesis Tables 5.5 / 5.6)
+python3 results/verify_controlled_benchmark.py
+
+# Historical compilation table (thesis Table 5.1) from the frozen snapshot
+python3 results/verify_table51_historical.py
+
+# Regenerate Figure 5.5
+python3 scripts/generate_controlled_benchmark_figure.py
+```
+
+Expected outputs are documented in
+[`results/README.md`](https://github.com/jdluu/ConceptCast-results#reproducing-the-thesis-results).
+
+## Development
+
+```bash
+make test        # pytest suite
+make lint        # oxlint + ruff
+make typecheck   # tsc + mypy
+make format      # prettier + ruff format
+make db-migrate  # apply pending migrations
+```
+
+See [`docs/wiki/Setup-Guide.md`](docs/wiki/Setup-Guide.md) for manual
+installation details and [`docs/wiki/Architecture.md`](docs/wiki/Architecture.md)
+for how the council, GCO, and repair loop fit together.
+
+## License & Attribution
+
+Released for academic reproducibility and public research verification.
