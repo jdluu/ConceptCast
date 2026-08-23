@@ -7,13 +7,12 @@ and render animations with the [Manim](https://www.manim.community/) engine,
 protected by an AST-driven validation and diff-repair loop.
 
 This repository contains the application source code. The ConceptCast project
-spans three repositories:
+spans two companion repositories:
 
 | Repository | Contents |
 |---|---|
 | **[ConceptCast](https://github.com/jdluu/ConceptCast)** (this repo) | Application source code |
 | **[ConceptCast-results](https://github.com/jdluu/ConceptCast-results)** | Benchmark data, raw execution logs, figures, SQLite snapshot, reproducibility verifiers |
-| **Thesis** | *Beyond the Chatbot: Leveraging Multi-Agent AI Systems for Dynamic Visualization and Education* — source on Overleaf; PDF included in the results repository releases |
 
 ## Repository Layout
 
