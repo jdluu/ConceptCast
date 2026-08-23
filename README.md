@@ -6,9 +6,14 @@ shares state through a **Global Context Object (GCO)** to research, storyboard,
 and render animations with the [Manim](https://www.manim.community/) engine,
 protected by an AST-driven validation and diff-repair loop.
 
-This repository contains the application source code. Benchmark data, raw
-execution logs, figures, and reproducibility verifiers live in the companion
-repository [`ConceptCast-results`](https://github.com/jdluu/ConceptCast-results).
+This repository contains the application source code. The ConceptCast project
+spans three repositories:
+
+| Repository | Contents |
+|---|---|
+| **[ConceptCast](https://github.com/jdluu/ConceptCast)** (this repo) | Application source code |
+| **[ConceptCast-results](https://github.com/jdluu/ConceptCast-results)** | Benchmark data, raw execution logs, figures, SQLite snapshot, reproducibility verifiers |
+| **Thesis** | *Beyond the Chatbot: Leveraging Multi-Agent AI Systems for Dynamic Visualization and Education* — source on Overleaf; PDF included in the results repository releases |
 
 ## Repository Layout
 
@@ -39,12 +44,13 @@ repository [`ConceptCast-results`](https://github.com/jdluu/ConceptCast-results)
 git clone https://github.com/jdluu/ConceptCast.git
 cd ConceptCast
 
-# Optional but recommended: benchmark data + verifiers
+# Recommended: benchmark data + verifiers (sibling repo, cloned into results/)
 git clone https://github.com/jdluu/ConceptCast-results.git results
 ```
 
-> The `results/` path is gitignored here, so cloning it inside the code repo is
-> safe and keeps every relative path in the scripts working.
+> The `results/` path is gitignored here, so cloning the sibling
+> ConceptCast-results repository inside the code repo is safe and keeps every
+> relative path in the scripts working.
 
 ### 2. Configure secrets
 
