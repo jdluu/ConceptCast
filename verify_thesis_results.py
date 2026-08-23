@@ -4,6 +4,17 @@
 This script queries the SQLite database (data/conceptcast.db) to extract
 and print the exact metrics, success rates, and LaTeX tables presented
 in the thesis results chapter. Run this script to verify the empirical data.
+
+IMPORTANT — WHICH VERIFIER TO USE:
+  This script reads the LIVE database, which keeps growing after the thesis
+  benchmarks were frozen. Its output will NOT match published thesis tables.
+  To reproduce the numbers printed in the thesis, use the frozen-snapshot
+  verifiers in the results repository instead:
+
+      python3 results/verify_table51_historical.py    # Table 5.1 (frozen snapshot 5f4f7f5)
+      python3 results/verify_controlled_benchmark.py  # Tables 5.5/5.6 (frozen snapshot 386a271)
+
+  Use this script only to inspect current live-system statistics.
 """
 
 import sqlite3

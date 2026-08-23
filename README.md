@@ -138,3 +138,5 @@ for how the council, GCO, and repair loop fit together.
 ## License & Attribution
 
 Released for academic reproducibility and public research verification.
+Licensed under the MIT License (see [LICENSE](LICENSE)). Benchmark data and
+verifiers in the results repository are likewise MIT-licensed.
