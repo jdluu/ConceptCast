@@ -29,21 +29,31 @@ endif
 
 # Infisical configuration (can be bypassed with USE_INFISICAL=false)
 USE_INFISICAL ?= true
-INFISICAL_PATH ?= /
+INFISICAL_PATH ?= /ConceptCast
 INFISICAL_ENV ?= dev
+INFISICAL_PROJECT_ID ?= b5af8dff-e2cd-492a-bf10-a71ce71deb58
 INFISICAL :=
+
+# Token helper: machine-identity token via BWS-stored credentials.
+# Falls back gracefully when either BWS or Infisical is unavailable.
+INFISICAL_TOKEN_HELPER ?= $(HOME)/projects/infisical-token.sh
+
 ifeq ($(USE_INFISICAL),true)
     # Check if infisical CLI is installed
     HAS_INFISICAL := $(shell which infisical 2>/dev/null)
     ifneq ($(HAS_INFISICAL),)
-        # Check if infisical is working for the configured path and environment
-        # Use --recursive to find secrets anywhere in the project root
-        INFISICAL_WORKS := $(shell infisical run --env=$(INFISICAL_ENV) --path=$(INFISICAL_PATH) --recursive -- true >/dev/null 2>&1 && echo "ok" || echo "fail")
-        ifeq ($(INFISICAL_WORKS),ok)
-            INFISICAL := infisical run --env=$(INFISICAL_ENV) --path=$(INFISICAL_PATH) --recursive --
+        # Machine identity auth: fetch token, then verify the configured path works.
+        INFISICAL_TOKEN := $(shell bash $(INFISICAL_TOKEN_HELPER) 2>/dev/null)
+        ifneq ($(INFISICAL_TOKEN),)
+            INFISICAL_WORKS := $(shell INFISICAL_TOKEN="$(INFISICAL_TOKEN)" infisical run --projectId $(INFISICAL_PROJECT_ID) --env=$(INFISICAL_ENV) --path=$(INFISICAL_PATH) -- true >/dev/null 2>&1 && echo "ok" || echo "fail")
+            ifeq ($(INFISICAL_WORKS),ok)
+                INFISICAL := env INFISICAL_TOKEN="$(INFISICAL_TOKEN)" infisical run --projectId $(INFISICAL_PROJECT_ID) --env=$(INFISICAL_ENV) --path=$(INFISICAL_PATH) --
+            else
+                $(warning "Infisical auth OK but path '$(INFISICAL_PATH)' in environment '$(INFISICAL_ENV)' is inaccessible. Falling back to local environment.")
+                INFISICAL :=
+            endif
         else
-            # Only warn if the CLI is present but not configured correctly for this project
-            $(warning "Infisical CLI found but path '$(INFISICAL_PATH)' in environment '$(INFISICAL_ENV)' is inaccessible. Falling back to local environment.")
+            $(warning "Could not fetch an Infisical machine-identity token (BWS unavailable?). Falling back to local environment.")
             INFISICAL :=
         endif
     endif
