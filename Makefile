@@ -36,7 +36,7 @@ INFISICAL :=
 
 # Token helper: machine-identity token via BWS-stored credentials.
 # Falls back gracefully when either BWS or Infisical is unavailable.
-INFISICAL_TOKEN_HELPER ?= $(HOME)/projects/infisical-token.sh
+INFISICAL_TOKEN_HELPER ?= $(CURDIR)/scripts/infisical-token.sh
 
 ifeq ($(USE_INFISICAL),true)
     # Check if infisical CLI is installed
