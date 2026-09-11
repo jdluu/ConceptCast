@@ -35,6 +35,32 @@ _CODE_BLOCK_PATTERN = re.compile(r"```(?:python|json)?\s*\n(.*?)```", re.DOTALL)
 _CODE_JSON_KEYS = ("code", "python_code", "manim_code")
 
 
+def _strip_stray_fences(code: str) -> str:
+    """Removes stray markdown-fence lines and trailing prose after the last fence.
+
+    Double-wrapped payloads (a fenced block inside a quoted/fenced payload) leave
+    a standalone ``` line mid-code and prose after it; both break compilation.
+    """
+    lines = code.splitlines()
+    # Drop leading fence lines
+    while lines and lines[0].strip().startswith("```"):
+        lines.pop(0)
+    # Find last stray fence line; keep everything before it if code follows the first fence
+    fence_idxs = [i for i, l in enumerate(lines) if l.strip().startswith("```")]
+    if fence_idxs:
+        last = fence_idxs[-1]
+        # Keep content up to (not including) the last stray fence if there is code before it
+        before = [l for l in lines[:last]]
+        after = lines[last + 1 :]
+        code_before = "\n".join(before).strip()
+        try:
+            compile(code_before, "<gen>", "exec")
+            lines = before  # prose/fence tail dropped; code before the fence compiles
+        except SyntaxError:
+            pass  # fence was meaningful (e.g. inside a string); leave as-is
+    return "\n".join(lines)
+
+
 def _unwrap_quoted_payload(candidate: str) -> str:
     """Unwraps a JSON-string payload (quoted, escape-serialized source).
 
@@ -118,6 +144,7 @@ def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
                             break
             candidate = _unwrap_quoted_payload(candidate)
             candidate = _normalize_escaped_newlines(candidate)
+            candidate = _strip_stray_fences(candidate)
             try:
                 compile(candidate, "<generated_manim>", "exec")
             except SyntaxError:
@@ -144,6 +171,7 @@ def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
     # Fallback: strip leading/trailing fences that were not properly paired
     cleaned = _unwrap_quoted_payload(raw.strip())
     cleaned = _normalize_escaped_newlines(cleaned)
+    cleaned = _strip_stray_fences(cleaned)
     if cleaned.startswith("```"):
         lines = cleaned.splitlines()
         if lines and lines[0].startswith("```"):
