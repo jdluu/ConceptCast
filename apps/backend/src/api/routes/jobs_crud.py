@@ -116,6 +116,9 @@ async def create_job(
             analyst_model=request.analyst_model,
             architect_model=request.architect_model,
             animator_model=request.animator_model,
+            benchmark_job_seq=request.benchmark_job_seq,
+            benchmark_arm=request.benchmark_arm,
+            benchmark_rep=request.benchmark_rep,
         )
 
         async def _save_job() -> None:

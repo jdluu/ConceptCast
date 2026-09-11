@@ -31,6 +31,9 @@ class JobSummary(BaseModel):
     analyst_model: str | None = None
     architect_model: str | None = None
     animator_model: str | None = None
+    benchmark_job_seq: int | None = None
+    benchmark_arm: str | None = None
+    benchmark_rep: int | None = None
 
 
     started_at: str | None = None
@@ -88,7 +91,9 @@ class JobStatus(BaseModel):
     analyst_model: str | None = None
     architect_model: str | None = None
     animator_model: str | None = None
-
+    benchmark_job_seq: int | None = None
+    benchmark_arm: str | None = None
+    benchmark_rep: int | None = None
 
     started_at: str | None = None
     finished_at: str | None = None
@@ -117,3 +122,6 @@ class JobRequest(BaseModel):
     analyst_model: str | None = None
     architect_model: str | None = None
     animator_model: str | None = None
+    benchmark_job_seq: int | None = None
+    benchmark_arm: str | None = None
+    benchmark_rep: int | None = None

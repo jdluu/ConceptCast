@@ -174,6 +174,24 @@ generate-mock: ## QA Run E2E simulation using MOCK models for logic verification
 	@topic="$${topic:-derivatives}"; \
 	$(INFISICAL) bash -lc '$(BACKEND_SH) uv run python src/scripts/e2e_cli.py --topic "$$topic"'
 
+# --- Benchmark v2 (A/B/C arms; see benchmark-v2 repo EXPERIMENT_PLAN.md) ---
+
+bench-council: ## BENCH Run pending Arm C (council) jobs from the v2 manifest
+	@manifest="$${manifest:-../ConceptCast-benchmark-v2/manifest/jobs.csv}"; \
+	$(INFISICAL) bash -lc '$(BACKEND_SH) uv run python src/scripts/benchmark_council.py --manifest "$$manifest" --arm C --parallelism $${parallelism:-4}'
+
+bench-mono-a: ## BENCH Run pending Arm A (monolithic) jobs
+	@manifest="$${manifest:-../ConceptCast-benchmark-v2/manifest/jobs.csv}"; \
+	$(INFISICAL) bash -lc '$(BACKEND_SH) uv run python src/scripts/benchmark_monolithic.py --manifest "$$manifest" --arm A --parallelism $${parallelism:-4}'
+
+bench-mono-b: ## BENCH Run pending Arm B (monolithic + repair) jobs
+	@manifest="$${manifest:-../ConceptCast-benchmark-v2/manifest/jobs.csv}"; \
+	$(INFISICAL) bash -lc '$(BACKEND_SH) uv run python src/scripts/benchmark_monolithic.py --manifest "$$manifest" --arm B --parallelism $${parallelism:-4}'
+
+bench-dry: ## BENCH List pending jobs without running
+	@manifest="$${manifest:-../ConceptCast-benchmark-v2/manifest/jobs.csv}"; \
+	$(INFISICAL) bash -lc '$(BACKEND_SH) uv run python src/scripts/benchmark_council.py --manifest "$$manifest" --arm C --dry-run'
+
 generate: ## QA Run ACTUAL pedagogical generation with real models. model="openai/gpt-oss-120b" topic="math"
 	@topic="$${topic:-derivatives}"; \
 	model="$${model:-deepseek/deepseek-v4-pro:thinking}"; \

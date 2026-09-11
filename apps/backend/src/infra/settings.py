@@ -78,6 +78,11 @@ class Settings(BaseSettings):
     agent_request_limit_animator: int = 25
 
     curriculum_validation_enabled: bool = False
+
+    # Benchmark v2 sampling pins (parity across arms). None = provider default.
+    benchmark_temperature: float | None = None
+    benchmark_seed: int | None = None
+    benchmark_trace_dir: str | None = None
     database_url: str = "sqlite:///" + str(PROJECT_ROOT / "data" / "conceptcast.db")
     redis_url: str = "redis://localhost:6379"
     cors_origins: str = "http://localhost:5173"

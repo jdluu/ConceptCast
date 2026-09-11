@@ -229,3 +229,29 @@ async def test_review_endpoint_removed(client: AsyncClient) -> None:
     assert res.status_code == 404
 
 
+
+
+@pytest.mark.asyncio
+async def test_benchmark_bookkeeping_round_trip(
+    client: AsyncClient, override_db: async_sessionmaker[AsyncSession]  # noqa: ARG001
+) -> None:
+    """Benchmark v2: job_seq/arm/rep persist and surface in status."""
+    res = await client.post(
+        "/jobs/create",
+        json={
+            "topic": "Benchmark Topic Unique 42",
+            "benchmark_job_seq": 42,
+            "benchmark_arm": "C",
+            "benchmark_rep": 2,
+        },
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["benchmark_job_seq"] == 42
+    assert data["benchmark_arm"] == "C"
+    assert data["benchmark_rep"] == 2
+
+    job_id = data["job_id"]
+    res2 = await client.get(f"/jobs/{job_id}/status")
+    assert res2.status_code == 200
+    assert res2.json()["benchmark_job_seq"] == 42

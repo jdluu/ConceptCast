@@ -22,7 +22,6 @@ spans two companion repositories:
 | `apps/frontend` | Web UI |
 | `prompts/` | Agent prompts and vendored ManimCE skill docs |
 | `scripts/` | DB snapshotting, wait helpers, Infisical token |
-| `docs/wiki/` | Architecture deep dive and setup guide |
 | `run_topic.sh` / `run_all_*.sh` | Benchmark runners (one topic × 9 models) |
 
 ## Quick Start
@@ -112,9 +111,6 @@ make format      # prettier + ruff format
 make db-migrate  # apply pending migrations
 ```
 
-See [`docs/wiki/Setup-Guide.md`](docs/wiki/Setup-Guide.md) for manual
-installation details and [`docs/wiki/Architecture.md`](docs/wiki/Architecture.md)
-for how the council, GCO, and repair loop fit together.
 
 ## License & Attribution
 

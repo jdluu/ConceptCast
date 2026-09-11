@@ -45,6 +45,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(title="ConceptCast Backend", lifespan=lifespan)
 
 settings = get_settings()
+
+# Benchmark v2: when trace dir is configured via settings, export it (plus pins)
+# into the process environment so the per-call tracer activates. Env vars take
+# precedence if the runner set them explicitly.
+if settings.benchmark_trace_dir and not os.environ.get("BENCH_TRACE_DIR"):
+    os.environ["BENCH_TRACE_DIR"] = settings.benchmark_trace_dir
+
 cors_origins = settings.cors_origins.split(",")
 
 app.add_middleware(

@@ -104,15 +104,20 @@ class NanoModelProvider(BaseProvider):
             ),
             profile=profile,
         )
-        return NanoConceptModel(pydantic_model, model_id, self.get_settings(model_id))
+        return NanoConceptModel(pydantic_model, model_id, self.get_model_settings())
 
-    def get_settings(self, _model_id: str) -> ModelSettings | None:
-        """Retrieves Nano GPT-specific configurations.
+    def get_model_settings(self) -> ModelSettings | None:
+        """Builds ModelSettings for Nano GPT requests.
 
-        Args:
-            model_id: The model identifier.
+        Applies benchmark sampling pins (temperature/seed) when configured so
+        all arms run under identical decoding parameters.
 
         Returns:
-            ModelSettings or None.
+            ModelSettings or None when nothing is pinned.
         """
-        return None
+        ms = ModelSettings()
+        if self.settings.benchmark_temperature is not None:
+            ms["temperature"] = self.settings.benchmark_temperature
+        if self.settings.benchmark_seed is not None:
+            ms["seed"] = self.settings.benchmark_seed
+        return ms or None

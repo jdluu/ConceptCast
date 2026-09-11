@@ -2,8 +2,8 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import cast
 
-from pydantic_ai.messages import ModelMessage
-from pydantic_ai.models import ModelRequestParameters, ModelResponse
+from pydantic_ai.messages import ModelMessage, ModelResponse
+from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
@@ -99,7 +99,7 @@ class NanoOpenAIChatModel(OpenAIChatModel):
             raise
 
     @asynccontextmanager
-    async def request_stream(
+    async def request_stream(  # type: ignore[no-untyped-def]  # pydantic-ai internal protocol
         self,
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,

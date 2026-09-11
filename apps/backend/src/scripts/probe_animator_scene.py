@@ -7,6 +7,7 @@ import ast
 import json
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 from api.schemas import Scene
 from domain.agents.animator import extract_python_code, generate_manim_code
@@ -15,7 +16,7 @@ from infra.ai.factory import get_concept_model
 from infra.ai.tools.analysis import statically_check_layout_collisions
 
 
-def latest_storyboard(topic: str) -> tuple[dict, dict]:
+def latest_storyboard(topic: str) -> tuple[dict[str, Any], dict[str, Any]]:
     db = Path(__file__).resolve().parents[4] / "data" / "conceptcast.db"
     with sqlite3.connect(db) as conn:
         row = conn.execute(
