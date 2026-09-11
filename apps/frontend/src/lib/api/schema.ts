@@ -251,26 +251,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/jobs/{job_id}/review": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Review Job
-         * @description Handles human-in-the-loop review actions for a paused job.
-         */
-        post: operations["review_job_jobs__job_id__review_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/jobs/{job_id}/preview": {
         parameters: {
             query?: never;
@@ -353,7 +333,7 @@ export interface components {
          *
          *     Attributes:
          *         concept_title: Title of the main concept.
-                 *         teaching_steps: Ordered pedagogical steps.
+         *         teaching_steps: Ordered pedagogical steps.
          */
         CurriculumPlan: {
             /**
@@ -400,25 +380,12 @@ export interface components {
             architect_model?: string | null;
             /** Animator Model */
             animator_model?: string | null;
-        };
-        /**
-         * JobReviewRequest
-         * @description Payload for human-in-the-loop review actions.
-         */
-        JobReviewRequest: {
-            /**
-             * Feedback
-             * @description Steering instructions for the agent
-             */
-            feedback?: string | null;
-            /** @description Directly modified curriculum */
-            edited_plan?: components["schemas"]["CurriculumPlan"] | null;
-            /**
-             * Action
-             * @default approve
-             * @enum {string}
-             */
-            action: "approve" | "regenerate";
+            /** Benchmark Job Seq */
+            benchmark_job_seq?: number | null;
+            /** Benchmark Arm */
+            benchmark_arm?: string | null;
+            /** Benchmark Rep */
+            benchmark_rep?: number | null;
         };
         /**
          * JobStatus
@@ -464,6 +431,12 @@ export interface components {
             architect_model?: string | null;
             /** Animator Model */
             animator_model?: string | null;
+            /** Benchmark Job Seq */
+            benchmark_job_seq?: number | null;
+            /** Benchmark Arm */
+            benchmark_arm?: string | null;
+            /** Benchmark Rep */
+            benchmark_rep?: number | null;
             /** Started At */
             started_at?: string | null;
             /** Finished At */
@@ -499,6 +472,20 @@ export interface components {
             failure_type?: string | null;
             /** Failure Summary */
             failure_summary?: string | null;
+            /**
+             * Architect Fallback Used
+             * @default false
+             */
+            architect_fallback_used: boolean;
+            /**
+             * Architect Attempts
+             * @default 0
+             */
+            architect_attempts: number;
+            /** Architect Original Error */
+            architect_original_error?: string | null;
+            /** Architect Transport */
+            architect_transport?: string | null;
         };
         /**
          * JobSummary
@@ -533,6 +520,12 @@ export interface components {
             architect_model?: string | null;
             /** Animator Model */
             animator_model?: string | null;
+            /** Benchmark Job Seq */
+            benchmark_job_seq?: number | null;
+            /** Benchmark Arm */
+            benchmark_arm?: string | null;
+            /** Benchmark Rep */
+            benchmark_rep?: number | null;
             /** Started At */
             started_at?: string | null;
             /** Finished At */
@@ -565,6 +558,20 @@ export interface components {
             failure_type?: string | null;
             /** Failure Summary */
             failure_summary?: string | null;
+            /**
+             * Architect Fallback Used
+             * @default false
+             */
+            architect_fallback_used: boolean;
+            /**
+             * Architect Attempts
+             * @default 0
+             */
+            architect_attempts: number;
+            /** Architect Original Error */
+            architect_original_error?: string | null;
+            /** Architect Transport */
+            architect_transport?: string | null;
         };
         /**
          * ProviderModels
@@ -1016,41 +1023,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    review_job_jobs__job_id__review_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["JobReviewRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobStatus"];
                 };
             };
             /** @description Validation Error */

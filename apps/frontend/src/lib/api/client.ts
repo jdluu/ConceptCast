@@ -12,12 +12,6 @@ import {
   type Scene,
 } from '@/lib/api/types';
 
-export interface JobReviewRequest {
-  feedback?: string;
-  edited_plan?: CurriculumPlan;
-  action: 'approve' | 'regenerate';
-}
-
 export const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || '';
 
 const apiClient = createClient<paths>({ baseUrl: API_BASE_URL });
@@ -96,22 +90,6 @@ export async function deleteJob(jobId: string): Promise<void> {
 export async function deleteAllJobs(): Promise<void> {
   const { error } = await apiClient.DELETE('/jobs/', {});
   if (error) throw new Error('Failed to clear job history');
-}
-
-/**
- * Handles human-in-the-loop review actions for a paused job.
- *
- * @param jobId - The unique identifier of the job being reviewed.
- * @param review - The feedback and action (approve/regenerate) from the user.
- * @returns The updated JobStatus after processing the review.
- */
-export async function reviewJob(jobId: string, review: JobReviewRequest): Promise<JobStatus> {
-  const { data, error } = await apiClient.POST('/jobs/{job_id}/review', {
-    params: { path: { job_id: jobId } },
-    body: review as components['schemas']['JobReviewRequest'],
-  });
-  if (error) throw new Error('Failed to submit review');
-  return data as JobStatus;
 }
 
 export async function getAvailableModels(): Promise<
