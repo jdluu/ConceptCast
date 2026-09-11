@@ -35,6 +35,21 @@ _CODE_BLOCK_PATTERN = re.compile(r"```(?:python|json)?\s*\n(.*?)```", re.DOTALL)
 _CODE_JSON_KEYS = ("code", "python_code", "manim_code")
 
 
+def _strip_leading_prose(code: str) -> str:
+    """Drops prose before the first opening fence, when a fence exists.
+
+    Models often preface the code with an explanation ("Below is a clean…");
+    that prose is not code and frequently contains non-ASCII punctuation.
+    """
+    lines = code.splitlines()
+    for i, l in enumerate(lines):
+        if l.strip().startswith("```"):
+            if i == 0:
+                return code  # already starts with a fence; nothing to strip
+            return "\n".join(lines[i:])
+    return code  # no fence at all; leave as-is
+
+
 def _strip_stray_fences(code: str) -> str:
     """Removes stray markdown-fence lines and trailing prose after the last fence.
 
@@ -144,6 +159,7 @@ def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
                             break
             candidate = _unwrap_quoted_payload(candidate)
             candidate = _normalize_escaped_newlines(candidate)
+            candidate = _strip_leading_prose(candidate)
             candidate = _strip_stray_fences(candidate)
             try:
                 compile(candidate, "<generated_manim>", "exec")
@@ -171,6 +187,7 @@ def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
     # Fallback: strip leading/trailing fences that were not properly paired
     cleaned = _unwrap_quoted_payload(raw.strip())
     cleaned = _normalize_escaped_newlines(cleaned)
+    cleaned = _strip_leading_prose(cleaned)
     cleaned = _strip_stray_fences(cleaned)
     if cleaned.startswith("```"):
         lines = cleaned.splitlines()
