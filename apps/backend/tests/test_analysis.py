@@ -3,7 +3,7 @@ from domain.models.workflow import BoundingBox, GlobalContext, SceneOccupancy
 from infra.ai.tools.analysis import statically_check_layout_collisions
 
 
-def create_mock_ctx():
+def create_mock_ctx() -> GlobalContext:
     plan = CurriculumPlan(
         concept_title="derivatives",
         teaching_steps=[],
@@ -17,7 +17,7 @@ def create_mock_ctx():
     )
 
 
-def test_statically_check_layout_collisions_no_occupancy():
+def test_statically_check_layout_collisions_no_occupancy() -> None:
     ctx = create_mock_ctx()
     code = """
 class SceneGen(Scene):
@@ -28,7 +28,7 @@ class SceneGen(Scene):
     assert len(errors) == 0
 
 
-def test_statically_check_layout_collisions_with_constant_ignoring():
+def test_statically_check_layout_collisions_with_constant_ignoring() -> None:
     # Scene occupancies has a reserved box at ORIGIN [0.0, 0.0]
     box = BoundingBox(center="ORIGIN", width=1.0, height=1.0, label="center_text")
     occupancy = SceneOccupancy(scene_id=1, reserved_boxes=[box])
@@ -50,7 +50,7 @@ class SceneGen(Scene):
     assert len(errors) == 0
 
 
-def test_statically_check_layout_collisions_with_real_collision():
+def test_statically_check_layout_collisions_with_real_collision() -> None:
     # Scene occupancies has a reserved box at ORIGIN [0.0, 0.0]
     box = BoundingBox(center="ORIGIN", width=2.0, height=1.5, label="center_text")
     occupancy = SceneOccupancy(scene_id=1, reserved_boxes=[box])
@@ -69,7 +69,7 @@ class SceneGen(Scene):
     assert "Layout collision: variable 'circle'" in errors[0]
 
 
-def test_statically_check_layout_collisions_container_exemption():
+def test_statically_check_layout_collisions_container_exemption() -> None:
     # Scene occupancy has reserved container boxes:
     # 1. graph_axes centered at ORIGIN (width 6, height 5)
     # 2. machine_body centered at ORIGIN (width 3, height 2)

@@ -22,7 +22,7 @@ async def test_streaming_emits_trace(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
     from domain.agents.base import ConceptAgent
 
-    agent = ConceptAgent("analyst", str)
+    agent: ConceptAgent[str] = ConceptAgent("analyst", str)
     _, usage = await agent.run(model=model, prompt="Explain derivatives briefly.")
 
     files = list(tmp_path.glob("*.jsonl"))

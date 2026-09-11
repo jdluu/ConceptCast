@@ -8,6 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
@@ -58,7 +59,10 @@ class Settings(BaseSettings):
         pricing_base_overhead: Fixed processing overhead per job.
     """
 
-    nano_api_key: str | None = None
+    nano_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("nano_api_key", "NANO_API_KEY", "NANOGPT_API_KEY"),
+    )
     context7_api_key: str | None = None
     context7_cache_ttl_seconds: int = 1800
     context7_cache_max_entries: int = 256
