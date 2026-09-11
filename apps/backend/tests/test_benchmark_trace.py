@@ -96,3 +96,23 @@ def test_timer_measures() -> None:
     with bench_trace.Timer() as t:
         time.sleep(0.01)
     assert t.ms is not None and t.ms >= 10
+
+
+def test_bench_context_overrides_env(trace_env: Path) -> None:
+    """Benchmark v2: per-job context (set by orchestrator) overrides process env,
+    and job_seq is recorded — required for parallel-job trace attribution."""
+    from infra.ai import trace as bench_trace
+
+    bench_trace.set_bench_context(job_seq=17, arm="C", rep=2, topic="derivatives in calculus")
+    bench_trace.emit_call(agent_name="analyst", agent=object(), prompt="p")
+    rec = json.loads(next(trace_env.glob("*.jsonl")).read_text().splitlines()[0])
+    assert rec["job_seq"] == 17
+    assert rec["arm"] == "C"
+    assert rec["rep"] == 2
+    assert rec["topic"] == "derivatives in calculus"
+
+    bench_trace.clear_bench_context()
+    bench_trace.emit_call(agent_name="analyst", agent=object(), prompt="p2")
+    rec2 = json.loads(next(trace_env.glob("*.jsonl")).read_text().splitlines()[1])
+    assert rec2["job_seq"] is None
+    assert rec2["arm"] == "C"  # falls back to env

@@ -161,6 +161,17 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
     # 1. Fetch Job State
     job_state = await load_job_record(session, job_id)
 
+    # Benchmark v2: attribute per-call traces to this job even with parallel
+    # jobs sharing the backend process.
+    if job_state.benchmark_job_seq is not None:
+        from infra.ai import trace as bench_trace
+        bench_trace.set_bench_context(
+            job_seq=job_state.benchmark_job_seq,
+            arm=job_state.benchmark_arm,
+            rep=job_state.benchmark_rep,
+            topic=topic,
+        )
+
     # 2. Re-construct Request for agents (used for getting models)
     request = JobRequest(
         topic=topic,

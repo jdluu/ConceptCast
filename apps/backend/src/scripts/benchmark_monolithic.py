@@ -56,6 +56,15 @@ def sha(text: str | None) -> str | None:
     return hashlib.sha256(text.encode()).hexdigest()[:16] if text else None
 
 
+def load_topic_prompts(manifest_path: Path) -> dict[str, str]:
+    """Loads pinned topic prompts from manifest/topics.json (single source for all arms)."""
+    topics_path = manifest_path.parent / "topics.json"
+    if not topics_path.exists():
+        sys.exit(f"pinned topics file missing: {topics_path} (committed with the plan)")
+    data = json.loads(topics_path.read_text())
+    return {t["manifest_topic"]: t["topic_prompt"] for t in data["topics"]}
+
+
 def load_manifest(manifest_path: Path, arm: str) -> list[dict[str, str]]:
     with manifest_path.open(newline="") as f:
         return [r for r in csv.DictReader(f) if r["arm"] == arm]
@@ -160,16 +169,17 @@ def append_trace(trace_dir: Path, record: dict[str, object]) -> None:
         f.write(json.dumps(record, default=str) + "\n")
 
 
-async def run_one(row: dict[str, str], arm: str, trace_dir: Path, max_attempts: int, dry_run: bool) -> dict[str, object]:
+async def run_one(row: dict[str, str], arm: str, trace_dir: Path, max_attempts: int, dry_run: bool, topic_prompts: dict[str, str] | None = None) -> dict[str, object]:
     seq = int(row["job_seq"])
     out = outcomes_dir(trace_dir) / f"job-{seq}.json"
     topic = row["topic"]
     model = row["model"]
+    topic_prompt = (topic_prompts or {}).get(topic, topic)  # pinned prompt; fallback to label
 
     if dry_run:
         return {"job_seq": seq, "status": "dry-run", "arm": arm, "model": model, "topic": topic}
 
-    prompt = PROMPT_TEMPLATE.format(topic=topic)
+    prompt = PROMPT_TEMPLATE.format(topic=topic_prompt)
     text, usage, latency = await call_llm(model, prompt)
     code = extract_code(text)
     append_trace(trace_dir, {
@@ -233,6 +243,7 @@ async def main_async(args: argparse.Namespace) -> None:
         os.environ.setdefault("BENCH_TEMPERATURE", str(settings.benchmark_temperature))
     max_attempts = 10  # council parity: settings.animation_review_max_iterations
 
+    topic_prompts = load_topic_prompts(manifest_path)
     rows = [r for r in load_manifest(manifest_path, args.arm) if not already_done(out_dir, int(r["job_seq"]))]
     if args.limit:
         rows = rows[: args.limit]
@@ -242,7 +253,7 @@ async def main_async(args: argparse.Namespace) -> None:
 
     async def bounded(row: dict[str, str]) -> dict[str, object]:
         async with sem:
-            return await run_one(row, args.arm, trace_dir, max_attempts, args.dry_run)
+            return await run_one(row, args.arm, trace_dir, max_attempts, args.dry_run, topic_prompts)
 
     outcomes = await asyncio.gather(*(bounded(r) for r in rows))
     done = sum(1 for o in outcomes if o.get("status") == "completed")

@@ -24,6 +24,7 @@ Schema (one JSON object per line):
 
 from __future__ import annotations
 
+import contextvars
 import hashlib
 import json
 import os
@@ -35,6 +36,26 @@ from typing import Any
 import structlog
 
 logger = structlog.get_logger(__name__)
+
+#: Per-task benchmark context. The orchestrator sets job_seq (and may override
+#: arm/rep/topic) before running a job so concurrent jobs attribute traces
+#: correctly despite sharing one process environment.
+_bench_ctx: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
+    "bench_ctx", default=None
+)
+
+
+def set_bench_context(job_seq: int | None = None, **overrides: Any) -> None:
+    """Sets the benchmark context for the current async task."""
+    ctx = dict(_bench_ctx.get() or {})
+    if job_seq is not None:
+        ctx["job_seq"] = job_seq
+    ctx.update({k: v for k, v in overrides.items() if v is not None})
+    _bench_ctx.set(ctx)
+
+
+def clear_bench_context() -> None:
+    _bench_ctx.set(None)
 
 _TRACE_FIELDS = (
     "input_tokens",
@@ -122,12 +143,14 @@ def emit_call(
     if not trace_enabled():
         return
     try:
+        ctx = _bench_ctx.get() or {}
         record = {
             "ts": datetime.now(UTC).isoformat(),
             "run_id": _run_id(),
-            "arm": os.environ.get("BENCH_ARM"),
-            "rep": int(os.environ["BENCH_REP"]) if os.environ.get("BENCH_REP") else None,
-            "topic": os.environ.get("BENCH_TOPIC"),
+            "arm": ctx.get("arm") or os.environ.get("BENCH_ARM"),
+            "rep": ctx.get("rep") if ctx.get("rep") is not None else (int(os.environ["BENCH_REP"]) if os.environ.get("BENCH_REP") else None),
+            "topic": ctx.get("topic") or os.environ.get("BENCH_TOPIC"),
+            "job_seq": ctx.get("job_seq"),
             "stage": agent_name,
             "attempt": attempt,
             "model": _model_id(agent),
