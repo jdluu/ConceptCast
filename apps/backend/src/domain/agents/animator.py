@@ -42,8 +42,8 @@ def _strip_leading_prose(code: str) -> str:
     that prose is not code and frequently contains non-ASCII punctuation.
     """
     lines = code.splitlines()
-    for i, l in enumerate(lines):
-        if l.strip().startswith("```"):
+    for i, line in enumerate(lines):
+        if line.strip().startswith("```"):
             if i == 0:
                 return code  # already starts with a fence; nothing to strip
             return "\n".join(lines[i:])
@@ -61,12 +61,11 @@ def _strip_stray_fences(code: str) -> str:
     while lines and lines[0].strip().startswith("```"):
         lines.pop(0)
     # Find last stray fence line; keep everything before it if code follows the first fence
-    fence_idxs = [i for i, l in enumerate(lines) if l.strip().startswith("```")]
+    fence_idxs = [i for i, line in enumerate(lines) if line.strip().startswith("```")]
     if fence_idxs:
         last = fence_idxs[-1]
         # Keep content up to (not including) the last stray fence if there is code before it
-        before = [l for l in lines[:last]]
-        after = lines[last + 1 :]
+        before = list(lines[:last])
         code_before = "\n".join(before).strip()
         try:
             compile(code_before, "<gen>", "exec")
@@ -101,8 +100,14 @@ def _normalize_escaped_newlines(candidate: str) -> str:
     literal ``\n`` sequences). Compilation and the per-line scene isolation
     both require real newlines; only normalize when the candidate has none.
     """
-    if "\n" not in candidate and ("\\n" in candidate or "\r" in candidate):
-        candidate = candidate.replace("\\r\n", "\n").replace("\\n", "\n").replace("\\t", "\t")
+    literal = chr(92) + "n"
+    if literal in candidate:
+        candidate = candidate.replace(chr(92) + "r\n", chr(10)).replace(literal, chr(10))
+    if chr(92) + "t" in candidate:
+        candidate = candidate.replace(chr(92) + "t", chr(9))
+    escaped_quote = chr(92) + chr(34)
+    if escaped_quote in candidate:
+        candidate = candidate.replace(escaped_quote, chr(34))
     return candidate
 
 
@@ -184,9 +189,28 @@ def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
     if recovered is not None:
         return recovered
 
-    # Fallback: strip leading/trailing fences that were not properly paired
-    cleaned = _unwrap_quoted_payload(raw.strip())
+    # Fallback pipeline: unwrap a JSON-string-quoted payload first (restores real
+    # newlines from \n escapes), then slice from the first opening fence to the last
+    # closing fence (drops prose), then clean up residual quotes/escapes/stray fences.
+    cleaned = raw.strip()
+    # If the whole payload is a quoted string, strip the outer quotes first.
+    # (json.loads may fail when the payload contains real newlines alongside
+    # \n escapes — a common mixed-escape model output — so strip mechanically.)
+    if len(cleaned) >= 2 and cleaned[0] == '"' and cleaned[-1] == '"':
+        cleaned = cleaned[1:-1]
     cleaned = _normalize_escaped_newlines(cleaned)
+    fence_start = cleaned.find("```")
+    if fence_start != -1:
+        fence_end = cleaned.rfind("```", fence_start + 3)
+        if fence_end > fence_start:
+            inner = cleaned[fence_start + 3 : fence_end]
+            inner_lines = inner.splitlines()
+            if inner_lines and inner_lines[0].strip() in ("python", "json", "py"):
+                inner = "\n".join(inner_lines[1:])
+            cleaned = inner.strip()
+    # Strip residual wrapping quotes on the sliced content (payload was quoted)
+    if len(cleaned) >= 2 and cleaned[0] == '"' and cleaned[-1] == '"':
+        cleaned = cleaned[1:-1]
     cleaned = _strip_leading_prose(cleaned)
     cleaned = _strip_stray_fences(cleaned)
     if cleaned.startswith("```"):
