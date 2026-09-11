@@ -32,11 +32,13 @@ async def get_job_summaries(
     stmt = select(JobRecord).order_by(JobRecord.created_at.desc())
 
     # Defer loading of heavy columns
+    # NOTE: `validation` is NOT deferred — map_job_record_to_summary reads it for
+    # failure provenance, and deferred access outside the query's greenlet context
+    # raises MissingGreenlet on the live DB (async SQLAlchemy limitation).
     stmt = stmt.options(
         defer(JobRecord.plan),
         defer(JobRecord.storyboard),
         defer(JobRecord.manim_code),
-        defer(JobRecord.validation),
     )
 
     if mode:

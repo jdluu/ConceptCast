@@ -35,6 +35,36 @@ _CODE_BLOCK_PATTERN = re.compile(r"```(?:python|json)?\s*\n(.*?)```", re.DOTALL)
 _CODE_JSON_KEYS = ("code", "python_code", "manim_code")
 
 
+def _unwrap_quoted_payload(candidate: str) -> str:
+    """Unwraps a JSON-string payload (quoted, escape-serialized source).
+
+    Models sometimes emit the entire fenced block as a JSON string literal —
+    a leading/trailing quote with ``\\n`` escape sequences. json.loads on the
+    quoted text restores the real newlines.
+    """
+    stripped = candidate.strip()
+    if len(stripped) >= 2 and stripped[0] == '"' and stripped[-1] == '"':
+        try:
+            unwrapped = json.loads(stripped)
+            if isinstance(unwrapped, str) and unwrapped.strip():
+                return unwrapped
+        except json.JSONDecodeError:
+            pass
+    return candidate
+
+
+def _normalize_escaped_newlines(candidate: str) -> str:
+    """Converts literal ``\n`` escape sequences into real newlines.
+
+    Some models emit JSON-string-escaped source (a quoted one-line payload with
+    literal ``\n`` sequences). Compilation and the per-line scene isolation
+    both require real newlines; only normalize when the candidate has none.
+    """
+    if "\n" not in candidate and ("\\n" in candidate or "\r" in candidate):
+        candidate = candidate.replace("\\r\n", "\n").replace("\\n", "\n").replace("\\t", "\t")
+    return candidate
+
+
 def _recover_compilable_source(raw: str) -> str | None:
     """Recover a complete Python suffix when prose surrounds unfenced code."""
     lines = raw.strip().splitlines()
@@ -86,6 +116,8 @@ def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
                         if isinstance(value, str) and value.strip():
                             candidate = value.strip()
                             break
+            candidate = _unwrap_quoted_payload(candidate)
+            candidate = _normalize_escaped_newlines(candidate)
             try:
                 compile(candidate, "<generated_manim>", "exec")
             except SyntaxError:
@@ -110,7 +142,8 @@ def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
         return recovered
 
     # Fallback: strip leading/trailing fences that were not properly paired
-    cleaned = raw.strip()
+    cleaned = _unwrap_quoted_payload(raw.strip())
+    cleaned = _normalize_escaped_newlines(cleaned)
     if cleaned.startswith("```"):
         lines = cleaned.splitlines()
         if lines and lines[0].startswith("```"):

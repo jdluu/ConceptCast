@@ -35,3 +35,14 @@ def test_extract_python_code_prefers_compilable_fenced_candidate() -> None:
     code = "from manim import *\nclass SceneGen(Scene):\n    pass\n"
     raw = "```python\nexplanation: invalid\n```\n```python\n" + code + "\n```"
     assert extract_python_code(raw) == code.strip()
+
+
+def test_extract_python_code_unwraps_quoted_escaped_payload() -> None:
+    """Benchmark v2 smoke finding: some models emit the whole fenced block as a
+    JSON-string literal (leading/trailing quotes, literal \\n escapes). The
+    extractor must unwrap and unescape it."""
+    raw = '"```python\nfrom manim import *\n\nclass SceneGen(Scene):\n    def construct(self):\n        title = Text(\\"hi\\")\n        self.play(Write(title))\n```"'
+    raw_literal = raw.replace(chr(10), chr(92) + "n")
+    code = extract_python_code(raw_literal)
+    assert code.count(chr(10)) >= 4
+    compile(code, "<generated_manim>", "exec")

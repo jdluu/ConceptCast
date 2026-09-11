@@ -4,10 +4,12 @@ Utilizes taskiq for distributed task execution and long-running job processing.
 """
 
 import asyncio
-from typing import TYPE_CHECKING
+import os
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from sqlalchemy import select
+from taskiq import InMemoryBroker
 from taskiq_redis import ListQueueBroker
 
 from api.schemas import JobRequest, Storyboard
@@ -26,10 +28,32 @@ logger = structlog.get_logger(__name__)
 
 settings = get_settings()
 
-broker = ListQueueBroker(url=settings.redis_url)
+# Redis-backed broker by default; falls back to in-process execution when Redis is
+# unreachable (e.g. podman unavailable). In-memory mode runs tasks eagerly inside the
+# API process — adequate for single-job smoke runs, NOT for parallel benchmark sweeps.
 
 
-@broker.task
+def _redis_reachable() -> bool:
+    try:
+        host_port = settings.redis_url.replace("redis://", "").rstrip("/")
+        host, _, port = host_port.partition(":")
+        import socket
+
+        with socket.create_connection((host, int(port or 6379)), timeout=2):
+            return True
+    except Exception:
+        return False
+
+
+broker: Any
+if os.environ.get("BENCH_INMEMORY_BROKER") == "1" or not _redis_reachable():
+    logger.warning("redis_unreachable_using_inmemory_broker")
+    broker = InMemoryBroker()
+else:
+    broker = ListQueueBroker(url=settings.redis_url)
+
+
+@broker.task  # type: ignore[untyped-decorator]
 async def render_video_task(
     job_id: str,
     code: str,
