@@ -57,7 +57,6 @@ async def run_suite() -> None:
                     model_id=model["model_id"],
                     topic=topic_info["topic"],
                     audience=topic_info["audience"],
-                    hitl_enabled=False,
                 )
 
                 # Detect fallback in summary

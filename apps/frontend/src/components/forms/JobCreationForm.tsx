@@ -95,7 +95,6 @@ export function JobCreationForm() {
         target_audience: formData.target_audience || settings.defaultAudience,
         provider: formData.provider,
         model_id: formData.model_id,
-        hitl_enabled: settings.hitlEnabled,
         analyst_model: formData.analyst_model || undefined,
         architect_model: formData.architect_model || undefined,
         animator_model: formData.animator_model || undefined,
@@ -113,7 +112,6 @@ export function JobCreationForm() {
       target_audience: 'High School Student',
       provider: 'mock',
       model_id: 'mock-gpt-4',
-      hitl_enabled: settings.hitlEnabled,
     });
   };
 

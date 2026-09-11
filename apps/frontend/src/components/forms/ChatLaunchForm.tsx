@@ -205,7 +205,6 @@ export function ChatLaunchForm() {
       target_audience: audience || settings.defaultAudience || 'General Audience',
       provider,
       model_id: modelId,
-      hitl_enabled: settings.hitlEnabled,
     };
 
     try {

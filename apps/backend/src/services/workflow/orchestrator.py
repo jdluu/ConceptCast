@@ -169,7 +169,6 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
         target_audience=audience,
         provider=provider,
         model_id=model_id,
-        hitl_enabled=job_state.hitl_enabled,
         analyst_model=job_state.analyst_model,
         architect_model=job_state.architect_model,
         animator_model=job_state.animator_model,
@@ -221,15 +220,6 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
             raise PlanGenerationError(
                 "Curriculum generation produced no teaching steps after retries."
             )
-
-        # --- Human in the Loop (HITL) Check ---
-        if request.hitl_enabled:
-            logger.info("workflow_hitl_paused_for_review", job_id=job_id)
-            await update_job(
-                {"status": "awaiting_review", "current_step": "planning_complete"}
-            )
-            return
-        # ---------------------------------------
 
         storyboard, usage_3 = await handle_architecting_steps(
             job_id, job_state, request, plan, provider, update_job, on_thought, ctx

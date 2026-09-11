@@ -405,11 +405,6 @@ export interface components {
             provider?: string | null;
             /** Model Id */
             model_id?: string | null;
-            /**
-             * Hitl Enabled
-             * @default false
-             */
-            hitl_enabled: boolean;
             /** Analyst Model */
             analyst_model?: string | null;
             /** Architect Model */
@@ -470,11 +465,6 @@ export interface components {
              * @enum {string}
              */
             mode: "live" | "mock";
-            /**
-             * Hitl Enabled
-             * @default false
-             */
-            hitl_enabled: boolean;
             /** Provider */
             provider?: string | null;
             /** Model Id */
@@ -544,11 +534,6 @@ export interface components {
             created_at: string;
             /** Retry Count */
             retry_count: number;
-            /**
-             * Hitl Enabled
-             * @default false
-             */
-            hitl_enabled: boolean;
             /** Error */
             error: string | null;
             /** Provider */

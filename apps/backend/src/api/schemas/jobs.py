@@ -25,7 +25,6 @@ class JobSummary(BaseModel):
     mode: str
     created_at: str
     retry_count: int
-    hitl_enabled: bool = False
     error: str | None
     provider: str | None = None
     model_id: str | None = None
@@ -84,7 +83,6 @@ class JobStatus(BaseModel):
     video_url: str | None = None
     error: str | None
     mode: Literal["live", "mock"] = "live"
-    hitl_enabled: bool = False
     provider: str | None = None
 
     model_id: str | None = None
@@ -119,19 +117,6 @@ class JobRequest(BaseModel):
     target_audience: str = "General Audience"
     provider: str | None = None
     model_id: str | None = None
-    hitl_enabled: bool = False
     analyst_model: str | None = None
     architect_model: str | None = None
     animator_model: str | None = None
-
-
-class JobReviewRequest(BaseModel):
-    """Payload for human-in-the-loop review actions."""
-
-    feedback: str | None = Field(
-        None, description="Steering instructions for the agent"
-    )
-    edited_plan: CurriculumPlan | None = Field(
-        None, description="Directly modified curriculum"
-    )
-    action: Literal["approve", "regenerate"] = "approve"

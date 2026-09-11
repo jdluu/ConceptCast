@@ -166,7 +166,6 @@ async def test_full_workflow(topic: str = "Quantum Entanglement") -> bool:
         mode="mock",
         provider="mock",
         model_id="mock-model",
-        hitl_enabled=False,
         started_at=datetime.now(UTC),
         total_execution_time=0.0,
     )

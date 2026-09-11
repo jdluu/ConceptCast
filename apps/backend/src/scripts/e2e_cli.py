@@ -460,7 +460,6 @@ async def run_single_simulation(  # noqa: PLR0913
     topic: str,
     audience: str,
     *,
-    hitl_enabled: bool,
     analyst_model: str | None = None,
     architect_model: str | None = None,
     animator_model: str | None = None,
@@ -483,7 +482,6 @@ async def run_single_simulation(  # noqa: PLR0913
                     "analyst_model": analyst_model,
                     "architect_model": architect_model,
                     "animator_model": animator_model,
-                    "hitl_enabled": hitl_enabled,
                 },
             )
             if response.status_code != 200:
@@ -565,7 +563,6 @@ async def run_full_simulation(  # noqa: PLR0913
     audience: str,
     include_mock: bool = True,
     *,
-    hitl_enabled: bool,
     model_id_filter: str | None = None,
     analyst_model: str | None = None,
     architect_model: str | None = None,
@@ -602,7 +599,6 @@ async def run_full_simulation(  # noqa: PLR0913
                 model_id,
                 topic,
                 audience,
-                hitl_enabled=hitl_enabled,
                 analyst_model=analyst_model,
                 architect_model=architect_model,
                 animator_model=animator_model,
@@ -635,10 +631,7 @@ if __name__ == "__main__":
         "--audience", type=str, default="General Audience", help="Target audience"
     )
     parser.add_argument("--no-mock", action="store_true", help="Skip the mock provider")
-    parser.add_argument("--hitl-enabled", action="store_true", help="Force-enable HITL")
-    parser.add_argument(
-        "--hitl-disabled", action="store_true", help="Force-disable HITL"
-    )
+
     parser.add_argument(
         "--model-id",
         type=str,
@@ -674,11 +667,6 @@ if __name__ == "__main__":
                 args.topic,
                 args.audience,
                 not args.no_mock,
-                hitl_enabled=(
-                    False
-                    if args.hitl_disabled
-                    else (True if args.hitl_enabled else bool(settings.hitl_enabled))
-                ),
                 model_id_filter=args.model_id,
                 analyst_model=args.analyst_model,
                 architect_model=args.architect_model,

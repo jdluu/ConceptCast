@@ -1,6 +1,5 @@
 import React from 'react';
 import { JobStatus, CurriculumPlan, Storyboard } from '@/lib/api/client';
-import { HitlReviewPanel } from '@/components/orchestration/HitlReviewPanel';
 import { LessonArtifactModal } from '@/components/orchestration/LessonModal';
 import { PipelineHeader } from '@/components/orchestration/PipelineHeader';
 import { RenderingMonitor } from '@/components/orchestration/RenderingMonitor';
@@ -16,9 +15,9 @@ interface GeneratingLessonViewProps {
 /**
  * Top-level view for the active lesson generation pipeline.
  *
- * Composes the pipeline header, HITL review gate, rendering progress monitor,
- * artifact preview panels, and the full artifact modal into a single view
- * driven by the current job state.
+ * Composes the pipeline header, rendering progress monitor, artifact preview
+ * panels, and the full artifact modal into a single view driven by the current
+ * job state.
  */
 export function GeneratingLessonView({ job, streamState, streamError }: GeneratingLessonViewProps) {
   const [showDetails, setShowDetails] = React.useState(false);
@@ -39,16 +38,6 @@ export function GeneratingLessonView({ job, streamState, streamError }: Generati
         showDetails={showDetails}
         onHideDetails={() => setShowDetails(false)}
       />
-
-      {job.status === 'awaiting_review' && job.plan && (
-        <section className="animate-in fade-in slide-in-from-top-4 duration-700">
-          <HitlReviewPanel
-            jobId={job.job_id}
-            plan={job.plan as CurriculumPlan}
-            onActionComplete={() => {}}
-          />
-        </section>
-      )}
 
       {job.status === 'rendering' && (
         <RenderingMonitor renderProgress={job.render_progress || 0} previewUrl={job.preview_url} />

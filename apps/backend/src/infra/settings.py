@@ -77,7 +77,6 @@ class Settings(BaseSettings):
     agent_request_limit_architect: int = 10
     agent_request_limit_animator: int = 25
 
-    hitl_enabled: bool = False
     curriculum_validation_enabled: bool = False
     database_url: str = "sqlite:///" + str(PROJECT_ROOT / "data" / "conceptcast.db")
     redis_url: str = "redis://localhost:6379"

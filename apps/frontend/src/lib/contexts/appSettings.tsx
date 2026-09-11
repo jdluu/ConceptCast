@@ -7,7 +7,6 @@ export interface AppSettings {
   enableNotifications: boolean;
   enableSound: boolean;
   reducedMotion: boolean;
-  hitlEnabled: boolean;
   showAdvancedModelSettings: boolean;
   agentModels: {
     analyst: string;
@@ -21,7 +20,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   enableNotifications: true,
   enableSound: true,
   reducedMotion: false,
-  hitlEnabled: false,
   showAdvancedModelSettings: false,
   agentModels: {
     analyst: 'nvidia/nemotron-3-super-120b-a12b:thinking',
