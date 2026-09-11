@@ -6,12 +6,10 @@ from infra.ai.tools.analysis import statically_check_layout_collisions
 def create_mock_ctx():
     plan = CurriculumPlan(
         concept_title="derivatives",
-        target_audience="General Audience",
         teaching_steps=[],
     )
     return GlobalContext(
         topic="derivatives",
-        target_audience="General Audience",
         plan=plan,
         style={},
         lexicon={},

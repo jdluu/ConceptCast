@@ -1,7 +1,7 @@
 import { useDeveloperMode } from '@/lib/contexts/developerMode';
 import { useTheme } from '@/lib/contexts/theme';
 import { useAppSettings } from '@/lib/contexts/appSettings';
-import { Moon, Sun, Laptop, Zap, Trash2, Bell, Volume2 } from 'lucide-react';
+import { Moon, Sun, Laptop, Zap, Trash2, Bell, Volume2, Move } from 'lucide-react';
 import { useState } from 'react';
 import { deleteAllJobs } from '@/lib/api/client';
 

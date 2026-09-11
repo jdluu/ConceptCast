@@ -17,15 +17,13 @@ EXPERIMENT_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Define the experiment matrix
 TOPICS = [
-    {"topic": "Pythagorean Theorem", "audience": "Beginner", "complexity": "low"},
+    {"topic": "Pythagorean Theorem", "complexity": "low"},
     {
         "topic": "Binary Search Algorithm",
-        "audience": "Intermediate",
         "complexity": "medium",
     },
     {
         "topic": "Backpropagation in Neural Networks",
-        "audience": "Advanced",
         "complexity": "high",
     },
 ]
@@ -56,7 +54,6 @@ async def run_suite() -> None:
                     provider=model["provider"],
                     model_id=model["model_id"],
                     topic=topic_info["topic"],
-                    audience=topic_info["audience"],
                 )
 
                 # Detect fallback in summary

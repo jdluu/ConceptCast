@@ -81,10 +81,10 @@ async def test_agent_logic(  # noqa: C901, PLR0912
     kwargs: dict[str, Any] = {}
     if agent_name == "architect":
         kwargs["deps"] = CurriculumPlan(
-            concept_title=topic, target_audience="Beginner", teaching_steps=[]
+            concept_title=topic, teaching_steps=[]
         )
 
-    ctx = GlobalContext(topic=topic, target_audience="Beginner")
+    ctx = GlobalContext(topic=topic)
 
     # If the agent needs specific artifacts (like curriculum or storyboard),
     # we should ideally put them inside the ctx (GCO) now.
@@ -161,7 +161,6 @@ async def test_full_workflow(topic: str = "Quantum Entanglement") -> bool:
     job = JobRecord(
         job_id=job_id,
         topic=topic,
-        target_audience="Beginner",
         status="pending",
         mode="mock",
         provider="mock",
@@ -197,7 +196,6 @@ async def test_full_workflow(topic: str = "Quantum Entanglement") -> bool:
                 session=mock_session,
                 job_id=job_id,
                 topic=topic,
-                audience="Beginner",
                 provider="mock",
                 model_id="mock-model",
                 update_job=update_job,

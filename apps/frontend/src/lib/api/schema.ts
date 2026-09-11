@@ -74,7 +74,7 @@ export interface paths {
          * @description Initializes a new asynchronous video generation job.
          *
          *     Implements idempotency: If a pending or completed job with the same topic
-         *     and target audience already exists (created within the last hour), that
+         *     already exists (created within the last hour), that
          *     existing job is returned instead of creating a new one.
          *
          *     Args:
@@ -353,8 +353,7 @@ export interface components {
          *
          *     Attributes:
          *         concept_title: Title of the main concept.
-         *         target_audience: Level of the target audience.
-         *         teaching_steps: Ordered pedagogical steps.
+                 *         teaching_steps: Ordered pedagogical steps.
          */
         CurriculumPlan: {
             /**
@@ -362,11 +361,6 @@ export interface components {
              * @description Title of the main concept
              */
             concept_title: string;
-            /**
-             * Target Audience
-             * @description Level (e.g., 'Undergraduate CS')
-             */
-            target_audience: string;
             /**
              * Teaching Steps
              * @description Ordered steps
@@ -396,11 +390,6 @@ export interface components {
              * @description Concept to explain
              */
             topic: string;
-            /**
-             * Target Audience
-             * @default General Audience
-             */
-            target_audience: string;
             /** Provider */
             provider?: string | null;
             /** Model Id */
@@ -475,8 +464,6 @@ export interface components {
             architect_model?: string | null;
             /** Animator Model */
             animator_model?: string | null;
-            /** Target Audience */
-            target_audience?: string | null;
             /** Started At */
             started_at?: string | null;
             /** Finished At */
@@ -546,8 +533,6 @@ export interface components {
             architect_model?: string | null;
             /** Animator Model */
             animator_model?: string | null;
-            /** Target Audience */
-            target_audience?: string | null;
             /** Started At */
             started_at?: string | null;
             /** Finished At */

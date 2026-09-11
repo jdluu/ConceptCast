@@ -6,7 +6,7 @@
 # repository (results/).
 #
 # Usage:
-#   ./run_topic.sh "<topic>" ["<audience>"]
+#   ./run_topic.sh "<topic>"
 #   PARALLELISM=4 ./run_topic.sh "<topic>"   # tune concurrency (default 4)
 #
 # Concurrency: Nano GPT's subscription plan caps ~10 concurrent requests, and
@@ -21,8 +21,7 @@
 # =============================================================================
 set -euo pipefail
 
-TOPIC="${1:?Usage: run_topic.sh <topic> [audience]}"
-AUDIENCE="${2:-General Audience}"
+TOPIC="${1:?Usage: run_topic.sh <topic>}"
 PARALLELISM="${PARALLELISM:-4}"
 
 MODELS=(
@@ -50,7 +49,6 @@ mkdir -p "$TOPIC_LOG_DIR"
 echo "================================================================================"
 echo "ConceptCast Benchmark Run (parallel)"
 echo "  Topic:       $TOPIC"
-echo "  Audience:    $AUDIENCE"
 echo "  Models:      ${#MODELS[@]}"
 echo "  Parallelism: $PARALLELISM"
 echo "  Logs:        $TOPIC_LOG_DIR"
@@ -67,7 +65,7 @@ for i in "${!MODELS[@]}"; do
 
   # Launch the model run in a subshell, writing to its own log file.
   (
-    make generate topic="$TOPIC" audience="$AUDIENCE" model="$model"
+    make generate topic="$TOPIC" model="$model"
   ) > "$logfile" 2>&1 &
   pids+=($!)
 
@@ -110,7 +108,7 @@ if ls "$REPO_ROOT/reports/"*.json >/dev/null 2>&1; then
 fi
 
 # Record the exact matrix and source revision alongside the raw outputs.
-python3 - "$DATA_REPO/benchmark-manifest.json" "$TOPIC" "$AUDIENCE" "$PARALLELISM" "$REPO_ROOT" <<'PY'
+python3 - "$DATA_REPO/benchmark-manifest.json" "$TOPIC" "$PARALLELISM" "$REPO_ROOT" <<'PY'
 import json
 import subprocess
 import sys
@@ -121,14 +119,13 @@ path = Path(sys.argv[1])
 manifest = json.loads(path.read_text()) if path.exists() else {"runs": []}
 try:
     commit = subprocess.check_output(
-        ["git", "-C", sys.argv[5], "rev-parse", "HEAD"], text=True
+        ["git", "-C", sys.argv[4], "rev-parse", "HEAD"], text=True
     ).strip()
 except subprocess.CalledProcessError:
     commit = "unknown"
 manifest["runs"].append({
     "topic": sys.argv[2],
-    "audience": sys.argv[3],
-    "parallelism": int(sys.argv[4]),
+    "parallelism": int(sys.argv[3]),
     "models": [
         "openai/gpt-oss-20b", "openai/gpt-oss-120b",
         "google/gemma-4-31b-it:thinking", "deepseek/deepseek-v4-flash:thinking",

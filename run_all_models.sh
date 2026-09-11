@@ -17,11 +17,10 @@ MODELS=(
 )
 
 TOPIC="derivatives"
-AUDIENCE="General Audience"
 
 echo "================================================================================"
 echo "🧪 Starting ConceptCast Multi-Model Generalization Run"
-echo "Topic: $TOPIC | Audience: $AUDIENCE"
+echo "Topic: $TOPIC"
 echo "Models to evaluate: ${#MODELS[@]}"
 echo "================================================================================"
 
@@ -36,7 +35,7 @@ for i in "${!MODELS[@]}"; do
   
   # Run make generate on the host terminal
   # This relies on the host environment (pnpm, uv, and Infisical credentials)
-  if make generate topic="$TOPIC" audience="$AUDIENCE" model="$model"; then
+  if make generate topic="$TOPIC" model="$model"; then
     echo ""
     echo "✅ [SUCCESS] Completed generation run for: $model"
   else

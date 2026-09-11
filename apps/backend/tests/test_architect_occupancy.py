@@ -34,7 +34,7 @@ def _obj(name: str, position: str, box: tuple[float, float]) -> VisualObject:
 
 
 def test_occupancy_accepts_non_overlapping_boxes() -> None:
-    ctx = GlobalContext(topic="test", target_audience="General Audience")
+    ctx = GlobalContext(topic="test")
     _populate_scene_occupancy(
         _storyboard(
             [_obj("left", "[-3,0,0]", (1, 1)), _obj("right", "[3,0,0]", (1, 1))]
@@ -45,7 +45,7 @@ def test_occupancy_accepts_non_overlapping_boxes() -> None:
 
 
 def test_occupancy_rejects_impossible_overlapping_boxes() -> None:
-    ctx = GlobalContext(topic="test", target_audience="General Audience")
+    ctx = GlobalContext(topic="test")
     with pytest.raises(StoryboardGenerationError, match="overlaps"):
         _populate_scene_occupancy(
             _storyboard(

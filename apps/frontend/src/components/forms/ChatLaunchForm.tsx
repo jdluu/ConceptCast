@@ -1,18 +1,10 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronUp, Cpu, Send, UserRound } from 'lucide-react';
+import { ChevronUp, Cpu, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAvailableModels, type JobRequest } from '@/lib/api/client';
-import { useAppSettings } from '@/lib/contexts/appSettings';
 import { useDeveloperMode } from '@/lib/contexts/developerMode';
 import { useJobStore } from '@/lib/store/useJobStore';
-
-const AUDIENCE_OPTIONS = [
-  'General Audience',
-  'High School Student',
-  'University Student',
-  'Expert',
-];
 
 type Option = { value: string; label: string };
 
@@ -90,15 +82,10 @@ function DropupSelect({
 
 export function ChatLaunchForm() {
   const rootRef = useRef<HTMLFormElement>(null);
-  const { settings } = useAppSettings();
   const { developerMode } = useDeveloperMode();
   const { createJob, isSubmitting } = useJobStore();
   const [topic, setTopic] = useState('');
-  const [audience, setAudience] = useState(() => {
-    const aud = settings.defaultAudience || 'General Audience';
-    return AUDIENCE_OPTIONS.includes(aud) ? aud : 'General Audience';
-  });
-  const [openMenu, setOpenMenu] = useState<'provider' | 'model' | 'audience' | null>(null);
+  const [openMenu, setOpenMenu] = useState<'provider' | 'model' | null>(null);
 
   const { data } = useQuery({
     queryKey: ['models'],
@@ -170,19 +157,6 @@ export function ChatLaunchForm() {
     return models.map((model) => ({ value: model, label: model }));
   }, [filteredGroups, provider]);
 
-  const audienceOptions = useMemo<Option[]>(
-    () => AUDIENCE_OPTIONS.map((entry) => ({ value: entry, label: entry })),
-    [],
-  );
-
-  // Keep audience selection in sync with default settings on first load / changes.
-  useEffect(() => {
-    setAudience((current) => {
-      const aud = current || settings.defaultAudience || 'General Audience';
-      return AUDIENCE_OPTIONS.includes(aud) ? aud : 'General Audience';
-    });
-  }, [settings.defaultAudience]);
-
   const submitDisabled =
     isSubmitting || !hasAnyProvider || !provider || !modelId || topic.trim().length < 3;
 
@@ -202,7 +176,6 @@ export function ChatLaunchForm() {
 
     const request: JobRequest = {
       topic: trimmedTopic,
-      target_audience: audience || settings.defaultAudience || 'General Audience',
       provider,
       model_id: modelId,
     };
@@ -260,18 +233,6 @@ export function ChatLaunchForm() {
             disabled={!modelOptions.length || isSubmitting}
             onOpenChange={(next) => setOpenMenu(next ? 'model' : null)}
             onChange={setModelId}
-          />
-
-          <DropupSelect
-            id="audience-menu"
-            label="Audience"
-            icon={<UserRound className="h-3.5 w-3.5" />}
-            value={audience}
-            options={audienceOptions}
-            isOpen={openMenu === 'audience'}
-            disabled={isSubmitting}
-            onOpenChange={(next) => setOpenMenu(next ? 'audience' : null)}
-            onChange={setAudience}
           />
         </div>
 

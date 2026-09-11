@@ -32,7 +32,6 @@ class JobSummary(BaseModel):
     architect_model: str | None = None
     animator_model: str | None = None
 
-    target_audience: str | None = None
 
     started_at: str | None = None
     finished_at: str | None = None
@@ -90,7 +89,6 @@ class JobStatus(BaseModel):
     architect_model: str | None = None
     animator_model: str | None = None
 
-    target_audience: str | None = None
 
     started_at: str | None = None
     finished_at: str | None = None
@@ -114,7 +112,6 @@ class JobRequest(BaseModel):
     """Parameters for a new generation job."""
 
     topic: str = Field(..., description="Concept to explain")
-    target_audience: str = "General Audience"
     provider: str | None = None
     model_id: str | None = None
     analyst_model: str | None = None

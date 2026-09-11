@@ -13,7 +13,6 @@ from api.schemas import (
 
 async def run_mock_flow(
     topic: str,
-    target_audience: str,
     update_job: Callable[[dict[str, object]], Any],
     on_thought: Callable[[str, str, str], Any],
 ) -> None:
@@ -24,7 +23,6 @@ async def run_mock_flow(
 
     Args:
         topic: The simulated educational topic.
-        target_audience: The intended audience for the mock content.
         update_job: Callback to update the persisted Job state.
         on_thought: Callback to emit agent reasoning steps.
     """
@@ -53,7 +51,7 @@ async def run_mock_flow(
         await on_thought("analyst", "Curriculum Design", "Structuring lesson plan...")
         await asyncio.sleep(1.0 * sleep_mult)
 
-        plan = generate_mock_plan(topic, target_audience or "General Audience")
+        plan = generate_mock_plan(topic)
         await update_job(
             {
                 "plan": plan.model_dump(),
@@ -133,19 +131,17 @@ async def run_mock_flow(
         )
 
 
-def generate_mock_plan(topic: str, target_audience: str) -> CurriculumPlan:
+def generate_mock_plan(topic: str) -> CurriculumPlan:
     """Generates a pedagogical curriculum plan for testing.
 
     Args:
         topic: The topic to structure.
-        target_audience: The intended user base.
 
     Returns:
         A structured CurriculumPlan with mock steps.
     """
     return CurriculumPlan(
         concept_title=f"Mock: {topic}",
-        target_audience=target_audience,
         teaching_steps=[
             TeachingStep(
                 step_id=1,

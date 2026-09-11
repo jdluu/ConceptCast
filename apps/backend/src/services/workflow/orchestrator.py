@@ -109,7 +109,6 @@ async def process_job_logic(
                 session=session,
                 job_id=job_id,
                 topic=request.topic,
-                audience=request.target_audience,
                 provider=request.provider or "mock",
                 model_id=request.model_id or "default",
                 update_job=_update_job_callback,
@@ -147,7 +146,6 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
     session: AsyncSession,
     job_id: str,
     topic: str,
-    audience: str,
     provider: str,
     model_id: str,
     update_job: Callable[[dict[str, object]], Awaitable[None]],
@@ -166,7 +164,6 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
     # 2. Re-construct Request for agents (used for getting models)
     request = JobRequest(
         topic=topic,
-        target_audience=audience,
         provider=provider,
         model_id=model_id,
         analyst_model=job_state.analyst_model,
@@ -176,7 +173,7 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
 
     # 3. Initialize Global Context (GCO)
     ctx = GlobalContext(
-        topic=topic, user_prompt=job_state.user_prompt, target_audience=audience
+        topic=topic, user_prompt=job_state.user_prompt
     )
 
     # 4. Refine Topic if needed

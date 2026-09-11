@@ -13,7 +13,6 @@ import { useJobStore } from '@/lib/store/useJobStore';
 import { Button } from '@/components/ui/Common';
 import { Card } from '@/components/ui/Card';
 import {
-  AudienceField,
   ModelSelectionFields,
   AgentModelSelectionFields,
 } from '@/components/forms/JobFormFields';
@@ -61,7 +60,6 @@ export function JobCreationForm() {
   } = useForm<JobFormData>({
     resolver: zodResolver(jobSchema),
     defaultValues: {
-      target_audience: settings.defaultAudience,
       provider: 'mock',
       model_id: 'mock-gpt-4',
     },
@@ -92,7 +90,6 @@ export function JobCreationForm() {
     try {
       const request: JobRequest = {
         topic: formData.topic,
-        target_audience: formData.target_audience || settings.defaultAudience,
         provider: formData.provider,
         model_id: formData.model_id,
         analyst_model: formData.analyst_model || undefined,
@@ -109,7 +106,6 @@ export function JobCreationForm() {
   const runMockDemo = () => {
     createJob({
       topic: 'Quantum Entanglement',
-      target_audience: 'High School Student',
       provider: 'mock',
       model_id: 'mock-gpt-4',
     });
@@ -167,14 +163,7 @@ export function JobCreationForm() {
               </FormSection>
 
               <FormSection number={2} title="Context">
-                <div className="space-y-6">
-                  <AudienceField register={register} />
-                  {errors.target_audience && (
-                    <p className="text-destructive mt-1 text-xs">
-                      {errors.target_audience.message as string}
-                    </p>
-                  )}
-                </div>
+                <div className="space-y-6" />
               </FormSection>
 
               {hasRealProviders && (

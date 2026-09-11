@@ -37,7 +37,6 @@ async def main(topic: str, model_id: str) -> None:
         raise RuntimeError("Nano model is unavailable")
     ctx = GlobalContext(
         topic=storyboard_data.get("concept_title", topic),
-        target_audience="General Audience",
     )
     scene_model = Scene.model_validate(scene)
     raw, usage = await generate_manim_code(

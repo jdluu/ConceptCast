@@ -15,7 +15,6 @@ async def main() -> int:
     model_id = sys.argv[1] if len(sys.argv) > 1 else "qwen/qwen3.5-122b-a10b:thinking"
     plan = CurriculumPlan(
         concept_title="Structured-output probe",
-        target_audience="General Audience",
         teaching_steps=[
             TeachingStep(
                 step_id=1,

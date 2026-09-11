@@ -8,15 +8,14 @@ removed from the framework; jobs no longer pause for manual approval.
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.schemas import CurriculumPlan, JobRequest, JobStatus
-from infra.database import AsyncSessionLocal, get_db
+from api.schemas import CurriculumPlan, JobStatus
+from infra.database import get_db
 from infra.models.job import JobRecord
 from services.jobs.serialization import map_job_record_to_status
-from services.workflow.orchestrator import process_job_logic
 
 logger = structlog.get_logger(__name__)
 

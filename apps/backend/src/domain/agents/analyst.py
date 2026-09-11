@@ -1,7 +1,7 @@
 """Agent specialized in curriculum planning and pedagogical deconstruction.
 
 Uses self-correction via a critic tool to ensure the generated learning
-dependency graph is logical and effective for the target audience.
+dependency graph is logical and effective.
 """
 
 from collections.abc import Awaitable, Callable
@@ -23,7 +23,6 @@ analyst_agent: ConceptAgent[TeachingStepsDraft] = ConceptAgent(
 
 async def generate_curriculum(
     topic: str,
-    audience: str,
     model: BaseConceptModel,
     on_thought: Callable[[str, str, str], Awaitable[None]] | None = None,
     retry_hint: str | None = None,
@@ -34,7 +33,6 @@ async def generate_curriculum(
 
     Args:
         topic: The complex technical topic to deconstruct.
-        audience: The target knowledge level of the audience.
         model: The ConceptCast model to use for generation.
         on_thought: Optional callback for streaming agent thoughts.
         ctx: The Global Context Object (GCO) for the workflow.
@@ -43,10 +41,7 @@ async def generate_curriculum(
     Returns:
         tuple: (Generated teaching steps draft, RunUsage data).
     """
-    if ctx:
-        prompt = extract_analyst_context(ctx)
-    else:
-        prompt = f"Explain '{topic}' to a '{audience}' audience."
+    prompt = extract_analyst_context(ctx) if ctx else f"Explain '{topic}'."
 
     if retry_hint:
         prompt = f"{prompt}\n\nREPAIR INSTRUCTIONS:\n{retry_hint}"

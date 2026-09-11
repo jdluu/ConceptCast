@@ -3,7 +3,6 @@ import { createContext, useCallback, use, useMemo, useState } from 'react';
 const STORAGE_KEY = 'conceptcast_app_settings';
 
 export interface AppSettings {
-  defaultAudience: string;
   enableNotifications: boolean;
   enableSound: boolean;
   reducedMotion: boolean;
@@ -16,7 +15,6 @@ export interface AppSettings {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  defaultAudience: 'General Audience',
   enableNotifications: true,
   enableSound: true,
   reducedMotion: false,

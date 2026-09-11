@@ -28,8 +28,6 @@ def _normalize_plan_defaults(
     updates: dict[str, str] = {}
     if _is_placeholder_text(plan.concept_title):
         updates["concept_title"] = request.topic.strip()
-    if _is_placeholder_text(plan.target_audience):
-        updates["target_audience"] = request.target_audience.strip()
     if not updates:
         return plan
     return plan.model_copy(update=updates)
@@ -42,7 +40,6 @@ def _plan_structure_issues(plan: CurriculumPlan) -> list[str]:
     if not plan.concept_title or not plan.concept_title.strip():
         issues.append("concept_title is empty")
 
-    # We are lenient with target_audience during generation as we can hydrate it.
 
     if not plan.teaching_steps:
         issues.append("teaching_steps is empty")
@@ -75,7 +72,7 @@ async def step_planning(
     """Executes the curriculum planning phase of the generation workflow.
 
     Uses an AI analyst to decompose the input topic into a structured,
-    pedagogical plan appropriate for the target audience.
+    pedagogical plan.
 
     Args:
         request: The initial job request details.
@@ -108,7 +105,6 @@ async def step_planning(
         try:
             steps_draft, usage = await generate_curriculum(
                 topic=request.topic,
-                audience=request.target_audience,
                 model=plan_model,
                 on_thought=on_thought,
                 retry_hint=retry_hint,
@@ -119,7 +115,6 @@ async def step_planning(
             )
             plan = CurriculumPlan(
                 concept_title=request.topic.strip(),
-                target_audience=request.target_audience.strip(),
                 teaching_steps=steps_draft.teaching_steps,
             )
         except Exception as e:
@@ -130,7 +125,6 @@ async def step_planning(
             )
             plan = CurriculumPlan(
                 concept_title=request.topic,
-                target_audience=request.target_audience,
                 teaching_steps=[
                     TeachingStep(
                         step_id=1,

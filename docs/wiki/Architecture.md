@@ -36,7 +36,7 @@ graph TD
 
 ### 1. The Global Context Object (GCO)
 Instead of a simple linear pipeline, all agents interact with a **GCO** that maintains:
-- **Semantic Intent**: Core concepts and target audience goals.
+- **Semantic Intent**: Core concepts and learning goals.
 - **Visual Lexicon**: Shared symbols and styles (ensuring Scene 1 colors match Scene 10).
 - **Spatial Map**: Tracks screen real estate to prevent overlapping text and shapes.
 - **Error Buffer**: Shared history of failures to guide retry and correction logic.

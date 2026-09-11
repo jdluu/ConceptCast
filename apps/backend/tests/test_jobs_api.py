@@ -66,7 +66,6 @@ def mock_process_job_logic() -> Generator[None, None, None]:
     """
     with (
         patch("api.routes.jobs_crud.process_job_logic", new_callable=AsyncMock) as _,
-        patch("api.routes.jobs_review.process_job_logic", new_callable=AsyncMock) as _,
     ):
         yield
 
@@ -78,7 +77,6 @@ async def test_create_job_success(
     """Tests that a job is successfully created when using unique parameters."""
     payload = {
         "topic": "Neural Networks",
-        "target_audience": "Undergraduate CS",
     }
     response = await client.post("/jobs/create", json=payload)
     assert response.status_code == 200
@@ -103,7 +101,6 @@ async def test_create_job_idempotency(
     """Verifies that duplicate requests return the same job within 1 hour."""
     payload = {
         "topic": "Bubble Sort",
-        "target_audience": "High School",
     }
 
     # Create first job
@@ -111,7 +108,7 @@ async def test_create_job_idempotency(
     assert res1.status_code == 200
     job_1 = res1.json()
 
-    # Request same topic/audience within 1 hour
+    # Request same topic within 1 hour
     res2 = await client.post("/jobs/create", json=payload)
     assert res2.status_code == 200
     job_2 = res2.json()
@@ -129,7 +126,6 @@ async def test_create_job_expired_idempotency(
             job_id="old-job-123",
             topic="Bubble Sort",
             user_prompt="Bubble Sort",
-            target_audience="High School",
             status="completed",
             mode="live",
             created_at=datetime.now(UTC) - timedelta(hours=2),
@@ -139,7 +135,6 @@ async def test_create_job_expired_idempotency(
 
     payload = {
         "topic": "Bubble Sort",
-        "target_audience": "High School",
     }
     res = await client.post("/jobs/create", json=payload)
     assert res.status_code == 200
@@ -158,7 +153,6 @@ async def test_create_job_failed_no_idempotency(
             job_id="failed-job-123",
             topic="Bubble Sort",
             user_prompt="Bubble Sort",
-            target_audience="High School",
             status="failed",
             mode="live",
             created_at=datetime.now(UTC) - timedelta(minutes=10),
@@ -168,7 +162,6 @@ async def test_create_job_failed_no_idempotency(
 
     payload = {
         "topic": "Bubble Sort",
-        "target_audience": "High School",
     }
     res = await client.post("/jobs/create", json=payload)
     assert res.status_code == 200
@@ -217,11 +210,11 @@ async def test_retry_job_guards(
 
 @pytest.mark.asyncio
 async def test_create_job_omits_hitl(
-    client: AsyncClient, override_db: async_sessionmaker[AsyncSession]
+    client: AsyncClient, override_db: async_sessionmaker[AsyncSession]  # noqa: ARG001
 ) -> None:
     """HITL removal: creation works without hitl_enabled and never echoes it."""
     res = await client.post(
-        "/jobs/create", json={"topic": "Verify Topic", "target_audience": "Undergrad"}
+        "/jobs/create", json={"topic": "Verify Topic"}
     )
     assert res.status_code == 200
     data = res.json()
