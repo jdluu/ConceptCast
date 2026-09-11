@@ -215,3 +215,24 @@ async def test_retry_job_guards(
     assert data["status"] == "pending_retry"
 
 
+@pytest.mark.asyncio
+async def test_create_job_omits_hitl(
+    client: AsyncClient, override_db: async_sessionmaker[AsyncSession]
+) -> None:
+    """HITL removal: creation works without hitl_enabled and never echoes it."""
+    res = await client.post(
+        "/jobs/create", json={"topic": "Verify Topic", "target_audience": "Undergrad"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "hitl_enabled" not in data
+    assert data["status"] == "planning"
+
+
+@pytest.mark.asyncio
+async def test_review_endpoint_removed(client: AsyncClient) -> None:
+    """HITL removal: the review gate route is gone."""
+    res = await client.post("/jobs/whatever/review", json={"action": "approve"})
+    assert res.status_code == 404
+
+
