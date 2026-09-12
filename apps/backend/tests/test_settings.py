@@ -1,13 +1,14 @@
+import pytest
 
 from infra.settings import Settings
 
 
-def _clear_key_env(monkeypatch) -> None:
+def _clear_key_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("NANO_API_KEY", raising=False)
     monkeypatch.delenv("NANOGPT_API_KEY", raising=False)
 
 
-def test_settings_valid_nano_api_key(monkeypatch) -> None:
+def test_settings_valid_nano_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     _clear_key_env(monkeypatch)
     """Verifies that valid Nano GPT API key formats are successfully accepted."""
     # Valid new key format
@@ -36,7 +37,7 @@ def test_settings_custom_nano_api_key() -> None:
     assert settings.nano_api_key == "sk-nano-custom-key-format"
 
 
-def test_settings_nano_api_key_env_alias(monkeypatch) -> None:
+def test_settings_nano_api_key_env_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     """Benchmark v2: .env uses NANOGPT_API_KEY; the field must accept both names."""
     import importlib
 

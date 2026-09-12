@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import pytest
 
@@ -11,7 +12,7 @@ from domain.agents.architect_compat import (
 PROMPT = "Architect rules.\nYou must output a structured storyboard using the final_result tool."
 
 
-VALID = {
+VALID: dict[str, Any] = {
     "concept_title": "Fourier Transform",
     "scenes": [
         {
@@ -232,7 +233,7 @@ def test_extract_storyboard_json_normalizes_xywh_bounding_boxes() -> None:
 
 
 def test_extract_storyboard_json_rejects_missing_required_field() -> None:
-    invalid_scene = {**VALID["scenes"][0]}
+    invalid_scene: dict[str, Any] = {**VALID["scenes"][0]}
     invalid_scene.pop("description")
     invalid = {**VALID, "scenes": [invalid_scene]}
     with pytest.raises(ArchitectCompatibilityError, match="Storyboard validation"):
