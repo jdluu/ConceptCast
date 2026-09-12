@@ -36,7 +36,6 @@ export function JobDetailPanel({ jobId }: JobDetailPanelProps) {
   }
 
   const topic = job.topic || 'Unknown Topic';
-  const audience = job.target_audience || 'General';
 
   return (
     <div className="animate-in fade-in slide-in-from-top-4 border-surface-border bg-surface border-t p-8 duration-300">
@@ -140,7 +139,7 @@ export function JobDetailPanel({ jobId }: JobDetailPanelProps) {
                 id: 'prompt',
                 label: 'Prompt',
                 content: (
-                  <PromptView topic={topic} userPrompt={job.user_prompt} audience={audience} />
+                  <PromptView topic={topic} userPrompt={job.user_prompt} />
                 ),
               },
               {
@@ -207,16 +206,14 @@ function DataCard({ label, value, subValue }: { label: string; value: string; su
 function PromptView({
   topic,
   userPrompt,
-  audience,
 }: {
   topic: string;
   userPrompt?: string | null;
-  audience: string | null | undefined;
 }) {
   return (
     <div className="min-h-xs border-surface-border bg-background/30 space-y-6 rounded-2xl border p-6">
       <div>
-        <ArtifactBadge variant="active">Refined Topic</ArtifactBadge>
+        <ArtifactBadge variant="active">Topic</ArtifactBadge>
         <p className="text-foreground mt-1 text-sm font-bold">{topic}</p>
       </div>
       {userPrompt && (
@@ -225,10 +222,6 @@ function PromptView({
           <p className="text-text-muted mt-1 text-sm leading-relaxed">{userPrompt}</p>
         </div>
       )}
-      <div>
-        <ArtifactBadge variant="active">Target Audience</ArtifactBadge>
-        <p className="text-foreground mt-1 text-sm font-bold">{audience || 'General'}</p>
-      </div>
     </div>
   );
 }

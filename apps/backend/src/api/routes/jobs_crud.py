@@ -49,7 +49,7 @@ async def create_job(
     """Initializes a new asynchronous video generation job.
 
     Implements idempotency: If a pending or completed job with the same topic
-    and target audience already exists (created within the last hour), that
+    already exists (created within the last hour), that
     existing job is returned instead of creating a new one.
 
     Args:
@@ -74,7 +74,6 @@ async def create_job(
             select(JobRecord)
             .where(
                 JobRecord.user_prompt == request.topic,
-                JobRecord.target_audience == request.target_audience,
                 JobRecord.mode == mode,
                 JobRecord.provider == request.provider,
                 JobRecord.model_id == request.model_id,
@@ -110,15 +109,16 @@ async def create_job(
             job_id=job_id,
             topic=request.topic,
             user_prompt=request.topic,
-            target_audience=request.target_audience,
             status="planning",
             mode=mode,
-            hitl_enabled=request.hitl_enabled,
             provider=request.provider,
             model_id=request.model_id,
             analyst_model=request.analyst_model,
             architect_model=request.architect_model,
             animator_model=request.animator_model,
+            benchmark_job_seq=request.benchmark_job_seq,
+            benchmark_arm=request.benchmark_arm,
+            benchmark_rep=request.benchmark_rep,
         )
 
         async def _save_job() -> None:
@@ -262,10 +262,8 @@ async def retry_job(
 
     request = JobRequest(
         topic=job.topic,
-        target_audience=job.target_audience or "General Audience",
         provider=job.provider,
         model_id=job.model_id,
-        hitl_enabled=job.hitl_enabled,
         analyst_model=job.analyst_model,
         architect_model=job.architect_model,
         animator_model=job.animator_model,

@@ -3,7 +3,7 @@ from infra.ai.tools.analysis import statically_check_layout_collisions
 
 
 def _ctx() -> GlobalContext:
-    return GlobalContext(topic="test", target_audience="General Audience")
+    return GlobalContext(topic="test")
 
 
 def test_layout_check_ignores_helper_data_assignments() -> None:

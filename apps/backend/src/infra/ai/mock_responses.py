@@ -22,7 +22,6 @@ settings = get_settings()
 MOCK_PLANS = {
     "default": CurriculumPlan(
         concept_title=f"Understanding {settings.mock_topic}",
-        target_audience="General Audience",
         teaching_steps=[
             TeachingStep(
                 step_id=1,

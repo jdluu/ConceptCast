@@ -1,6 +1,6 @@
 """Integration tests for the job-related API endpoints.
 
-Covers job creation idempotency, active status retry guards, and HITL review
+Covers job creation idempotency, active status retry guards, and preview
 state transitions.
 """
 
@@ -66,7 +66,6 @@ def mock_process_job_logic() -> Generator[None, None, None]:
     """
     with (
         patch("api.routes.jobs_crud.process_job_logic", new_callable=AsyncMock) as _,
-        patch("api.routes.jobs_review.process_job_logic", new_callable=AsyncMock) as _,
     ):
         yield
 
@@ -78,8 +77,6 @@ async def test_create_job_success(
     """Tests that a job is successfully created when using unique parameters."""
     payload = {
         "topic": "Neural Networks",
-        "target_audience": "Undergraduate CS",
-        "hitl_enabled": False,
     }
     response = await client.post("/jobs/create", json=payload)
     assert response.status_code == 200
@@ -104,8 +101,6 @@ async def test_create_job_idempotency(
     """Verifies that duplicate requests return the same job within 1 hour."""
     payload = {
         "topic": "Bubble Sort",
-        "target_audience": "High School",
-        "hitl_enabled": True,
     }
 
     # Create first job
@@ -113,7 +108,7 @@ async def test_create_job_idempotency(
     assert res1.status_code == 200
     job_1 = res1.json()
 
-    # Request same topic/audience within 1 hour
+    # Request same topic within 1 hour
     res2 = await client.post("/jobs/create", json=payload)
     assert res2.status_code == 200
     job_2 = res2.json()
@@ -131,7 +126,6 @@ async def test_create_job_expired_idempotency(
             job_id="old-job-123",
             topic="Bubble Sort",
             user_prompt="Bubble Sort",
-            target_audience="High School",
             status="completed",
             mode="live",
             created_at=datetime.now(UTC) - timedelta(hours=2),
@@ -141,8 +135,6 @@ async def test_create_job_expired_idempotency(
 
     payload = {
         "topic": "Bubble Sort",
-        "target_audience": "High School",
-        "hitl_enabled": True,
     }
     res = await client.post("/jobs/create", json=payload)
     assert res.status_code == 200
@@ -161,7 +153,6 @@ async def test_create_job_failed_no_idempotency(
             job_id="failed-job-123",
             topic="Bubble Sort",
             user_prompt="Bubble Sort",
-            target_audience="High School",
             status="failed",
             mode="live",
             created_at=datetime.now(UTC) - timedelta(minutes=10),
@@ -171,8 +162,6 @@ async def test_create_job_failed_no_idempotency(
 
     payload = {
         "topic": "Bubble Sort",
-        "target_audience": "High School",
-        "hitl_enabled": True,
     }
     res = await client.post("/jobs/create", json=payload)
     assert res.status_code == 200
@@ -220,102 +209,49 @@ async def test_retry_job_guards(
 
 
 @pytest.mark.asyncio
-async def test_review_job_guards_and_approvals(
-    client: AsyncClient, override_db: async_sessionmaker[AsyncSession]
+async def test_create_job_omits_hitl(
+    client: AsyncClient, override_db: async_sessionmaker[AsyncSession]  # noqa: ARG001
 ) -> None:
-    """Asserts that review gates validate state and transition statuses correctly."""
-    # 1. Job not in awaiting_review state
-    async with override_db() as db:
-        running_job = JobRecord(
-            job_id="not-awaiting",
-            topic="Redux",
-            status="planning",
-        )
-        db.add(running_job)
-        await db.commit()
-
-    bad_review_payload = {
-        "action": "approve",
-        "feedback": "Looks great",
-    }
-    res = await client.post("/jobs/not-awaiting/review", json=bad_review_payload)
-    assert res.status_code == 400
-
-    # 2. Awaiting review job approved with edited plan
-    async with override_db() as db:
-        paused_job = JobRecord(
-            job_id="awaiting-job",
-            topic="Redux",
-            status="awaiting_review",
-            plan={"concept_title": "Redux", "teaching_steps": []},
-            storyboard={"scenes": []},
-        )
-        db.add(paused_job)
-        await db.commit()
-
-    edited_plan = {
-        "concept_title": "Redux Explained Simply",
-        "target_audience": "Undergraduate CS",
-        "teaching_steps": [
-            {
-                "step_id": 1,
-                "concept": "Store",
-                "visual_metaphor": "A secure bank vault",
-                "narration": "Store is the global state holder.",
-                "estimated_duration": 10.0,
-            }
-        ],
-    }
-    approve_payload: dict[str, object] = {
-        "action": "approve",
-        "edited_plan": edited_plan,
-    }
-    res = await client.post("/jobs/awaiting-job/review", json=approve_payload)
+    """HITL removal: creation works without hitl_enabled and never echoes it."""
+    res = await client.post(
+        "/jobs/create", json={"topic": "Verify Topic"}
+    )
     assert res.status_code == 200
     data = res.json()
-    assert data["status"] == "architecting"
-    assert data["current_step"] == "planning_complete"
-
-    async with override_db() as db:
-        db_res = await db.execute(
-            select(JobRecord).where(JobRecord.job_id == "awaiting-job")
-        )
-        job = db_res.scalar_one()
-        assert job.plan is not None
-        assert job.plan["concept_title"] == "Redux Explained Simply"
-        # Downstream storyboard must be invalidated (None)
-        assert job.storyboard is None
+    assert "hitl_enabled" not in data
+    assert data["status"] == "planning"
 
 
 @pytest.mark.asyncio
-async def test_review_job_regenerate(
-    client: AsyncClient, override_db: async_sessionmaker[AsyncSession]
-) -> None:
-    """Asserts that choosing regenerate resets plans and returns status to planning."""
-    async with override_db() as db:
-        paused_job = JobRecord(
-            job_id="awaiting-regen",
-            topic="Redux",
-            status="awaiting_review",
-            plan={"concept_title": "Redux", "teaching_steps": []},
-            storyboard={"scenes": []},
-        )
-        db.add(paused_job)
-        await db.commit()
+async def test_review_endpoint_removed(client: AsyncClient) -> None:
+    """HITL removal: the review gate route is gone."""
+    res = await client.post("/jobs/whatever/review", json={"action": "approve"})
+    assert res.status_code == 404
 
-    review_payload = {
-        "action": "regenerate",
-        "feedback": "Needs a better hook",
-    }
-    res = await client.post("/jobs/awaiting-regen/review", json=review_payload)
+
+
+
+@pytest.mark.asyncio
+async def test_benchmark_bookkeeping_round_trip(
+    client: AsyncClient, override_db: async_sessionmaker[AsyncSession]  # noqa: ARG001
+) -> None:
+    """Benchmark v2: job_seq/arm/rep persist and surface in status."""
+    res = await client.post(
+        "/jobs/create",
+        json={
+            "topic": "Benchmark Topic Unique 42",
+            "benchmark_job_seq": 42,
+            "benchmark_arm": "C",
+            "benchmark_rep": 2,
+        },
+    )
     assert res.status_code == 200
     data = res.json()
-    assert data["status"] == "planning"
+    assert data["benchmark_job_seq"] == 42
+    assert data["benchmark_arm"] == "C"
+    assert data["benchmark_rep"] == 2
 
-    async with override_db() as db:
-        db_res = await db.execute(
-            select(JobRecord).where(JobRecord.job_id == "awaiting-regen")
-        )
-        job = db_res.scalar_one()
-        assert job.plan is None
-        assert job.storyboard is None
+    job_id = data["job_id"]
+    res2 = await client.get(f"/jobs/{job_id}/status")
+    assert res2.status_code == 200
+    assert res2.json()["benchmark_job_seq"] == 42

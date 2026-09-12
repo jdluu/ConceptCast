@@ -74,7 +74,7 @@ export interface paths {
          * @description Initializes a new asynchronous video generation job.
          *
          *     Implements idempotency: If a pending or completed job with the same topic
-         *     and target audience already exists (created within the last hour), that
+         *     already exists (created within the last hour), that
          *     existing job is returned instead of creating a new one.
          *
          *     Args:
@@ -251,26 +251,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/jobs/{job_id}/review": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Review Job
-         * @description Handles human-in-the-loop review actions for a paused job.
-         */
-        post: operations["review_job_jobs__job_id__review_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/jobs/{job_id}/preview": {
         parameters: {
             query?: never;
@@ -353,7 +333,6 @@ export interface components {
          *
          *     Attributes:
          *         concept_title: Title of the main concept.
-         *         target_audience: Level of the target audience.
          *         teaching_steps: Ordered pedagogical steps.
          */
         CurriculumPlan: {
@@ -362,11 +341,6 @@ export interface components {
              * @description Title of the main concept
              */
             concept_title: string;
-            /**
-             * Target Audience
-             * @description Level (e.g., 'Undergraduate CS')
-             */
-            target_audience: string;
             /**
              * Teaching Steps
              * @description Ordered steps
@@ -396,45 +370,22 @@ export interface components {
              * @description Concept to explain
              */
             topic: string;
-            /**
-             * Target Audience
-             * @default General Audience
-             */
-            target_audience: string;
             /** Provider */
             provider?: string | null;
             /** Model Id */
             model_id?: string | null;
-            /**
-             * Hitl Enabled
-             * @default false
-             */
-            hitl_enabled: boolean;
             /** Analyst Model */
             analyst_model?: string | null;
             /** Architect Model */
             architect_model?: string | null;
             /** Animator Model */
             animator_model?: string | null;
-        };
-        /**
-         * JobReviewRequest
-         * @description Payload for human-in-the-loop review actions.
-         */
-        JobReviewRequest: {
-            /**
-             * Feedback
-             * @description Steering instructions for the agent
-             */
-            feedback?: string | null;
-            /** @description Directly modified curriculum */
-            edited_plan?: components["schemas"]["CurriculumPlan"] | null;
-            /**
-             * Action
-             * @default approve
-             * @enum {string}
-             */
-            action: "approve" | "regenerate";
+            /** Benchmark Job Seq */
+            benchmark_job_seq?: number | null;
+            /** Benchmark Arm */
+            benchmark_arm?: string | null;
+            /** Benchmark Rep */
+            benchmark_rep?: number | null;
         };
         /**
          * JobStatus
@@ -470,11 +421,6 @@ export interface components {
              * @enum {string}
              */
             mode: "live" | "mock";
-            /**
-             * Hitl Enabled
-             * @default false
-             */
-            hitl_enabled: boolean;
             /** Provider */
             provider?: string | null;
             /** Model Id */
@@ -485,8 +431,12 @@ export interface components {
             architect_model?: string | null;
             /** Animator Model */
             animator_model?: string | null;
-            /** Target Audience */
-            target_audience?: string | null;
+            /** Benchmark Job Seq */
+            benchmark_job_seq?: number | null;
+            /** Benchmark Arm */
+            benchmark_arm?: string | null;
+            /** Benchmark Rep */
+            benchmark_rep?: number | null;
             /** Started At */
             started_at?: string | null;
             /** Finished At */
@@ -522,6 +472,20 @@ export interface components {
             failure_type?: string | null;
             /** Failure Summary */
             failure_summary?: string | null;
+            /**
+             * Architect Fallback Used
+             * @default false
+             */
+            architect_fallback_used: boolean;
+            /**
+             * Architect Attempts
+             * @default 0
+             */
+            architect_attempts: number;
+            /** Architect Original Error */
+            architect_original_error?: string | null;
+            /** Architect Transport */
+            architect_transport?: string | null;
         };
         /**
          * JobSummary
@@ -544,11 +508,6 @@ export interface components {
             created_at: string;
             /** Retry Count */
             retry_count: number;
-            /**
-             * Hitl Enabled
-             * @default false
-             */
-            hitl_enabled: boolean;
             /** Error */
             error: string | null;
             /** Provider */
@@ -561,8 +520,12 @@ export interface components {
             architect_model?: string | null;
             /** Animator Model */
             animator_model?: string | null;
-            /** Target Audience */
-            target_audience?: string | null;
+            /** Benchmark Job Seq */
+            benchmark_job_seq?: number | null;
+            /** Benchmark Arm */
+            benchmark_arm?: string | null;
+            /** Benchmark Rep */
+            benchmark_rep?: number | null;
             /** Started At */
             started_at?: string | null;
             /** Finished At */
@@ -595,6 +558,20 @@ export interface components {
             failure_type?: string | null;
             /** Failure Summary */
             failure_summary?: string | null;
+            /**
+             * Architect Fallback Used
+             * @default false
+             */
+            architect_fallback_used: boolean;
+            /**
+             * Architect Attempts
+             * @default 0
+             */
+            architect_attempts: number;
+            /** Architect Original Error */
+            architect_original_error?: string | null;
+            /** Architect Transport */
+            architect_transport?: string | null;
         };
         /**
          * ProviderModels
@@ -1046,41 +1023,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    review_job_jobs__job_id__review_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["JobReviewRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobStatus"];
                 };
             };
             /** @description Validation Error */

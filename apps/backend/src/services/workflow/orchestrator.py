@@ -16,12 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.schemas import JobRequest, Storyboard
 from domain.models.workflow import GlobalContext
-from infra.ai.factory import get_concept_model
 from infra.database import AsyncSessionLocal
 from infra.exceptions import JobCancelledError, PlanGenerationError
 from infra.models.job import JobRecord
 from infra.tasks import render_video_task
-from services.jobs.topic import refine_topic
 from services.workflow.utils import (
     calculate_job_cost,
     merge_usage,
@@ -109,7 +107,6 @@ async def process_job_logic(
                 session=session,
                 job_id=job_id,
                 topic=request.topic,
-                audience=request.target_audience,
                 provider=request.provider or "mock",
                 model_id=request.model_id or "default",
                 update_job=_update_job_callback,
@@ -147,7 +144,6 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
     session: AsyncSession,
     job_id: str,
     topic: str,
-    audience: str,
     provider: str,
     model_id: str,
     update_job: Callable[[dict[str, object]], Awaitable[None]],
@@ -163,13 +159,22 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
     # 1. Fetch Job State
     job_state = await load_job_record(session, job_id)
 
+    # Benchmark v2: attribute per-call traces to this job even with parallel
+    # jobs sharing the backend process.
+    if job_state.benchmark_job_seq is not None:
+        from infra.ai import trace as bench_trace
+        bench_trace.set_bench_context(
+            job_seq=job_state.benchmark_job_seq,
+            arm=job_state.benchmark_arm,
+            rep=job_state.benchmark_rep,
+            topic=topic,
+        )
+
     # 2. Re-construct Request for agents (used for getting models)
     request = JobRequest(
         topic=topic,
-        target_audience=audience,
         provider=provider,
         model_id=model_id,
-        hitl_enabled=job_state.hitl_enabled,
         analyst_model=job_state.analyst_model,
         architect_model=job_state.architect_model,
         animator_model=job_state.animator_model,
@@ -177,22 +182,8 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
 
     # 3. Initialize Global Context (GCO)
     ctx = GlobalContext(
-        topic=topic, user_prompt=job_state.user_prompt, target_audience=audience
+        topic=topic, user_prompt=job_state.user_prompt
     )
-
-    # 4. Refine Topic if needed
-    if job_state.topic == job_state.user_prompt:
-        await on_thought("system", "status", "Refining topic...")
-        await update_job({"current_step": "refining_topic"})
-
-        model = get_concept_model(provider, model_id)
-        if model:
-            refined_topic = await refine_topic(job_state.user_prompt, model)
-            await update_job({"topic": refined_topic})
-            ctx.topic = refined_topic
-            topic = refined_topic
-        else:
-            logger.warning("refinement_model_unavailable", job_id=job_id)
 
     try:
         if (
@@ -221,15 +212,6 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
             raise PlanGenerationError(
                 "Curriculum generation produced no teaching steps after retries."
             )
-
-        # --- Human in the Loop (HITL) Check ---
-        if request.hitl_enabled:
-            logger.info("workflow_hitl_paused_for_review", job_id=job_id)
-            await update_job(
-                {"status": "awaiting_review", "current_step": "planning_complete"}
-            )
-            return
-        # ---------------------------------------
 
         storyboard, usage_3 = await handle_architecting_steps(
             job_id, job_state, request, plan, provider, update_job, on_thought, ctx

@@ -8,6 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
@@ -58,7 +59,10 @@ class Settings(BaseSettings):
         pricing_base_overhead: Fixed processing overhead per job.
     """
 
-    nano_api_key: str | None = None
+    nano_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("nano_api_key", "NANO_API_KEY", "NANOGPT_API_KEY"),
+    )
     context7_api_key: str | None = None
     context7_cache_ttl_seconds: int = 1800
     context7_cache_max_entries: int = 256
@@ -77,8 +81,12 @@ class Settings(BaseSettings):
     agent_request_limit_architect: int = 10
     agent_request_limit_animator: int = 25
 
-    hitl_enabled: bool = False
     curriculum_validation_enabled: bool = False
+
+    # Benchmark v2 sampling pins (parity across arms). None = provider default.
+    benchmark_temperature: float | None = None
+    benchmark_seed: int | None = None
+    benchmark_trace_dir: str | None = None
     database_url: str = "sqlite:///" + str(PROJECT_ROOT / "data" / "conceptcast.db")
     redis_url: str = "redis://localhost:6379"
     cors_origins: str = "http://localhost:5173"

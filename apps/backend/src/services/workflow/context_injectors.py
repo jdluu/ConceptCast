@@ -40,8 +40,8 @@ def _format_context(data: dict[str, Any]) -> str:
 def extract_analyst_context(ctx: GlobalContext) -> str:
     """Extracts relevant context for the Pedagogical Analyst.
 
-    Provides the target topic, original user prompt, audience, and
-    global style constraints to guide the initial curriculum deconstruction.
+    Provides the target topic, original user prompt, and global style
+    constraints to guide the initial curriculum deconstruction.
 
     Args:
         ctx: The shared Global Context Object.
@@ -53,7 +53,6 @@ def extract_analyst_context(ctx: GlobalContext) -> str:
         {
             "topic": ctx.topic,
             "user_prompt": ctx.user_prompt,
-            "target_audience": ctx.target_audience,
             "style_guidelines": ctx.style,
         }
     )
@@ -74,7 +73,6 @@ def extract_architect_context(ctx: GlobalContext) -> str:
     return _format_context(
         {
             "topic": ctx.topic,
-            "target_audience": ctx.target_audience,
             "style_guidelines": ctx.style,
             "pedagogical_plan": ctx.plan,
             "existing_visual_lexicon": ctx.lexicon,

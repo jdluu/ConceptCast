@@ -21,10 +21,8 @@ spans two companion repositories:
 | `apps/backend` | FastAPI service + Pydantic AI agent council |
 | `apps/frontend` | Web UI |
 | `prompts/` | Agent prompts and vendored ManimCE skill docs |
-| `scripts/` | Figure generation, DB snapshotting, wait helpers |
-| `docs/wiki/` | Architecture deep dive and setup guide |
+| `scripts/` | DB snapshotting, wait helpers, Infisical token |
 | `run_topic.sh` / `run_all_*.sh` | Benchmark runners (one topic × 9 models) |
-| `verify_thesis_results.py` | Historical Table 5.1 metrics from the results DB |
 
 ## Quick Start
 
@@ -103,24 +101,6 @@ Runner outputs land in `results/reports/<topic>/` and
 `results/data/conceptcast.db` when the companion repository is cloned into
 `results/`; otherwise they stay under the gitignored `reports/` and `data/`.
 
-## Verifying Published Results
-
-With the results repository cloned at `results/`:
-
-```bash
-# Controlled four-topic benchmark tables (thesis Tables 5.5 / 5.6)
-python3 results/verify_controlled_benchmark.py
-
-# Historical compilation table (thesis Table 5.1) from the frozen snapshot
-python3 results/verify_table51_historical.py
-
-# Regenerate Figure 5.5
-python3 scripts/generate_controlled_benchmark_figure.py
-```
-
-Expected outputs are documented in
-[`results/README.md`](https://github.com/jdluu/ConceptCast-results#reproducing-the-thesis-results).
-
 ## Development
 
 ```bash
@@ -131,9 +111,6 @@ make format      # prettier + ruff format
 make db-migrate  # apply pending migrations
 ```
 
-See [`docs/wiki/Setup-Guide.md`](docs/wiki/Setup-Guide.md) for manual
-installation details and [`docs/wiki/Architecture.md`](docs/wiki/Architecture.md)
-for how the council, GCO, and repair loop fit together.
 
 ## License & Attribution
 

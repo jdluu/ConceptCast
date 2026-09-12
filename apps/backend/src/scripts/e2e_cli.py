@@ -77,7 +77,6 @@ def _summarize_plan_quality(plan: Any) -> dict[str, object]:
     if not isinstance(plan, dict):
         return {
             "concept_missing": True,
-            "audience_missing": True,
             "teaching_steps_len": 0,
             "step_fields_missing": 0,
             "structural_ok": False,
@@ -98,17 +97,14 @@ def _summarize_plan_quality(plan: Any) -> dict[str, object]:
             missing_step_fields += 1
 
     concept_missing = _is_missing_text(plan.get("concept_title"))
-    audience_missing = _is_missing_text(plan.get("target_audience"))
     teaching_steps_len = len(steps)
     structural_ok = (
         not concept_missing
-        and not audience_missing
         and 5 <= teaching_steps_len <= 10
         and missing_step_fields == 0
     )
     return {
         "concept_missing": concept_missing,
-        "audience_missing": audience_missing,
         "teaching_steps_len": teaching_steps_len,
         "step_fields_missing": missing_step_fields,
         "structural_ok": structural_ok,
@@ -173,7 +169,7 @@ class E2EWorkflowLogger:
                 f"plan_structural_ok={plan_quality.get('structural_ok')} "
                 f"teaching_steps_len={plan_quality.get('teaching_steps_len')} "
                 f"plan_concept_missing={plan_quality.get('concept_missing')} "
-                f"plan_target_audience_missing={plan_quality.get('audience_missing')} "
+                
                 f"storyboard={has_storyboard} "
                 f"manim_code={has_code} "
                 f"error_present={bool(error)}\n"
@@ -217,7 +213,7 @@ class E2EWorkflowLogger:
                     f"plan_ok={plan_quality.get('structural_ok')} "
                     f"steps={plan_quality.get('teaching_steps_len')} "
                     f"concept_missing={plan_quality.get('concept_missing')} "
-                    f"audience_missing={plan_quality.get('audience_missing')} "
+                    
                     f"storyboard={has_storyboard} "
                     f"code={has_code} "
                     f"error_present={bool(error)}{CLR_RESET}\n"
@@ -458,9 +454,7 @@ async def run_single_simulation(  # noqa: PLR0913
     provider: str,
     model_id: str,
     topic: str,
-    audience: str,
     *,
-    hitl_enabled: bool,
     analyst_model: str | None = None,
     architect_model: str | None = None,
     animator_model: str | None = None,
@@ -477,13 +471,11 @@ async def run_single_simulation(  # noqa: PLR0913
                 f"{BASE_URL}/jobs/create",
                 json={
                     "topic": topic,
-                    "target_audience": audience,
                     "provider": provider,
                     "model_id": model_id,
                     "analyst_model": analyst_model,
                     "architect_model": architect_model,
                     "animator_model": animator_model,
-                    "hitl_enabled": hitl_enabled,
                 },
             )
             if response.status_code != 200:
@@ -562,10 +554,8 @@ def _print_aggregate_summary(results: list[dict[str, object]]) -> None:
 
 async def run_full_simulation(  # noqa: PLR0913
     topic: str,
-    audience: str,
     include_mock: bool = True,
     *,
-    hitl_enabled: bool,
     model_id_filter: str | None = None,
     analyst_model: str | None = None,
     architect_model: str | None = None,
@@ -601,8 +591,6 @@ async def run_full_simulation(  # noqa: PLR0913
                 provider,
                 model_id,
                 topic,
-                audience,
-                hitl_enabled=hitl_enabled,
                 analyst_model=analyst_model,
                 architect_model=architect_model,
                 animator_model=animator_model,
@@ -617,7 +605,6 @@ async def run_full_simulation(  # noqa: PLR0913
         aggregate_path = REPORTS_DIR / f"{ts}_aggregate_report.json"
         payload = {
             "topic": topic,
-            "audience": audience,
             "generated_at": datetime.now(UTC).isoformat(),
             "results": aggregate_results,
         }
@@ -632,13 +619,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("--topic", type=str, required=True, help="Pedagogical topic")
     parser.add_argument(
-        "--audience", type=str, default="General Audience", help="Target audience"
     )
     parser.add_argument("--no-mock", action="store_true", help="Skip the mock provider")
-    parser.add_argument("--hitl-enabled", action="store_true", help="Force-enable HITL")
-    parser.add_argument(
-        "--hitl-disabled", action="store_true", help="Force-disable HITL"
-    )
+
     parser.add_argument(
         "--model-id",
         type=str,
@@ -672,13 +655,7 @@ if __name__ == "__main__":
         asyncio.run(
             run_full_simulation(
                 args.topic,
-                args.audience,
                 not args.no_mock,
-                hitl_enabled=(
-                    False
-                    if args.hitl_disabled
-                    else (True if args.hitl_enabled else bool(settings.hitl_enabled))
-                ),
                 model_id_filter=args.model_id,
                 analyst_model=args.analyst_model,
                 architect_model=args.architect_model,

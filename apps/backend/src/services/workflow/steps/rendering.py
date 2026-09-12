@@ -211,7 +211,6 @@ async def step_rendering(
 
             retry_ctx = GlobalContext(
                 topic=request.topic,
-                target_audience=request.target_audience,
                 storyboard=storyboard,
                 manim_code=current_code,
             )

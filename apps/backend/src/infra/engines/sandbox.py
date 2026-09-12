@@ -1,6 +1,7 @@
 import asyncio
 import platform
 import shutil
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
@@ -35,6 +36,21 @@ class LocalSandbox:
             self.container_tool = "docker"
 
         self.is_linux = platform.system().lower() == "linux"
+        self._podman_ok_cache: bool | None = None
+
+    def _podman_ok(self) -> bool:
+        """Checks if podman can actually start containers (namespace support)."""
+        if self._podman_ok_cache is not None:
+            return self._podman_ok_cache
+        try:
+            result = subprocess.run(
+                ["podman", "run", "--rm", "docker.io/library/alpine:latest", "echo", "ok"],
+                capture_output=True, text=True, timeout=60, check=False,
+            )
+            self._podman_ok_cache = result.returncode == 0
+        except Exception:
+            self._podman_ok_cache = False
+        return self._podman_ok_cache
 
     def is_healthy(self) -> bool:
         """Verifies if a container tool or local Manim installation is available.
@@ -57,6 +73,12 @@ class LocalSandbox:
             list[str]: The command prefix for running a container, or empty if using local Manim.
         """
         if not self.container_tool:
+            return []
+
+        # Podman may be broken (ownership corruption, namespace issues) — probe it
+        if self.container_tool == "podman" and not self._podman_ok():
+            logger.warning("podman_broken_falling_back_to_local_manim")
+            self.container_tool = None
             return []
 
         cmd = [self.container_tool, "run", "--rm"]
@@ -159,7 +181,11 @@ class LocalSandbox:
                     scene_name,
                 ]
             else:
-                cmd = ["manim", quality_flag, "--media_dir", ".", code_file, scene_name]
+                manim_bin = shutil.which("manim")
+                if not manim_bin:
+                    venv_manim = Path(__file__).resolve().parents[3] / ".venv" / "bin" / "manim"
+                    manim_bin = str(venv_manim) if venv_manim.exists() else "manim"
+                cmd = [manim_bin, quality_flag, "--media_dir", ".", code_file, scene_name]
 
             logger.info(
                 "sandbox_render_execution_started",

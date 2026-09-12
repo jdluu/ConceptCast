@@ -35,6 +35,82 @@ _CODE_BLOCK_PATTERN = re.compile(r"```(?:python|json)?\s*\n(.*?)```", re.DOTALL)
 _CODE_JSON_KEYS = ("code", "python_code", "manim_code")
 
 
+def _strip_leading_prose(code: str) -> str:
+    """Drops prose before the first opening fence, when a fence exists.
+
+    Models often preface the code with an explanation ("Below is a clean…");
+    that prose is not code and frequently contains non-ASCII punctuation.
+    """
+    lines = code.splitlines()
+    for i, line in enumerate(lines):
+        if line.strip().startswith("```"):
+            if i == 0:
+                return code  # already starts with a fence; nothing to strip
+            return "\n".join(lines[i:])
+    return code  # no fence at all; leave as-is
+
+
+def _strip_stray_fences(code: str) -> str:
+    """Removes stray markdown-fence lines and trailing prose after the last fence.
+
+    Double-wrapped payloads (a fenced block inside a quoted/fenced payload) leave
+    a standalone ``` line mid-code and prose after it; both break compilation.
+    """
+    lines = code.splitlines()
+    # Drop leading fence lines
+    while lines and lines[0].strip().startswith("```"):
+        lines.pop(0)
+    # Find last stray fence line; keep everything before it if code follows the first fence
+    fence_idxs = [i for i, line in enumerate(lines) if line.strip().startswith("```")]
+    if fence_idxs:
+        last = fence_idxs[-1]
+        # Keep content up to (not including) the last stray fence if there is code before it
+        before = list(lines[:last])
+        code_before = "\n".join(before).strip()
+        try:
+            compile(code_before, "<gen>", "exec")
+            lines = before  # prose/fence tail dropped; code before the fence compiles
+        except SyntaxError:
+            pass  # fence was meaningful (e.g. inside a string); leave as-is
+    return "\n".join(lines)
+
+
+def _unwrap_quoted_payload(candidate: str) -> str:
+    """Unwraps a JSON-string payload (quoted, escape-serialized source).
+
+    Models sometimes emit the entire fenced block as a JSON string literal —
+    a leading/trailing quote with ``\\n`` escape sequences. json.loads on the
+    quoted text restores the real newlines.
+    """
+    stripped = candidate.strip()
+    if len(stripped) >= 2 and stripped[0] == '"' and stripped[-1] == '"':
+        try:
+            unwrapped = json.loads(stripped)
+            if isinstance(unwrapped, str) and unwrapped.strip():
+                return unwrapped
+        except json.JSONDecodeError:
+            pass
+    return candidate
+
+
+def _normalize_escaped_newlines(candidate: str) -> str:
+    """Converts literal ``\n`` escape sequences into real newlines.
+
+    Some models emit JSON-string-escaped source (a quoted one-line payload with
+    literal ``\n`` sequences). Compilation and the per-line scene isolation
+    both require real newlines; only normalize when the candidate has none.
+    """
+    literal = chr(92) + "n"
+    if literal in candidate:
+        candidate = candidate.replace(chr(92) + "r\n", chr(10)).replace(literal, chr(10))
+    if chr(92) + "t" in candidate:
+        candidate = candidate.replace(chr(92) + "t", chr(9))
+    escaped_quote = chr(92) + chr(34)
+    if escaped_quote in candidate:
+        candidate = candidate.replace(escaped_quote, chr(34))
+    return candidate
+
+
 def _recover_compilable_source(raw: str) -> str | None:
     """Recover a complete Python suffix when prose surrounds unfenced code."""
     lines = raw.strip().splitlines()
@@ -86,6 +162,10 @@ def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
                         if isinstance(value, str) and value.strip():
                             candidate = value.strip()
                             break
+            candidate = _unwrap_quoted_payload(candidate)
+            candidate = _normalize_escaped_newlines(candidate)
+            candidate = _strip_leading_prose(candidate)
+            candidate = _strip_stray_fences(candidate)
             try:
                 compile(candidate, "<generated_manim>", "exec")
             except SyntaxError:
@@ -109,8 +189,30 @@ def extract_python_code(raw: str) -> str:  # noqa: C901, PLR0912
     if recovered is not None:
         return recovered
 
-    # Fallback: strip leading/trailing fences that were not properly paired
+    # Fallback pipeline: unwrap a JSON-string-quoted payload first (restores real
+    # newlines from \n escapes), then slice from the first opening fence to the last
+    # closing fence (drops prose), then clean up residual quotes/escapes/stray fences.
     cleaned = raw.strip()
+    # If the whole payload is a quoted string, strip the outer quotes first.
+    # (json.loads may fail when the payload contains real newlines alongside
+    # \n escapes — a common mixed-escape model output — so strip mechanically.)
+    if len(cleaned) >= 2 and cleaned[0] == '"' and cleaned[-1] == '"':
+        cleaned = cleaned[1:-1]
+    cleaned = _normalize_escaped_newlines(cleaned)
+    fence_start = cleaned.find("```")
+    if fence_start != -1:
+        fence_end = cleaned.rfind("```", fence_start + 3)
+        if fence_end > fence_start:
+            inner = cleaned[fence_start + 3 : fence_end]
+            inner_lines = inner.splitlines()
+            if inner_lines and inner_lines[0].strip() in ("python", "json", "py"):
+                inner = "\n".join(inner_lines[1:])
+            cleaned = inner.strip()
+    # Strip residual wrapping quotes on the sliced content (payload was quoted)
+    if len(cleaned) >= 2 and cleaned[0] == '"' and cleaned[-1] == '"':
+        cleaned = cleaned[1:-1]
+    cleaned = _strip_leading_prose(cleaned)
+    cleaned = _strip_stray_fences(cleaned)
     if cleaned.startswith("```"):
         lines = cleaned.splitlines()
         if lines and lines[0].startswith("```"):

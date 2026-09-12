@@ -53,12 +53,10 @@ class CurriculumPlan(BaseModel):
 
     Attributes:
         concept_title: Title of the main concept.
-        target_audience: Level of the target audience.
         teaching_steps: Ordered pedagogical steps.
     """
 
     concept_title: str = Field(..., description="Title of the main concept")
-    target_audience: str = Field(..., description="Level (e.g., 'Undergraduate CS')")
     teaching_steps: list[TeachingStep] = Field(..., description="Ordered steps")
 
     def is_structurally_valid(self) -> tuple[bool, list[str]]:
@@ -74,9 +72,6 @@ class CurriculumPlan(BaseModel):
 
         if concept in _PLACEHOLDER_TEXT:
             issues.append("concept_title is empty or placeholder")
-
-        # We are lenient with target_audience during structural checks
-        # as it can be hydrated from the request.
 
         if not self.teaching_steps:
             issues.append("teaching_steps is empty")

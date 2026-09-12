@@ -193,34 +193,7 @@ export function SettingsPage() {
           </header>
 
           <div className="border-surface-border bg-surface overflow-hidden rounded-2xl border backdrop-blur-sm">
-            <div className="flex items-center justify-between gap-8 p-6">
-              <div className="flex-1">
-                <div className="mb-1 flex items-center gap-2">
-                  <Move className="text-council-active h-4 w-4" />
-                  <h3 className="text-foreground text-sm font-semibold">Human in the Loop</h3>
-                </div>
-                <p className="text-text-muted text-xs">
-                  Pause after curriculum planning to review, edit, or steer the plan.
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={settings.hitlEnabled}
-                onClick={() => updateSettings({ hitlEnabled: !settings.hitlEnabled })}
-                className={`focus:ring-council-active/50 relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:outline-none ${
-                  settings.hitlEnabled ? 'bg-council-active' : 'bg-surface-border'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                    settings.hitlEnabled ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="border-surface-border flex items-center justify-between gap-8 border-t p-6">
+            <div className="border-surface-border flex items-center justify-between gap-8 p-6">
               <div className="flex-1">
                 <div className="mb-1 flex items-center gap-2">
                   <Zap className="text-council-active h-4 w-4" />

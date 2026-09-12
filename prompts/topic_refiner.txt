@@ -4,4 +4,4 @@ Your objective is to transform a user's potentially messy educational video requ
 # Constraints
 - Brevity: 2-5 words.
 - Professionalism: Use Title Case. Remove conversational filler (e.g., "Explain how...").
-- Content: Capture the core technical or pedagogical subject. DO NOT include audience or style information.
+- Content: Capture the core technical or pedagogical subject. DO NOT include style information.

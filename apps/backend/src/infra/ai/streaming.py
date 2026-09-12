@@ -21,6 +21,8 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.usage import RunUsage, UsageLimits
 
+from infra.ai import trace as bench_trace
+
 logger = structlog.get_logger(__name__)
 
 
@@ -89,15 +91,43 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
             return str(payload)
 
     if not stream:
-        try:
-            res = await agent.run(
-                prompt,
-                message_history=message_history,
-                usage_limits=usage_limits,
-                **run_kwargs,
-            )
-            final = res.output
-            usage = res.usage()
+        with bench_trace.Timer() as t:
+            try:
+                res = await agent.run(
+                    prompt,
+                    message_history=message_history,
+                    usage_limits=usage_limits,
+                    **run_kwargs,
+                )
+                final = res.output
+                usage = res.usage()
+                bench_trace.emit_call(
+                    agent_name=agent_name,
+                    agent=agent,
+                    prompt=prompt,
+                    usage=usage,
+                    latency_ms=t.ms,
+                    response=final,
+                )
+            except Exception as e:
+                bench_trace.emit_call(
+                    agent_name=agent_name,
+                    agent=agent,
+                    prompt=prompt,
+                    latency_ms=t.ms,
+                    error=f"{type(e).__name__}: {e}",
+                )
+                if isinstance(e, exceptions.UnexpectedModelBehavior):
+                    logger.error("agent_unexpected_model_behavior", agent_name=agent_name, error=str(e))
+                    raise ValueError(
+                        f"Model failed output validation after multiple retries: {e}"
+                    ) from e
+                if isinstance(e, ValidationError):
+                    logger.error("agent_invalid_output_format", agent_name=agent_name, error=str(e))
+                    raise ValueError(f"Agent output did not match expected schema: {e}") from e
+                logger.error("agent_runtime_error", agent_name=agent_name, error=str(e))
+                raise
+
             if on_thought and final is not None:
                 payload_json = _serialize_structured_output(final)
                 if payload_json:
@@ -106,25 +136,6 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
                         "structured_output",
                         f"Structured output result:\n{payload_json}\n",
                     )
-        except exceptions.UnexpectedModelBehavior as e:
-            logger.error(
-                "agent_unexpected_model_behavior",
-                agent_name=agent_name,
-                error=str(e),
-            )
-            raise ValueError(
-                f"Model failed output validation after multiple retries: {e}"
-            ) from e
-        except ValidationError as e:
-            logger.error(
-                "agent_invalid_output_format",
-                agent_name=agent_name,
-                error=str(e),
-            )
-            raise ValueError(f"Agent output did not match expected schema: {e}") from e
-        except Exception as e:
-            logger.error("agent_runtime_error", agent_name=agent_name, error=str(e))
-            raise
 
         if accumulated_usage:
             usage = RunUsage(
@@ -218,6 +229,13 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
             elif isinstance(event, AgentRunResultEvent):
                 final = event.result.output
                 usage = event.result.usage()
+                bench_trace.emit_call(
+                    agent_name=agent_name,
+                    agent=agent,
+                    prompt=prompt,
+                    usage=usage,
+                    response=final,
+                )
                 if on_thought and final is not None:
                     payload_json = _serialize_structured_output(final)
                     if payload_json:
@@ -250,6 +268,12 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
         raise ValueError(f"Agent output did not match expected schema: {e}") from e
     except Exception as e:
         logger.error("agent_runtime_error", agent_name=agent_name, error=str(e))
+        bench_trace.emit_call(
+            agent_name=agent_name,
+            agent=agent,
+            prompt=prompt,
+            error=f"{type(e).__name__}: {e}",
+        )
         raise
 
     if accumulated_usage:

@@ -38,21 +38,6 @@ const AgentSelect = ({
 );
 
 /**
- * Form field for selecting the target audience knowledge level.
- */
-export const AudienceField = ({ register }: { register: UseFormRegister<JobFormData> }) => (
-  <div className="space-y-2">
-    <Label htmlFor="target_audience">Target Audience</Label>
-    <select {...register('target_audience')} id="target_audience" className={selectStyles}>
-      <option value="General Audience">General Audience</option>
-      <option value="High School Student">High School Student</option>
-      <option value="University Student">University Student</option>
-      <option value="Expert">Expert</option>
-    </select>
-  </div>
-);
-
-/**
  * Form fields for selecting the AI provider and specific model ID.
  * Dynamically updates model options based on the selected provider.
  */

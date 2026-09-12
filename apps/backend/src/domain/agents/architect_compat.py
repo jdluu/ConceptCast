@@ -83,7 +83,7 @@ def _normalize_qwen_payload(payload: Any) -> dict[str, Any]:  # noqa: C901, PLR0
         payload = {**payload, "concept_title": payload["project_title"]}
     scenes = payload.get("scenes")
     if not isinstance(scenes, list):
-        return payload
+        return dict(payload)
 
     normalized_scenes: list[dict[str, Any]] = []
     for index, scene in enumerate(scenes, start=1):

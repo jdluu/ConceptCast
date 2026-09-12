@@ -3,11 +3,9 @@ import { createContext, useCallback, use, useMemo, useState } from 'react';
 const STORAGE_KEY = 'conceptcast_app_settings';
 
 export interface AppSettings {
-  defaultAudience: string;
   enableNotifications: boolean;
   enableSound: boolean;
   reducedMotion: boolean;
-  hitlEnabled: boolean;
   showAdvancedModelSettings: boolean;
   agentModels: {
     analyst: string;
@@ -17,11 +15,9 @@ export interface AppSettings {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  defaultAudience: 'General Audience',
   enableNotifications: true,
   enableSound: true,
   reducedMotion: false,
-  hitlEnabled: false,
   showAdvancedModelSettings: false,
   agentModels: {
     analyst: 'nvidia/nemotron-3-super-120b-a12b:thinking',

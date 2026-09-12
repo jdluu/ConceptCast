@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 export const jobSchema = z.object({
   topic: z.string().min(3, 'Topic must be at least 3 characters'),
-  target_audience: z.string().optional(),
   provider: z.string().optional(),
   model_id: z.string().optional(),
   analyst_model: z.string().optional(),

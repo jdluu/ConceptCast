@@ -64,10 +64,6 @@ export function LessonArtifactModal({ isOpen, onClose, plan, storyboard }: Lesso
         </div>
       ) : hasPlan ? (
         <div className="space-y-6">
-          <div className="border-council-active/20 bg-council-active/10 mb-8 rounded-xl border p-4">
-            <ArtifactBadge variant="active">Target Audience</ArtifactBadge>
-            <p className="text-foreground text-lg font-bold">{plan!.target_audience}</p>
-          </div>
           {plan!.teaching_steps.map((step) => (
             <div
               key={step.step_id}
