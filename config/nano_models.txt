@@ -1,4 +1,4 @@
-# Nano GPT model roster — benchmark v2 (synced 2026-09-12)
+# Nano GPT model roster (synced 2026-09-12)
 # Canonical IDs verified against https://nano-gpt.com/api/v1/models
 z-ai/glm-5.3
 qwen/qwen3.8-flash
