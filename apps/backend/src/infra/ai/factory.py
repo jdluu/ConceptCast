@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import cast
 
+import httpx
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIChatModel
@@ -164,9 +165,18 @@ class NanoProvider(BaseProvider):
         m_id = model_id or self.entry.default_model
 
         # In modern PydanticAI (0.1+), base_url is set via the provider.
+        # Explicit httpx timeout: without it, a stalled upstream stream (server accepts
+        # the request then never sends bytes / drops silently) blocks the workflow
+        # coroutine indefinitely — observed as all animator tasks wedged for 45+ min
+        # during the smoke run. Read timeout bounds each chunk wait; connect/pool bound
+        # acquisition. Total wall time per call is additionally bounded by usage limits.
+        http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0)
+        )
         provider = OpenAIProvider(
             base_url="https://nano-gpt.com/api/subscription/v1",
             api_key=key,
+            http_client=http_client,
         )
 
         return NanoConceptModel(
