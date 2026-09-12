@@ -194,7 +194,7 @@ bench-dry: ## BENCH List pending jobs without running
 
 generate: ## QA Run ACTUAL pedagogical generation with real models. model="openai/gpt-oss-120b" topic="math"
 	@topic="$${topic:-derivatives}"; \
-	model="$${model:-deepseek/deepseek-v4-pro:thinking}"; \
+	model="$${model:-openai/gpt-oss-120b}"; \
 	$(INFISICAL) bash -lc '$(BACKEND_SH) uv run python src/scripts/e2e_cli.py --topic "$$topic" --no-mock --model-id "$$model" --analyst-model "$$model" --architect-model "$$model" --animator-model "$$model"'
 
 lint: lint-frontend lint-backend ## QA Run all linters
