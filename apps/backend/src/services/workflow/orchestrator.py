@@ -16,12 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.schemas import JobRequest, Storyboard
 from domain.models.workflow import GlobalContext
-from infra.ai.factory import get_concept_model
 from infra.database import AsyncSessionLocal
 from infra.exceptions import JobCancelledError, PlanGenerationError
 from infra.models.job import JobRecord
 from infra.tasks import render_video_task
-from services.jobs.topic import refine_topic
 from services.workflow.utils import (
     calculate_job_cost,
     merge_usage,
@@ -186,20 +184,6 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
     ctx = GlobalContext(
         topic=topic, user_prompt=job_state.user_prompt
     )
-
-    # 4. Refine Topic if needed
-    if job_state.topic == job_state.user_prompt:
-        await on_thought("system", "status", "Refining topic...")
-        await update_job({"current_step": "refining_topic"})
-
-        model = get_concept_model(provider, model_id)
-        if model:
-            refined_topic = await refine_topic(job_state.user_prompt, model)
-            await update_job({"topic": refined_topic})
-            ctx.topic = refined_topic
-            topic = refined_topic
-        else:
-            logger.warning("refinement_model_unavailable", job_id=job_id)
 
     try:
         if (

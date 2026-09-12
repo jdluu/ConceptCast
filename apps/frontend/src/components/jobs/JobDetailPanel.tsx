@@ -213,7 +213,7 @@ function PromptView({
   return (
     <div className="min-h-xs border-surface-border bg-background/30 space-y-6 rounded-2xl border p-6">
       <div>
-        <ArtifactBadge variant="active">Refined Topic</ArtifactBadge>
+        <ArtifactBadge variant="active">Topic</ArtifactBadge>
         <p className="text-foreground mt-1 text-sm font-bold">{topic}</p>
       </div>
       {userPrompt && (
