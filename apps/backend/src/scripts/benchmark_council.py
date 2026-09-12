@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Benchmark v2 orchestrator (Arm C — council).
+"""Benchmark orchestrator (Arm C — council).
 
 Reads the pre-registered manifest (manifest/jobs.csv), skips jobs already
 recorded as completed in the database, and drives the remaining Arm C jobs
 through the normal ConceptCast pipeline via the e2e API client.
 
-Design guarantees (see benchmark-v2 EXPERIMENT_PLAN.md):
+Design guarantees (see EXPERIMENT_PLAN.md in the results repository):
 - Manifest is the single source of truth for the job grid (topic × model × arm × rep).
 - Resumable: completed (topic, model, arm, rep) tuples are never re-run.
 - Per-job provenance (benchmark_job_seq/arm/rep) is persisted on the job record

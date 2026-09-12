@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark v2 orchestrator — Arms A & B (monolithic generation).
+"""Benchmark orchestrator — Arms A & B (monolithic generation).
 
 Arm A: one call per job — topic prompt → complete Manim script. No GCO, no
 validation, no repair, no retries (infrastructure retries only).

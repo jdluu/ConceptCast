@@ -1,4 +1,4 @@
-"""Benchmark per-call trace emitter (benchmark v2).
+"""Benchmark per-call trace emitter.
 
 Appends one JSON record per LLM call to an append-only JSONL file. Enabled
 only when ``BENCH_TRACE_DIR`` is set; zero overhead and zero behavior change
