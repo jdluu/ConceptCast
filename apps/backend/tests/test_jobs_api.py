@@ -210,12 +210,11 @@ async def test_retry_job_guards(
 
 @pytest.mark.asyncio
 async def test_create_job_omits_hitl(
-    client: AsyncClient, override_db: async_sessionmaker[AsyncSession]  # noqa: ARG001
+    client: AsyncClient,
+    override_db: async_sessionmaker[AsyncSession],  # noqa: ARG001
 ) -> None:
     """HITL removal: creation works without hitl_enabled and never echoes it."""
-    res = await client.post(
-        "/jobs/create", json={"topic": "Verify Topic"}
-    )
+    res = await client.post("/jobs/create", json={"topic": "Verify Topic"})
     assert res.status_code == 200
     data = res.json()
     assert "hitl_enabled" not in data
@@ -229,11 +228,10 @@ async def test_review_endpoint_removed(client: AsyncClient) -> None:
     assert res.status_code == 404
 
 
-
-
 @pytest.mark.asyncio
 async def test_benchmark_bookkeeping_round_trip(
-    client: AsyncClient, override_db: async_sessionmaker[AsyncSession]  # noqa: ARG001
+    client: AsyncClient,
+    override_db: async_sessionmaker[AsyncSession],  # noqa: ARG001
 ) -> None:
     """Benchmark v2: job_seq/arm/rep persist and surface in status."""
     res = await client.post(

@@ -44,8 +44,18 @@ class LocalSandbox:
             return self._podman_ok_cache
         try:
             result = subprocess.run(
-                ["podman", "run", "--rm", "docker.io/library/alpine:latest", "echo", "ok"],
-                capture_output=True, text=True, timeout=60, check=False,
+                [
+                    "podman",
+                    "run",
+                    "--rm",
+                    "docker.io/library/alpine:latest",
+                    "echo",
+                    "ok",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
             )
             self._podman_ok_cache = result.returncode == 0
         except Exception:
@@ -183,9 +193,18 @@ class LocalSandbox:
             else:
                 manim_bin = shutil.which("manim")
                 if not manim_bin:
-                    venv_manim = Path(__file__).resolve().parents[3] / ".venv" / "bin" / "manim"
+                    venv_manim = (
+                        Path(__file__).resolve().parents[3] / ".venv" / "bin" / "manim"
+                    )
                     manim_bin = str(venv_manim) if venv_manim.exists() else "manim"
-                cmd = [manim_bin, quality_flag, "--media_dir", ".", code_file, scene_name]
+                cmd = [
+                    manim_bin,
+                    quality_flag,
+                    "--media_dir",
+                    ".",
+                    code_file,
+                    scene_name,
+                ]
 
             logger.info(
                 "sandbox_render_execution_started",

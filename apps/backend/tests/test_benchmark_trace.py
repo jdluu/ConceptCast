@@ -73,7 +73,11 @@ def test_emit_success_record(trace_env: Path) -> None:
 
 def test_emit_error_record(trace_env: Path) -> None:
     bench_trace.emit_call(
-        agent_name="animator", agent=object(), prompt="p", error="ValueError: boom", latency_ms=5.0
+        agent_name="animator",
+        agent=object(),
+        prompt="p",
+        error="ValueError: boom",
+        latency_ms=5.0,
     )
     rec = json.loads(next(trace_env.glob("*.jsonl")).read_text().splitlines()[0])
     assert rec["error"] == "ValueError: boom"
@@ -103,7 +107,9 @@ def test_bench_context_overrides_env(trace_env: Path) -> None:
     and job_seq is recorded — required for parallel-job trace attribution."""
     from infra.ai import trace as bench_trace
 
-    bench_trace.set_bench_context(job_seq=17, arm="C", rep=2, topic="derivatives in calculus")
+    bench_trace.set_bench_context(
+        job_seq=17, arm="C", rep=2, topic="derivatives in calculus"
+    )
     bench_trace.emit_call(agent_name="analyst", agent=object(), prompt="p")
     rec = json.loads(next(trace_env.glob("*.jsonl")).read_text().splitlines()[0])
     assert rec["job_seq"] == 17

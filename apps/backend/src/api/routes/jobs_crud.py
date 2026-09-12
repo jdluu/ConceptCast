@@ -87,8 +87,12 @@ async def create_job(
             idempotency_conditions.append(
                 JobRecord.benchmark_job_seq == request.benchmark_job_seq
             )
-            idempotency_conditions.append(JobRecord.benchmark_arm == request.benchmark_arm)
-            idempotency_conditions.append(JobRecord.benchmark_rep == request.benchmark_rep)
+            idempotency_conditions.append(
+                JobRecord.benchmark_arm == request.benchmark_arm
+            )
+            idempotency_conditions.append(
+                JobRecord.benchmark_rep == request.benchmark_rep
+            )
         idempotency_stmt = (
             select(JobRecord)
             .where(*idempotency_conditions)

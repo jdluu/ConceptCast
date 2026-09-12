@@ -169,7 +169,6 @@ class E2EWorkflowLogger:
                 f"plan_structural_ok={plan_quality.get('structural_ok')} "
                 f"teaching_steps_len={plan_quality.get('teaching_steps_len')} "
                 f"plan_concept_missing={plan_quality.get('concept_missing')} "
-                
                 f"storyboard={has_storyboard} "
                 f"manim_code={has_code} "
                 f"error_present={bool(error)}\n"
@@ -213,7 +212,6 @@ class E2EWorkflowLogger:
                     f"plan_ok={plan_quality.get('structural_ok')} "
                     f"steps={plan_quality.get('teaching_steps_len')} "
                     f"concept_missing={plan_quality.get('concept_missing')} "
-                    
                     f"storyboard={has_storyboard} "
                     f"code={has_code} "
                     f"error_present={bool(error)}{CLR_RESET}\n"
@@ -618,8 +616,7 @@ if __name__ == "__main__":
         description="ConceptCast E2E Workflow API Simulation"
     )
     parser.add_argument("--topic", type=str, required=True, help="Pedagogical topic")
-    parser.add_argument(
-    )
+    parser.add_argument()
     parser.add_argument("--no-mock", action="store_true", help="Skip the mock provider")
 
     parser.add_argument(

@@ -57,6 +57,7 @@ def set_bench_context(job_seq: int | None = None, **overrides: Any) -> None:
 def clear_bench_context() -> None:
     _bench_ctx.set(None)
 
+
 _TRACE_FIELDS = (
     "input_tokens",
     "cache_write_tokens",
@@ -75,7 +76,9 @@ def trace_enabled() -> bool:
 
 
 def _run_id() -> str:
-    return os.environ.get("BENCH_RUN_ID") or datetime.now(UTC).strftime("bench-%Y%m%d-%H%M%S")
+    return os.environ.get("BENCH_RUN_ID") or datetime.now(UTC).strftime(
+        "bench-%Y%m%d-%H%M%S"
+    )
 
 
 def _trace_file() -> Path:
@@ -148,7 +151,11 @@ def emit_call(
             "ts": datetime.now(UTC).isoformat(),
             "run_id": _run_id(),
             "arm": ctx.get("arm") or os.environ.get("BENCH_ARM"),
-            "rep": ctx.get("rep") if ctx.get("rep") is not None else (int(os.environ["BENCH_REP"]) if os.environ.get("BENCH_REP") else None),
+            "rep": ctx.get("rep")
+            if ctx.get("rep") is not None
+            else (
+                int(os.environ["BENCH_REP"]) if os.environ.get("BENCH_REP") else None
+            ),
             "topic": ctx.get("topic") or os.environ.get("BENCH_TOPIC"),
             "job_seq": ctx.get("job_seq"),
             "stage": agent_name,

@@ -102,7 +102,9 @@ def _normalize_escaped_newlines(candidate: str) -> str:
     """
     literal = chr(92) + "n"
     if literal in candidate:
-        candidate = candidate.replace(chr(92) + "r\n", chr(10)).replace(literal, chr(10))
+        candidate = candidate.replace(chr(92) + "r\n", chr(10)).replace(
+            literal, chr(10)
+        )
     if chr(92) + "t" in candidate:
         candidate = candidate.replace(chr(92) + "t", chr(9))
     escaped_quote = chr(92) + chr(34)

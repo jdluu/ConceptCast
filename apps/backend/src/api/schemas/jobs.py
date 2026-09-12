@@ -35,7 +35,6 @@ class JobSummary(BaseModel):
     benchmark_arm: str | None = None
     benchmark_rep: int | None = None
 
-
     started_at: str | None = None
     finished_at: str | None = None
     duration_seconds: float | None = None

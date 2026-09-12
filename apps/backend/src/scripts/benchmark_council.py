@@ -34,7 +34,11 @@ REPO = Path(__file__).resolve().parent.parent
 BASE_URL = os.environ.get("CONCEPTCAST_BASE_URL", "http://localhost:8000")
 
 
-def load_pending(manifest_path: Path, completed: set[tuple[str, str, str, str]], arm_filter: str = "C") -> list[dict[str, str]]:
+def load_pending(
+    manifest_path: Path,
+    completed: set[tuple[str, str, str, str]],
+    arm_filter: str = "C",
+) -> list[dict[str, str]]:
     """Manifest rows not yet completed, in manifest order (interleaving preserved)."""
     with manifest_path.open(newline="") as f:
         rows = list(csv.DictReader(f))
@@ -56,15 +60,27 @@ def fetch_completed() -> set[tuple[str, str, str, str]]:
     jobs = payload.get("jobs", []) if isinstance(payload, dict) else payload
     done = set()
     for j in jobs:
-        if j.get("benchmark_arm") and j.get("status") in ("completed", "fallback-completed"):
-            done.add((j.get("topic", ""), j.get("model_id", ""), j["benchmark_arm"], str(j.get("benchmark_rep", ""))))
+        if j.get("benchmark_arm") and j.get("status") in (
+            "completed",
+            "fallback-completed",
+        ):
+            done.add(
+                (
+                    j.get("topic", ""),
+                    j.get("model_id", ""),
+                    j["benchmark_arm"],
+                    str(j.get("benchmark_rep", "")),
+                )
+            )
     return done
 
 
 import json  # noqa: E402  (used above)
 
 
-async def wait_for_terminal(client: httpx.AsyncClient, job_id: str, poll: float = 15.0, timeout: float = 7200.0) -> dict[str, object]:
+async def wait_for_terminal(
+    client: httpx.AsyncClient, job_id: str, poll: float = 15.0, timeout: float = 7200.0
+) -> dict[str, object]:
     """Poll job status until a terminal state or timeout. Returns final status dict."""
     elapsed = 0.0
     while elapsed < timeout:
@@ -74,7 +90,10 @@ async def wait_for_terminal(client: httpx.AsyncClient, job_id: str, poll: float 
         status = data.get("status")
         if status in ("completed", "failed", "fallback-completed"):
             return dict(data)
-        if status == "awaiting_review" and data.get("current_step") == "rendering_failed_needs_fix":
+        if (
+            status == "awaiting_review"
+            and data.get("current_step") == "rendering_failed_needs_fix"
+        ):
             # Render-repair pause is part of the workflow, not a stop state.
             pass
         await asyncio.sleep(poll)
@@ -82,7 +101,9 @@ async def wait_for_terminal(client: httpx.AsyncClient, job_id: str, poll: float 
     return {"status": "timeout", "job_id": job_id}
 
 
-async def run_job(client: httpx.AsyncClient, row: dict[str, str], dry_run: bool) -> dict[str, object]:
+async def run_job(
+    client: httpx.AsyncClient, row: dict[str, str], dry_run: bool
+) -> dict[str, object]:
     """Create + monitor one benchmark job. Returns an outcome record."""
     seq = int(row["job_seq"])
     payload = {
@@ -98,10 +119,18 @@ async def run_job(client: httpx.AsyncClient, row: dict[str, str], dry_run: bool)
 
     resp = await client.post(f"{BASE_URL}/jobs/create", json=payload)
     if resp.status_code != 200:
-        return {"job_seq": seq, "status": "create-failed", "detail": resp.text[:200], **payload}
+        return {
+            "job_seq": seq,
+            "status": "create-failed",
+            "detail": resp.text[:200],
+            **payload,
+        }
     job = resp.json()
     job_id = job["job_id"]
-    print(f"[seq {seq}] created {job_id} (arm {row['arm']}, rep {row['rep']}, {row['model']})", flush=True)
+    print(
+        f"[seq {seq}] created {job_id} (arm {row['arm']}, rep {row['rep']}, {row['model']})",
+        flush=True,
+    )
     final = await wait_for_terminal(client, job_id)
     print(f"[seq {seq}] → {final.get('status')}", flush=True)
     return {
@@ -130,7 +159,9 @@ async def main_async(args: argparse.Namespace) -> None:
     pending = load_pending(manifest_path, completed, arm_filter=args.arm)
     if args.limit:
         pending = pending[: args.limit]
-    print(f"{len(pending)} pending arm-{args.arm} jobs ({len(completed)} already completed)")
+    print(
+        f"{len(pending)} pending arm-{args.arm} jobs ({len(completed)} already completed)"
+    )
 
     # Export benchmark env for this process (backend gets pins via its own settings/env;
     # the runner exports them so created jobs' telemetry context is consistent).
@@ -143,6 +174,7 @@ async def main_async(args: argparse.Namespace) -> None:
     semaphore = asyncio.Semaphore(args.parallelism)
 
     async with httpx.AsyncClient(timeout=60.0) as client:
+
         async def bounded(row: dict[str, str]) -> dict[str, object]:
             async with semaphore:
                 return await run_job(client, row, args.dry_run)
@@ -153,19 +185,37 @@ async def main_async(args: argparse.Namespace) -> None:
     # Persist an outcome journal next to the manifest (resumability audit trail).
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     out = manifest_path.parent / f"council-outcomes-{stamp}.json"
-    out.write_text(json.dumps({"arm": args.arm, "n": len(outcomes), "results": outcomes}, indent=2) + "\n")
+    out.write_text(
+        json.dumps({"arm": args.arm, "n": len(outcomes), "results": outcomes}, indent=2)
+        + "\n"
+    )
     print(f"outcomes → {out}")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--manifest", required=True, help="path to manifest/jobs.csv")
-    ap.add_argument("--arm", default="C", help="arm filter (default C; A/B use benchmark_monolithic.py)")
-    ap.add_argument("--parallelism", type=int, default=4, help="concurrent jobs (default 4; Nano GPT caps ~10)")
+    ap.add_argument(
+        "--arm",
+        default="C",
+        help="arm filter (default C; A/B use benchmark_monolithic.py)",
+    )
+    ap.add_argument(
+        "--parallelism",
+        type=int,
+        default=4,
+        help="concurrent jobs (default 4; Nano GPT caps ~10)",
+    )
     ap.add_argument("--limit", type=int, default=None, help="max jobs this invocation")
-    ap.add_argument("--trace-dir", default=None, help="BENCH_TRACE_DIR for per-call traces")
-    ap.add_argument("--temperature", type=float, default=None, help="BENCH_TEMPERATURE pin")
-    ap.add_argument("--dry-run", action="store_true", help="list pending jobs without running")
+    ap.add_argument(
+        "--trace-dir", default=None, help="BENCH_TRACE_DIR for per-call traces"
+    )
+    ap.add_argument(
+        "--temperature", type=float, default=None, help="BENCH_TEMPERATURE pin"
+    )
+    ap.add_argument(
+        "--dry-run", action="store_true", help="list pending jobs without running"
+    )
     args = ap.parse_args()
     asyncio.run(main_async(args))
 

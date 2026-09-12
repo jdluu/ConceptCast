@@ -80,7 +80,9 @@ def already_done(out_dir: Path, seq: int) -> bool:
     return (out_dir / f"job-{seq}.json").exists()
 
 
-async def call_llm(model_id: str, prompt: str) -> tuple[str | None, dict[str, object], float]:
+async def call_llm(
+    model_id: str, prompt: str
+) -> tuple[str | None, dict[str, object], float]:
     """One completion via the Nano GPT OpenAI-compatible API. Returns (text, usage, latency_ms)."""
     import time
 
@@ -103,7 +105,9 @@ async def call_llm(model_id: str, prompt: str) -> tuple[str | None, dict[str, ob
     async with httpx.AsyncClient(timeout=900.0) as client:
         try:
             resp = await client.post(
-                "https://nano-gpt.com/api/v1/chat/completions", json=body, headers=headers
+                "https://nano-gpt.com/api/v1/chat/completions",
+                json=body,
+                headers=headers,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -147,57 +151,102 @@ def validate_script(code: str) -> list[str]:
         for n in classes
     ):
         errors.append("no Scene subclass found")
-    if not any(n.name in {"construct", "construct(self)"} for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)):
+    if not any(
+        n.name in {"construct", "construct(self)"}
+        for n in ast.walk(tree)
+        if isinstance(n, ast.FunctionDef)
+    ):
         errors.append("no construct() method found")
     return errors
 
 
-async def apply_repair(model_id: str, code: str, errors: list[str]) -> tuple[str | None, dict[str, object], float]:
+async def apply_repair(
+    model_id: str, code: str, errors: list[str]
+) -> tuple[str | None, dict[str, object], float]:
     """One repair turn: ask the model to fix the full script.
 
     Returns (fixed_code, usage, latency_ms).
     """
-    prompt = REPAIR_INSTRUCTIONS.format(errors="\n".join(errors)) + "\n\nCurrent script:\n" + code
+    prompt = (
+        REPAIR_INSTRUCTIONS.format(errors="\n".join(errors))
+        + "\n\nCurrent script:\n"
+        + code
+    )
     text, usage, latency = await call_llm(model_id, prompt)
     return extract_code(text), usage, latency
 
 
 def append_trace(trace_dir: Path, record: dict[str, object]) -> None:
     trace_dir.mkdir(parents=True, exist_ok=True)
-    run_id = os.environ.get("BENCH_RUN_ID") or datetime.now(UTC).strftime("bench-%Y%m%d-%H%M%S")
+    run_id = os.environ.get("BENCH_RUN_ID") or datetime.now(UTC).strftime(
+        "bench-%Y%m%d-%H%M%S"
+    )
     with (trace_dir / f"{run_id}.jsonl").open("a") as f:
         f.write(json.dumps(record, default=str) + "\n")
 
 
-async def run_one(row: dict[str, str], arm: str, trace_dir: Path, max_attempts: int, dry_run: bool, topic_prompts: dict[str, str] | None = None) -> dict[str, object]:
+async def run_one(
+    row: dict[str, str],
+    arm: str,
+    trace_dir: Path,
+    max_attempts: int,
+    dry_run: bool,
+    topic_prompts: dict[str, str] | None = None,
+) -> dict[str, object]:
     seq = int(row["job_seq"])
     out = outcomes_dir(trace_dir) / f"job-{seq}.json"
     topic = row["topic"]
     model = row["model"]
-    topic_prompt = (topic_prompts or {}).get(topic, topic)  # pinned prompt; fallback to label
+    topic_prompt = (topic_prompts or {}).get(
+        topic, topic
+    )  # pinned prompt; fallback to label
 
     if dry_run:
-        return {"job_seq": seq, "status": "dry-run", "arm": arm, "model": model, "topic": topic}
+        return {
+            "job_seq": seq,
+            "status": "dry-run",
+            "arm": arm,
+            "model": model,
+            "topic": topic,
+        }
 
     prompt = PROMPT_TEMPLATE.format(topic=topic_prompt)
     text, usage, latency = await call_llm(model, prompt)
     code = extract_code(text)
     http_error = usage.pop("error", None) if "error" in usage else None
-    append_trace(trace_dir, {
-        "ts": datetime.now(UTC).isoformat(), "arm": arm, "rep": int(row["rep"]),
-        "topic": topic, "model": model, "stage": "generate", "attempt": 1,
-        "job_seq": seq, "prompt_sha256": sha(prompt), "prompt_chars": len(prompt),
-        "response_sha256": sha(text), "temperature": os.environ.get("BENCH_TEMPERATURE"),
-        "latency_ms": round(latency, 1), "error": http_error,
-        **{k: v for k, v in usage.items()},
-    })
+    append_trace(
+        trace_dir,
+        {
+            "ts": datetime.now(UTC).isoformat(),
+            "arm": arm,
+            "rep": int(row["rep"]),
+            "topic": topic,
+            "model": model,
+            "stage": "generate",
+            "attempt": 1,
+            "job_seq": seq,
+            "prompt_sha256": sha(prompt),
+            "prompt_chars": len(prompt),
+            "response_sha256": sha(text),
+            "temperature": os.environ.get("BENCH_TEMPERATURE"),
+            "latency_ms": round(latency, 1),
+            "error": http_error,
+            **{k: v for k, v in usage.items()},
+        },
+    )
 
     if arm == "A":
         outcome = {
-            "job_seq": seq, "arm": arm, "rep": int(row["rep"]), "topic": topic, "model": model,
+            "job_seq": seq,
+            "arm": arm,
+            "rep": int(row["rep"]),
+            "topic": topic,
+            "model": model,
             "status": "completed" if code and not validate_script(code) else "failed",
             "first_pass": code is not None and not validate_script(code or ""),
-            "validation_errors": validate_script(code) if code else ["no code returned"],
+            "validation_errors": validate_script(code)
+            if code
+            else ["no code returned"],
             "attempts": 1,
         }
         out.write_text(json.dumps(outcome, indent=2) + "\n")
@@ -210,18 +259,35 @@ async def run_one(row: dict[str, str], arm: str, trace_dir: Path, max_attempts: 
     while errors and attempts < max_attempts:
         attempts += 1
         fixed, usage, latency = await apply_repair(model, code or "", errors)
-        append_trace(trace_dir, {
-            "ts": datetime.now(UTC).isoformat(), "arm": arm, "rep": int(row["rep"]),
-            "topic": topic, "model": model, "stage": "repair", "attempt": attempts,
-            "job_seq": seq, "prompt_sha256": sha(REPAIR_INSTRUCTIONS.format(errors="\n".join(errors))),
-            "response_sha256": sha(fixed), "temperature": os.environ.get("BENCH_TEMPERATURE"),
-            "latency_ms": round(latency, 1), **{k: v for k, v in usage.items() if k != "error"},
-        })
+        append_trace(
+            trace_dir,
+            {
+                "ts": datetime.now(UTC).isoformat(),
+                "arm": arm,
+                "rep": int(row["rep"]),
+                "topic": topic,
+                "model": model,
+                "stage": "repair",
+                "attempt": attempts,
+                "job_seq": seq,
+                "prompt_sha256": sha(
+                    REPAIR_INSTRUCTIONS.format(errors="\n".join(errors))
+                ),
+                "response_sha256": sha(fixed),
+                "temperature": os.environ.get("BENCH_TEMPERATURE"),
+                "latency_ms": round(latency, 1),
+                **{k: v for k, v in usage.items() if k != "error"},
+            },
+        )
         code = fixed
         errors = validate_script(code or "")
 
     outcome = {
-        "job_seq": seq, "arm": arm, "rep": int(row["rep"]), "topic": topic, "model": model,
+        "job_seq": seq,
+        "arm": arm,
+        "rep": int(row["rep"]),
+        "topic": topic,
+        "model": model,
         "status": "completed" if code and not errors else "failed",
         "first_pass": first_pass_ok,
         "validation_errors": errors,
@@ -235,7 +301,9 @@ async def main_async(args: argparse.Namespace) -> None:
     manifest_path = Path(args.manifest)
     if not manifest_path.exists():
         sys.exit(f"manifest not found: {manifest_path}")
-    trace_dir = Path(args.trace_dir) if args.trace_dir else REPO / "reports" / "monolithic"
+    trace_dir = (
+        Path(args.trace_dir) if args.trace_dir else REPO / "reports" / "monolithic"
+    )
     out_dir = outcomes_dir(trace_dir)
 
     from infra.settings import get_settings
@@ -246,7 +314,11 @@ async def main_async(args: argparse.Namespace) -> None:
     max_attempts = 10  # council parity: settings.animation_review_max_iterations
 
     topic_prompts = load_topic_prompts(manifest_path)
-    rows = [r for r in load_manifest(manifest_path, args.arm) if not already_done(out_dir, int(r["job_seq"]))]
+    rows = [
+        r
+        for r in load_manifest(manifest_path, args.arm)
+        if not already_done(out_dir, int(r["job_seq"]))
+    ]
     if args.limit:
         rows = rows[: args.limit]
     print(f"{len(rows)} pending arm-{args.arm} jobs")
@@ -255,7 +327,9 @@ async def main_async(args: argparse.Namespace) -> None:
 
     async def bounded(row: dict[str, str]) -> dict[str, object]:
         async with sem:
-            return await run_one(row, args.arm, trace_dir, max_attempts, args.dry_run, topic_prompts)
+            return await run_one(
+                row, args.arm, trace_dir, max_attempts, args.dry_run, topic_prompts
+            )
 
     outcomes = await asyncio.gather(*(bounded(r) for r in rows))
     done = sum(1 for o in outcomes if o.get("status") == "completed")

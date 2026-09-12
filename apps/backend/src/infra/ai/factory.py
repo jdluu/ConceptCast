@@ -58,7 +58,6 @@ PROVIDER_REGISTRY = (
 )
 
 
-
 class NanoOpenAIChatModel(OpenAIChatModel):
     """Custom OpenAIChatModel for Nano GPT that recovers from API parameter errors.
 

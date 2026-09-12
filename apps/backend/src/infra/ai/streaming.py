@@ -118,13 +118,23 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
                     error=f"{type(e).__name__}: {e}",
                 )
                 if isinstance(e, exceptions.UnexpectedModelBehavior):
-                    logger.error("agent_unexpected_model_behavior", agent_name=agent_name, error=str(e))
+                    logger.error(
+                        "agent_unexpected_model_behavior",
+                        agent_name=agent_name,
+                        error=str(e),
+                    )
                     raise ValueError(
                         f"Model failed output validation after multiple retries: {e}"
                     ) from e
                 if isinstance(e, ValidationError):
-                    logger.error("agent_invalid_output_format", agent_name=agent_name, error=str(e))
-                    raise ValueError(f"Agent output did not match expected schema: {e}") from e
+                    logger.error(
+                        "agent_invalid_output_format",
+                        agent_name=agent_name,
+                        error=str(e),
+                    )
+                    raise ValueError(
+                        f"Agent output did not match expected schema: {e}"
+                    ) from e
                 logger.error("agent_runtime_error", agent_name=agent_name, error=str(e))
                 raise
 

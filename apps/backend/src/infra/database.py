@@ -22,6 +22,7 @@ if db_url.startswith("sqlite://"):
     # NullPool: no connection reuse, each request gets a fresh connection.
     # This avoids the QueuePool limit when running many parallel benchmark jobs.
     from sqlalchemy import pool
+
     pool_args: dict[str, object] = {"poolclass": pool.NullPool}
 elif db_url.startswith("postgresql://"):
     DATABASE_URL = db_url.replace("postgresql://", "postgresql+asyncpg://")

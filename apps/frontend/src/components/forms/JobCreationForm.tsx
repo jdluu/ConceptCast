@@ -12,10 +12,7 @@ import { useAppSettings } from '@/lib/contexts/appSettings';
 import { useJobStore } from '@/lib/store/useJobStore';
 import { Button } from '@/components/ui/Common';
 import { Card } from '@/components/ui/Card';
-import {
-  ModelSelectionFields,
-  AgentModelSelectionFields,
-} from '@/components/forms/JobFormFields';
+import { ModelSelectionFields, AgentModelSelectionFields } from '@/components/forms/JobFormFields';
 import { LoadingOverlay, NoKeysAlert } from '@/components/forms/JobFormFeedback';
 import { JobFormData, jobSchema } from '@/components/forms/JobFormTypes';
 

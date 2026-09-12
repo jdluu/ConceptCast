@@ -61,7 +61,9 @@ class Settings(BaseSettings):
 
     nano_api_key: str | None = Field(
         default=None,
-        validation_alias=AliasChoices("nano_api_key", "NANO_API_KEY", "NANOGPT_API_KEY"),
+        validation_alias=AliasChoices(
+            "nano_api_key", "NANO_API_KEY", "NANOGPT_API_KEY"
+        ),
     )
     context7_api_key: str | None = None
     context7_cache_ttl_seconds: int = 1800

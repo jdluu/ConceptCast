@@ -138,9 +138,7 @@ export function JobDetailPanel({ jobId }: JobDetailPanelProps) {
               {
                 id: 'prompt',
                 label: 'Prompt',
-                content: (
-                  <PromptView topic={topic} userPrompt={job.user_prompt} />
-                ),
+                content: <PromptView topic={topic} userPrompt={job.user_prompt} />,
               },
               {
                 id: 'plan',
@@ -203,13 +201,7 @@ function DataCard({ label, value, subValue }: { label: string; value: string; su
   );
 }
 
-function PromptView({
-  topic,
-  userPrompt,
-}: {
-  topic: string;
-  userPrompt?: string | null;
-}) {
+function PromptView({ topic, userPrompt }: { topic: string; userPrompt?: string | null }) {
   return (
     <div className="min-h-xs border-surface-border bg-background/30 space-y-6 rounded-2xl border p-6">
       <div>

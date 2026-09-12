@@ -163,6 +163,7 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
     # jobs sharing the backend process.
     if job_state.benchmark_job_seq is not None:
         from infra.ai import trace as bench_trace
+
         bench_trace.set_bench_context(
             job_seq=job_state.benchmark_job_seq,
             arm=job_state.benchmark_arm,
@@ -181,9 +182,7 @@ async def execute_workflow(  # noqa: PLR0915, PLR0913
     )
 
     # 3. Initialize Global Context (GCO)
-    ctx = GlobalContext(
-        topic=topic, user_prompt=job_state.user_prompt
-    )
+    ctx = GlobalContext(topic=topic, user_prompt=job_state.user_prompt)
 
     try:
         if (

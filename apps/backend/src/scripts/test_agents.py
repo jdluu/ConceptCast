@@ -80,9 +80,7 @@ async def test_agent_logic(  # noqa: C901, PLR0912
     # Add dependencies if needed by the agent
     kwargs: dict[str, Any] = {}
     if agent_name == "architect":
-        kwargs["deps"] = CurriculumPlan(
-            concept_title=topic, teaching_steps=[]
-        )
+        kwargs["deps"] = CurriculumPlan(concept_title=topic, teaching_steps=[])
 
     ctx = GlobalContext(topic=topic)
 

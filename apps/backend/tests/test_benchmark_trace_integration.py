@@ -10,7 +10,9 @@ from infra.ai.factory import get_concept_model
 
 
 @pytest.mark.asyncio
-async def test_streaming_emits_trace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_streaming_emits_trace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("BENCH_TRACE_DIR", str(tmp_path))
     monkeypatch.setenv("BENCH_RUN_ID", "verify-run")
     monkeypatch.setenv("BENCH_ARM", "C")
