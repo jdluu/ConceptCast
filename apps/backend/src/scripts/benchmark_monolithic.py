@@ -100,7 +100,7 @@ async def call_llm(model_id: str, prompt: str) -> tuple[str | None, dict[str, ob
     usage: dict[str, object] = {}
     text = None
     t0 = time.perf_counter()
-    async with httpx.AsyncClient(timeout=300.0) as client:
+    async with httpx.AsyncClient(timeout=900.0) as client:
         try:
             resp = await client.post(
                 "https://nano-gpt.com/api/v1/chat/completions", json=body, headers=headers
@@ -182,12 +182,14 @@ async def run_one(row: dict[str, str], arm: str, trace_dir: Path, max_attempts: 
     prompt = PROMPT_TEMPLATE.format(topic=topic_prompt)
     text, usage, latency = await call_llm(model, prompt)
     code = extract_code(text)
+    http_error = usage.pop("error", None) if "error" in usage else None
     append_trace(trace_dir, {
         "ts": datetime.now(UTC).isoformat(), "arm": arm, "rep": int(row["rep"]),
         "topic": topic, "model": model, "stage": "generate", "attempt": 1,
         "job_seq": seq, "prompt_sha256": sha(prompt), "prompt_chars": len(prompt),
         "response_sha256": sha(text), "temperature": os.environ.get("BENCH_TEMPERATURE"),
-        "latency_ms": round(latency, 1), **{k: v for k, v in usage.items() if k != "error"},
+        "latency_ms": round(latency, 1), "error": http_error,
+        **{k: v for k, v in usage.items()},
     })
 
     if arm == "A":
