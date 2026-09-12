@@ -18,8 +18,11 @@ logger = structlog.get_logger(__name__)
 db_url = get_settings().database_url
 if db_url.startswith("sqlite://"):
     DATABASE_URL = db_url.replace("sqlite://", "sqlite+aiosqlite://")
-    connect_args = {"check_same_thread": False, "timeout": 30}
-    pool_args = {}
+    connect_args = {"check_same_thread": False, "timeout": 60}
+    # NullPool: no connection reuse, each request gets a fresh connection.
+    # This avoids the QueuePool limit when running many parallel benchmark jobs.
+    from sqlalchemy import pool
+    pool_args: dict[str, object] = {"poolclass": pool.NullPool}
 elif db_url.startswith("postgresql://"):
     DATABASE_URL = db_url.replace("postgresql://", "postgresql+asyncpg://")
     connect_args = {}
