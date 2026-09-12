@@ -70,18 +70,28 @@ async def create_job(
 
         # Check for existing job with same parameters (simple idempotency)
         # We limit the search to the last hour to allow for fresh attempts if requested.
+        # NOTE: benchmark (seq, rep) pairs must never collide — a rep-2 create must not
+        # match a rep-1 record with the same topic/model, so benchmark fields are part
+        # of the match whenever the request carries benchmark metadata.
+        idempotency_conditions = [
+            JobRecord.user_prompt == request.topic,
+            JobRecord.mode == mode,
+            JobRecord.provider == request.provider,
+            JobRecord.model_id == request.model_id,
+            JobRecord.analyst_model == request.analyst_model,
+            JobRecord.architect_model == request.architect_model,
+            JobRecord.animator_model == request.animator_model,
+            JobRecord.status != "failed",
+        ]
+        if request.benchmark_job_seq is not None:
+            idempotency_conditions.append(
+                JobRecord.benchmark_job_seq == request.benchmark_job_seq
+            )
+            idempotency_conditions.append(JobRecord.benchmark_arm == request.benchmark_arm)
+            idempotency_conditions.append(JobRecord.benchmark_rep == request.benchmark_rep)
         idempotency_stmt = (
             select(JobRecord)
-            .where(
-                JobRecord.user_prompt == request.topic,
-                JobRecord.mode == mode,
-                JobRecord.provider == request.provider,
-                JobRecord.model_id == request.model_id,
-                JobRecord.analyst_model == request.analyst_model,
-                JobRecord.architect_model == request.architect_model,
-                JobRecord.animator_model == request.animator_model,
-                JobRecord.status != "failed",
-            )
+            .where(*idempotency_conditions)
             .order_by(JobRecord.created_at.desc())
             .limit(1)
         )
