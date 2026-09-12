@@ -171,8 +171,9 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
         return cast(Any, final), usage
 
     try:
-        async def _drain_events() -> None:
-            nonlocal final, usage
+        # asyncio.timeout bounds the whole drain loop without restructuring it into a
+        # closure (which would trip complexity limits); on expiry it raises TimeoutError.
+        async with asyncio.timeout(stage_timeout):
             async for event in agent.run_stream_events(
                 prompt,
                 message_history=message_history,
@@ -223,13 +224,17 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
                         and on_thought
                         and event.delta.content_delta
                     ):
-                        await on_thought(agent_name, "thinking", event.delta.content_delta)
+                        await on_thought(
+                            agent_name, "thinking", event.delta.content_delta
+                        )
                     elif (
                         isinstance(event.delta, TextPartDelta)
                         and on_thought
                         and event.delta.content_delta
                     ):
-                        await on_thought(agent_name, "output", event.delta.content_delta)
+                        await on_thought(
+                            agent_name, "output", event.delta.content_delta
+                        )
                     elif isinstance(event.delta, ToolCallPartDelta) and on_thought:
                         tool_name = tool_names.get(event.index, "unknown_tool")
                         if tool_name != "notified":
@@ -269,8 +274,6 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
                                 "structured_output",
                                 f"Structured output result:\n{payload_json}\n",
                             )
-
-        await asyncio.wait_for(_drain_events(), timeout=stage_timeout)
     except UsageLimitExceeded:
         logger.error(
             "agent_usage_limit_exceeded",
