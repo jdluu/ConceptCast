@@ -298,7 +298,13 @@ def normalize_indentation(code: str) -> str:  # noqa: PLR0912
             shift = 0
 
         if in_class:
-            if stripped.startswith("def "):
+            # Only a def at method level (indent <= 4) is a class method. Nested defs
+            # (e.g. helper functions inside construct, at indent >= 8) must fall through
+            # untouched: forcing them to 4 spaces reset the shift for ALL following
+            # lines, ejecting the rest of construct's body to class scope — which the
+            # AST sanitizer then rejected as "Executable scene code is at class scope"
+            # (every scene containing a nested helper def failed all 10 attempts).
+            if stripped.startswith("def ") and indent <= 4:
                 in_method = True
                 shift = 4 - indent
                 new_lines.append("    " + stripped)
