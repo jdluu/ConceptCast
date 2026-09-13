@@ -280,6 +280,24 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
             agent_name=agent_name,
         )
         raise
+    except TimeoutError:
+        # asyncio.timeout expiry. Re-raise with an explicit message: bare TimeoutError
+        # stringifies to "" which produced empty retry-feedback ("Scene N Failed: ")
+        # that gave the model nothing to correct on its next attempt.
+        err = (
+            f"Agent stage timed out after {stage_timeout:.0f}s of wall clock — "
+            "the run made no forward progress (stalled stream or wedged tool call). "
+            "Resume generation from where the previous attempt stopped, avoiding "
+            "whatever caused the stall."
+        )
+        logger.error("agent_stage_timeout", agent_name=agent_name, timeout=stage_timeout)
+        bench_trace.emit_call(
+            agent_name=agent_name,
+            agent=agent,
+            prompt=prompt,
+            error=f"TimeoutError: {err}",
+        )
+        raise TimeoutError(err) from None
     except exceptions.UnexpectedModelBehavior as e:
         logger.error(
             "agent_unexpected_model_behavior",

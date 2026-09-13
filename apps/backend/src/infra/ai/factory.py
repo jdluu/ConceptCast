@@ -165,13 +165,22 @@ class NanoProvider(BaseProvider):
         m_id = model_id or self.entry.default_model
 
         # In modern PydanticAI (0.1+), base_url is set via the provider.
-        # Explicit httpx timeout: without it, a stalled upstream stream (server accepts
-        # the request then never sends bytes / drops silently) blocks the workflow
-        # coroutine indefinitely — observed as all animator tasks wedged for 45+ min
-        # during the smoke run. Read timeout bounds each chunk wait; connect/pool bound
-        # acquisition. Total wall time per call is additionally bounded by usage limits.
+        # Two hardening measures on the shared HTTP client:
+        # 1. Timeouts — bound connect/read/write so a dead or silent upstream raises
+        #    instead of blocking the workflow coroutine indefinitely (wedged animator
+        #    tasks observed for 45+ min before this was added).
+        # 2. Short keepalive_expiry — Nano GPT closes idle keep-alive connections
+        #    server-side; stale pooled sockets then cause each request to stall through
+        #    the SDK's internal retry cycle (observed as 900s wall-clock timeouts that
+        #    correlated with 38 lingering CLOSE-WAIT sockets). Expiring idle connections
+        #    after 10s forces fresh dials, which probe-testing shows complete promptly.
+        # max_keepalive_connections=0 disables keep-alive pooling entirely: every
+        # request dials fresh and closes after. This is the deliberate fix for stale
+        # pooled sockets — TLS handshake overhead (~100ms) is negligible next to
+        # multi-minute LLM calls.
         http_client = httpx.AsyncClient(
-            timeout=httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0)
+            timeout=httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0),
+            limits=httpx.Limits(max_connections=32, max_keepalive_connections=0),
         )
         provider = OpenAIProvider(
             base_url="https://nano-gpt.com/api/subscription/v1",
