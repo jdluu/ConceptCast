@@ -290,7 +290,9 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
             "Resume generation from where the previous attempt stopped, avoiding "
             "whatever caused the stall."
         )
-        logger.error("agent_stage_timeout", agent_name=agent_name, timeout=stage_timeout)
+        logger.error(
+            "agent_stage_timeout", agent_name=agent_name, timeout=stage_timeout
+        )
         bench_trace.emit_call(
             agent_name=agent_name,
             agent=agent,
@@ -315,12 +317,27 @@ async def run_agent_streamed(  # noqa: C901, PLR0912, PLR0915
         )
         raise ValueError(f"Agent output did not match expected schema: {e}") from e
     except Exception as e:
-        logger.error("agent_runtime_error", agent_name=agent_name, error=str(e))
+        # Enrich transient network failures that stringify empty (httpx.ReadError with
+        # no args, CancelledError wrappers, etc.): the retry-feedback loop needs a
+        # message that tells the model what actually went wrong. Type name is always
+        # included so the class of failure is visible even when str(e) is empty.
+        err_str = str(e)
+        if not err_str.strip():
+            err_str = (
+                f"{type(e).__name__} with no detail — transient network/provider "
+                "failure. Retry the generation; if it persists, simplify the scene."
+            )
+            logger.error(
+                "agent_runtime_error_empty_message",
+                agent_name=agent_name,
+                exc_type=type(e).__name__,
+            )
+        logger.error("agent_runtime_error", agent_name=agent_name, error=err_str)
         bench_trace.emit_call(
             agent_name=agent_name,
             agent=agent,
             prompt=prompt,
-            error=f"{type(e).__name__}: {e}",
+            error=f"{type(e).__name__}: {err_str}",
         )
         raise
 
