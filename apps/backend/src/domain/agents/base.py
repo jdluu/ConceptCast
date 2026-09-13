@@ -72,10 +72,12 @@ class ConceptAgent(Generic[T]):
         if pre_run_hook:
             pre_run_hook(agent)
 
-        # Disable streaming dynamically for the Nano provider to prevent keep-alive/SSE character dropouts
-        from infra.ai.factory import NanoConceptModel
-
-        stream = not isinstance(model, NanoConceptModel)
+        # Streaming is now enabled for ALL providers including Nano. The original
+        # keep-alive/SSE dropout issue that forced non-stream mode was caused by stale
+        # pooled connections — fixed properly in the factory (fresh connection per call,
+        # commit 8ab9d2c). Non-stream mode cannot handle thinking models, which buffer
+        # their entire reasoning server-side and routinely exceed any sane timeout
+        # (observed: >30 min on real animator prompts with an 1800s wall clock).
 
         result, usage = await run_agent_streamed(
             self.name,
@@ -85,6 +87,6 @@ class ConceptAgent(Generic[T]):
             deps=ctx,
             message_history=message_history,
             usage_limits=usage_limits,
-            stream=stream,
+            stream=True,
         )
         return result, usage

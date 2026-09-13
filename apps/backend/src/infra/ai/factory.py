@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import cast
 
 import httpx
+from openai import AsyncOpenAI
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIChatModel
@@ -182,10 +183,18 @@ class NanoProvider(BaseProvider):
             timeout=httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0),
             limits=httpx.Limits(max_connections=32, max_keepalive_connections=0),
         )
-        provider = OpenAIProvider(
+        # max_retries=0: the openai SDK's internal retry cycle (2 retries × 600s
+        # default timeout) was silently inflating attempt durations to the wall-clock
+        # limit while hiding the underlying stall. The workflow's per-attempt loop owns
+        # retries — failures must surface immediately with a clear error.
+        openai_client = AsyncOpenAI(
             base_url="https://nano-gpt.com/api/subscription/v1",
             api_key=key,
             http_client=http_client,
+            max_retries=0,
+        )
+        provider = OpenAIProvider(
+            openai_client=openai_client,
         )
 
         return NanoConceptModel(
