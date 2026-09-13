@@ -250,86 +250,6 @@ def format_python_code(code: str) -> str:
         return code
 
 
-def normalize_indentation(code: str) -> str:  # noqa: PLR0912
-    """Standardizes class, method, and body indentation to be syntactically consistent.
-
-    This ensures that Ruff format can parse and clean up the code successfully.
-    """
-    lines = code.splitlines()
-    new_lines = []
-
-    in_class = False
-    in_method = False
-    shift = 0
-
-    for line in lines:
-        stripped = line.lstrip()
-        if not stripped:
-            new_lines.append(line)
-            continue
-
-        indent = len(line) - len(stripped)
-
-        # Detect start of class block
-        if stripped.startswith("class ") and (
-            "(Scene" in stripped or "(ThreeDScene" in stripped
-        ):
-            in_class = True
-            in_method = False
-            shift = -indent
-            new_lines.append(stripped)
-            continue
-
-        # Detect end of class block on top-level definitions
-        if (
-            in_class
-            and indent == 0
-            and not stripped.startswith("#")
-            and not stripped.startswith('"""')
-            and not stripped.startswith("'''")
-            and (
-                stripped.startswith("class ")
-                or stripped.startswith("def ")
-                or stripped.startswith("if __name__")
-            )
-        ):
-            in_class = False
-            in_method = False
-            shift = 0
-
-        if in_class:
-            # Only a def at method level (indent <= 4) is a class method. Nested defs
-            # (e.g. helper functions inside construct, at indent >= 8) must fall through
-            # untouched: forcing them to 4 spaces reset the shift for ALL following
-            # lines, ejecting the rest of construct's body to class scope — which the
-            # AST sanitizer then rejected as "Executable scene code is at class scope"
-            # (every scene containing a nested helper def failed all 10 attempts).
-            if stripped.startswith("def ") and indent <= 4:
-                in_method = True
-                shift = 4 - indent
-                new_lines.append("    " + stripped)
-                continue
-
-            # If we are inside the class but before any method (e.g. class docstrings)
-            if not in_method:
-                if indent < 4:
-                    new_lines.append("    " + stripped)
-                else:
-                    new_lines.append(line)
-                continue
-
-        # Apply shift if active
-        if shift != 0:
-            if shift > 0:
-                new_lines.append(" " * shift + line)
-            else:
-                new_lines.append(line[min(-shift, indent) :])
-        else:
-            new_lines.append(line)
-
-    return "\n".join(new_lines)
-
-
 def _auto_import_known_names(code: str, tree: ast.Module) -> str:
     """Add only a curated import when its name is loaded but unbound."""
     bound_names = {
@@ -445,8 +365,10 @@ def sanitize_manim_code(code: str) -> str:  # noqa: C901, PLR0912
             repaired_lines.append(line)
     cleaned = "\n".join(repaired_lines)
 
-    # Normalize class/method indentation to be syntactically consistent
-    cleaned = normalize_indentation(cleaned)
+    # Doctrine: repair or reject, never corrupt. No heuristic re-indentation here —
+    # the nested-def ejection bug (2937762) came from exactly this class of transform.
+    # Ruff format handles legal-but-nonstandard indentation; truly broken indentation
+    # fails ast.parse below and is rejected with the syntax error for the model to fix.
 
     # Auto-format to resolve minor formatting/whitespace errors
     cleaned = format_python_code(cleaned)

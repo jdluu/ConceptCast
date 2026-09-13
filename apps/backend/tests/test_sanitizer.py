@@ -250,8 +250,8 @@ class SceneGen(Scene):
     assert "class SceneGen(Scene):" in sanitized
 
 
-def test_sanitize_normalize_indentation() -> None:
-    """Verifies that class/method indentation inconsistencies are normalized and pass."""
+def test_sanitize_ruff_formats_inconsistent_indentation() -> None:
+    """Verifies that legal-but-nonstandard indentation is fixed by Ruff format alone."""
     inconsistent_code = """
 from manim import *
 
