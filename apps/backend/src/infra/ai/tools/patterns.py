@@ -1,14 +1,16 @@
-from pathlib import Path
-
 import structlog
 from pydantic_ai import RunContext
 
 from domain.models.workflow import GlobalContext
+from infra.settings import PROJECT_ROOT
 
 logger = structlog.get_logger(__name__)
 
-# Path to the locally vendored manimce skills
-SKILLS_DIR = Path("prompts/skills/manimce")
+# Path to the locally vendored manimce skills. Resolved from the project root — a
+# relative path silently resolved against the backend's CWD (apps/backend), where the
+# directory does not exist, so every lookup_manim_pattern call returned "No patterns
+# directory found" and the models animated without their pattern library.
+SKILLS_DIR = PROJECT_ROOT / "prompts" / "skills" / "manimce"
 
 
 def get_available_patterns() -> str:
