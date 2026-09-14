@@ -9,7 +9,7 @@
 import os, subprocess, sys, time
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent          # apps/backend
+REPO = Path(__file__).resolve().parent.parent.parent  # apps/backend
 MANIFEST = Path("/home/jdluu/projects/ConceptCast-results/manifest/jobs.csv")
 TRACE_DIR = Path(os.environ.get("BENCH_TRACE_DIR", "/home/jdluu/projects/ConceptCast-results/traces"))
 UV = "/home/jdluu/.local/bin/uv"
