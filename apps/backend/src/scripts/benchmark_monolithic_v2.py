@@ -220,6 +220,8 @@ async def run_one(
     http_error = None
     render_error = None
     video_relpath = None
+    status = "failed"
+    job_dir = trace_dir / "renders" / f"job-{seq}"
 
     while attempts < max_attempts:
         attempts += 1
@@ -237,28 +239,29 @@ async def run_one(
         })
         if not code:
             errors = ["no code returned"]
-        else:
-            errors = validate_script(code)
-        if not errors:
-            first_pass = attempts == 1
-            break
-        if arm == "A":
-            break  # no repair in Arm A
-        prompt = (
-            REPAIR_INSTRUCTIONS.format(errors="\n".join(errors))
-            + "\n\nCurrent script:\n"
-            + (code or "")
-        )
+            if arm == "A":
+                break
+            prompt = (
+                REPAIR_INSTRUCTIONS.format(errors="no code was returned")
+                + "\n\nCurrent script:\n" + (code or "")
+            )
+            continue
 
-    # Render (both arms must render to count as completed)
-    status = "failed"
-    render_error = None
-    video_relpath = None
-    if code and not errors:
-        job_dir = trace_dir / "renders" / f"job-{seq}"
+        errors = validate_script(code)
+        if errors:
+            if arm == "A":
+                break  # no repair in Arm A
+            prompt = (
+                REPAIR_INSTRUCTIONS.format(errors="\n".join(errors))
+                + "\n\nCurrent script:\n" + code
+            )
+            continue
+
+        # validation passed -> render
         job_dir.mkdir(parents=True, exist_ok=True)
         code_file = job_dir / f"scene_{seq}.py"
         code_file.write_text(code)
+        render_ok = True
         try:
             render = await sandbox.run_rendering(
                 job_dir, code_file.name, scene_name="SceneGen", timeout=900,
@@ -267,22 +270,37 @@ async def run_one(
             if videos:
                 status = "completed"
                 video_relpath = str(videos[0])
+                first_pass = attempts == 1
                 shutil.copy(code_file, job_dir / "final_code.py")
-            else:
-                status = "failed"
-                render_error = "render produced no video files"
+                break
+            render_ok = False
+            render_error = "render produced no video files"
         except RuntimeError as e:
-            status = "failed"
+            render_ok = False
             render_error = str(e)[:400]
         except Exception as e:  # noqa: BLE001 — sandbox unavailable etc.
-            status = "failed"
+            render_ok = False
             render_error = f"{type(e).__name__}: {e}"[:400]
+
         append_trace(trace_dir, {
             "ts": datetime.now(UTC).isoformat(),
             "arm": arm, "rep": int(row["rep"]), "topic": topic, "model": model,
             "stage": "render", "attempt": attempts, "job_seq": seq,
             "error": render_error,
         })
+
+        if arm == "A":
+            break  # no repair in Arm A
+        # render failure feeds back to the repair loop (matches Arm C's render-repair)
+        prompt = (
+            REPAIR_INSTRUCTIONS.format(errors="Render failed:\n" + (render_error or ""))
+            + "\n\nCurrent script:\n" + code
+        )
+
+    if status != "completed":
+        status = "failed"
+        if not errors and not render_error and not http_error:
+            errors = ["attempts exhausted"]
 
     outcome = {
         "job_seq": seq,
