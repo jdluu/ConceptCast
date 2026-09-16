@@ -24,6 +24,8 @@ spans two companion repositories:
 | `scripts/` | DB snapshotting, wait helpers, Infisical token |
 | `apps/backend/src/scripts/benchmark_council.py` | Arm C (council) benchmark runner |
 | `apps/backend/src/scripts/benchmark_monolithic.py` | Arms A/B (monolithic) benchmark runner |
+| `apps/backend/src/scripts/benchmark_monolithic_v2.py` | Arms A/B v2 runner (multi-scene, must-render) |
+| `apps/backend/src/scripts/run_ab_v2.py` | A/B v2 launcher (sequential, resumable) |
 | `apps/backend/src/scripts/run_full_benchmark.py` | Full-run launcher: all three arms sequentially, resumable |
 
 ## Quick Start
@@ -112,7 +114,7 @@ BENCH_TRACE_DIR=../../results/traces BENCH_RUN_ID=<run-id> BENCH_TEMPERATURE=0 \
 # Or per-arm:
 uv run python src/scripts/benchmark_council.py \
   --manifest ../../results/manifest/jobs.csv --arm C --parallelism 8
-uv run python src/scripts/benchmark_monolithic.py \
+uv run python src/scripts/benchmark_monolithic_v2.py \
   --manifest ../../results/manifest/jobs.csv --arm A --trace-dir ../../results/traces
 ```
 
