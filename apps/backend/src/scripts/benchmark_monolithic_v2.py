@@ -345,6 +345,12 @@ async def main_async(args: argparse.Namespace) -> None:
     if not sandbox.is_healthy():
         sys.exit("sandbox unhealthy: no podman/docker/local manim available")
 
+    # Sweep containers orphaned by a crashed or killed client in an earlier run;
+    # nothing else can ever claim them, so they would run until the host reboots.
+    reaped = sandbox.reap_orphans()
+    if reaped:
+        print(f"reaped {reaped} orphaned manim container(s)")
+
     sem = asyncio.Semaphore(args.parallelism)
 
     async def bounded(row: dict[str, str]) -> dict[str, object]:
