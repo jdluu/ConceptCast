@@ -15,6 +15,7 @@ Differences from v1 (bench-20260913):
 
 Resumable via per-job outcome files (traces/outcomes_v2/job-<seq>.json).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,8 +28,12 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
-REPO = Path(__file__).resolve().parent.parent          # apps/backend
+if TYPE_CHECKING:
+    from infra.engines.sandbox import LocalSandbox
+
+REPO = Path(__file__).resolve().parent.parent  # apps/backend
 sys.path.insert(0, str(REPO / "src"))
 
 PROMPT_TEMPLATE = (
@@ -122,14 +127,15 @@ def validate_script(code: str) -> list[str]:
         )
     for n in scene_classes:
         if not any(
-            isinstance(f, ast.FunctionDef) and f.name == "construct"
-            for f in n.body
+            isinstance(f, ast.FunctionDef) and f.name == "construct" for f in n.body
         ):
             errors.append(f"{n.name} has no construct() method")
     return errors
 
 
-async def call_llm(model_id: str, prompt: str) -> tuple[str | None, dict, float]:
+async def call_llm(
+    model_id: str, prompt: str
+) -> tuple[str | None, dict[str, object], float]:
     import httpx
 
     from infra.settings import get_settings
@@ -171,7 +177,9 @@ def append_trace(trace_dir: Path, record: dict[str, object]) -> None:
         f.write(json.dumps(record, default=str) + "\n")
 
 
-def _trace_base(r: dict, seq: int, arm: str, topic: str, model: str, attempt: int) -> dict:
+def _trace_base(
+    r: dict[str, str], seq: int, arm: str, topic: str, model: str, attempt: int
+) -> dict[str, object]:
     return {
         "ts": datetime.now(UTC).isoformat(),
         "arm": arm,
@@ -195,19 +203,24 @@ async def run_one(  # noqa: PLR0912, PLR0915 — linear per-job benchmark step
     dry_run: bool,
     topic_prompts: dict[str, str],
     min_scenes: int,
-    sandbox,
+    sandbox: LocalSandbox,
 ) -> dict[str, object]:
     seq = int(row["job_seq"])
     out = outcomes_dir(trace_dir) / f"job-{seq}.json"
     if out.exists():
-        return json.loads(out.read_text())  # resumable
+        return cast("dict[str, object]", json.loads(out.read_text()))  # resumable
 
     topic = row["topic"]
     model = row["model"]
     topic_prompt = topic_prompts.get(topic, topic)
     if dry_run:
-        return {"job_seq": seq, "arm": arm, "model": model, "topic": topic,
-                "status": "dry-run"}
+        return {
+            "job_seq": seq,
+            "arm": arm,
+            "model": model,
+            "topic": topic,
+            "status": "dry-run",
+        }
 
     prompt = PROMPT_TEMPLATE.format(
         topic=topic_prompt, min_scenes=min_scenes, max_scenes=min_scenes + 5
@@ -227,22 +240,26 @@ async def run_one(  # noqa: PLR0912, PLR0915 — linear per-job benchmark step
         text, usage, latency = await call_llm(model, prompt)
         http_error = usage.pop("error", None) if "error" in usage else None
         code = extract_code(text)
-        append_trace(trace_dir, {
-            **_trace_base(row, seq, arm, topic, model, attempts),
-            "prompt_sha256": sha(prompt),
-            "prompt_chars": len(prompt),
-            "response_sha256": sha(text),
-            "latency_ms": round(latency, 1),
-            "error": http_error,
-            **usage,
-        })
+        append_trace(
+            trace_dir,
+            {
+                **_trace_base(row, seq, arm, topic, model, attempts),
+                "prompt_sha256": sha(prompt),
+                "prompt_chars": len(prompt),
+                "response_sha256": sha(text),
+                "latency_ms": round(latency, 1),
+                "error": http_error,
+                **usage,
+            },
+        )
         if not code:
             errors = ["no code returned"]
             if arm == "A":
                 break
             prompt = (
                 REPAIR_INSTRUCTIONS.format(errors="no code was returned")
-                + "\n\nCurrent script:\n" + (code or "")
+                + "\n\nCurrent script:\n"
+                + (code or "")
             )
             continue
 
@@ -252,7 +269,8 @@ async def run_one(  # noqa: PLR0912, PLR0915 — linear per-job benchmark step
                 break  # no repair in Arm A
             prompt = (
                 REPAIR_INSTRUCTIONS.format(errors="\n".join(errors))
-                + "\n\nCurrent script:\n" + code
+                + "\n\nCurrent script:\n"
+                + code
             )
             continue
 
@@ -262,9 +280,16 @@ async def run_one(  # noqa: PLR0912, PLR0915 — linear per-job benchmark step
         code_file.write_text(code)
         try:
             await sandbox.run_rendering(
-                job_dir, code_file.name, scene_name="SceneGen", timeout=900,
+                job_dir,
+                code_file.name,
+                scene_name="SceneGen",
+                timeout=900,
             )
-            videos = sorted((job_dir / "videos").rglob("*.mp4")) if (job_dir / "videos").exists() else []
+            videos = (
+                sorted((job_dir / "videos").rglob("*.mp4"))
+                if (job_dir / "videos").exists()
+                else []
+            )
             if videos:
                 status = "completed"
                 video_relpath = str(videos[0])
@@ -277,19 +302,28 @@ async def run_one(  # noqa: PLR0912, PLR0915 — linear per-job benchmark step
         except Exception as e:  # noqa: BLE001 — sandbox unavailable etc.
             render_error = f"{type(e).__name__}: {e}"[:400]
 
-        append_trace(trace_dir, {
-            "ts": datetime.now(UTC).isoformat(),
-            "arm": arm, "rep": int(row["rep"]), "topic": topic, "model": model,
-            "stage": "render", "attempt": attempts, "job_seq": seq,
-            "error": render_error,
-        })
+        append_trace(
+            trace_dir,
+            {
+                "ts": datetime.now(UTC).isoformat(),
+                "arm": arm,
+                "rep": int(row["rep"]),
+                "topic": topic,
+                "model": model,
+                "stage": "render",
+                "attempt": attempts,
+                "job_seq": seq,
+                "error": render_error,
+            },
+        )
 
         if arm == "A":
             break  # no repair in Arm A
         # render failure feeds back to the repair loop (matches Arm C's render-repair)
         prompt = (
             REPAIR_INSTRUCTIONS.format(errors="Render failed:\n" + (render_error or ""))
-            + "\n\nCurrent script:\n" + code
+            + "\n\nCurrent script:\n"
+            + code
         )
 
     if status != "completed":
@@ -351,8 +385,14 @@ async def main_async(args: argparse.Namespace) -> None:
     async def bounded(row: dict[str, str]) -> dict[str, object]:
         async with sem:
             return await run_one(
-                row, args.arm, trace_dir, args.max_attempts, args.dry_run,
-                topic_prompts, args.min_scenes, sandbox,
+                row,
+                args.arm,
+                trace_dir,
+                args.max_attempts,
+                args.dry_run,
+                topic_prompts,
+                args.min_scenes,
+                sandbox,
             )
 
     outcomes = await asyncio.gather(*(bounded(r) for r in rows))
