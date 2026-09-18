@@ -20,7 +20,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
-import hashlib
 import json
 import os
 import shutil
@@ -188,7 +187,7 @@ def _trace_base(r: dict, seq: int, arm: str, topic: str, model: str, attempt: in
     }
 
 
-async def run_one(
+async def run_one(  # noqa: PLR0912, PLR0915 — linear per-job benchmark step
     row: dict[str, str],
     arm: str,
     trace_dir: Path,
@@ -261,9 +260,8 @@ async def run_one(
         job_dir.mkdir(parents=True, exist_ok=True)
         code_file = job_dir / f"scene_{seq}.py"
         code_file.write_text(code)
-        render_ok = True
         try:
-            render = await sandbox.run_rendering(
+            await sandbox.run_rendering(
                 job_dir, code_file.name, scene_name="SceneGen", timeout=900,
             )
             videos = sorted((job_dir / "videos").rglob("*.mp4")) if (job_dir / "videos").exists() else []
@@ -273,13 +271,10 @@ async def run_one(
                 first_pass = attempts == 1
                 shutil.copy(code_file, job_dir / "final_code.py")
                 break
-            render_ok = False
             render_error = "render produced no video files"
         except RuntimeError as e:
-            render_ok = False
             render_error = str(e)[:400]
         except Exception as e:  # noqa: BLE001 — sandbox unavailable etc.
-            render_ok = False
             render_error = f"{type(e).__name__}: {e}"[:400]
 
         append_trace(trace_dir, {
