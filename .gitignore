@@ -71,13 +71,6 @@ results/
 pilot-*/
 benchmark.log
 
-# --- Agent & Antigravity Metadata ---
-.agents/
-.antigravitycli/
-.hermes/
-skills-lock.json
-detailed_agent_prompt.md
-
 
 
 
