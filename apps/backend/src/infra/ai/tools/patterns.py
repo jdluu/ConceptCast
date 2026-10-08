@@ -6,7 +6,8 @@ from infra.settings import PROJECT_ROOT
 
 logger = structlog.get_logger(__name__)
 
-# Path to the locally vendored manimce skills. Resolved from the project root — a
+# Vendored from https://github.com/adithya-s-k/manim_skill (MIT); see
+# prompts/skills/manimce/README.md for provenance. Path resolved from the project root — a
 # relative path silently resolved against the backend's CWD (apps/backend), where the
 # directory does not exist, so every lookup_manim_pattern call returned "No patterns
 # directory found" and the models animated without their pattern library.

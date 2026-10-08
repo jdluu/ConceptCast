@@ -20,7 +20,7 @@ spans two companion repositories:
 |---|---|
 | `apps/backend` | FastAPI service + Pydantic AI agent council |
 | `apps/frontend` | Web UI |
-| `prompts/` | Agent prompts and vendored ManimCE skill docs |
+| `prompts/` | Agent prompts and vendored ManimCE skill docs (adapted from [manim_skill](https://github.com/adithya-s-k/manim_skill), MIT) |
 | `scripts/` | DB snapshotting, wait helpers, Infisical token |
 | `apps/backend/src/scripts/benchmark_council.py` | Arm C (council) benchmark runner |
 | `apps/backend/src/scripts/benchmark_monolithic.py` | Arms A/B (monolithic) benchmark runner |
