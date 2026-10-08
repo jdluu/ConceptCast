@@ -128,6 +128,27 @@ python3 scripts/snapshot_sqlite.py data/conceptcast.db results/data/conceptcast.
 results/.venv/bin/python results/tools/figures.py   # thesis figures (300 DPI)
 ```
 
+## Reproducing the 2026-09-14 results
+
+Check out the tag `benchmark-2026-09-14` (commit `9ef77a9`) — the state the
+300-job grid ran from, with stored jobs created between 03:29 and 12:03 UTC.
+Every agent-behaviour path (the agent modules, the workflow steps, and the four
+`prompts/*.txt` prompts) is byte-identical between that commit and `main`, so
+later work does not change agent behaviour on a re-run. Commits that followed
+the run but may affect the environment are listed in the tag message.
+
+**Reserved, unpopulated schema fields.** `GlobalContext` declares four fields
+that nothing writes: `key_takeaways`, `lexicon`, `decisions` and `metrics`.
+They are deliberately left in place. The context injectors serialise every key,
+so the Architect and Animator prompts already contain them as empty blocks —
+populating them would change the prompt text and therefore the conditions the
+benchmark ran under. Do not wire them up without re-running the experiments.
+
+**Vendored corpus.** `prompts/skills/manimce/` holds 18 upstream ManimCE skill
+files served by `lookup_manim_pattern`. Its contents are fixed: the loader
+globs `*.md` in that directory, so adding a Markdown file there introduces a
+new "topic" to the tool listing. Provenance and licence: `prompts/skills/README.md`.
+
 ## Development
 
 ```bash
@@ -145,3 +166,9 @@ Released for academic reproducibility and public research verification.
 Licensed under the MIT License (see [LICENSE](LICENSE)). Benchmark manifest,
 traces, and analysis tooling in the results repository are likewise
 MIT-licensed.
+
+The vendored ManimCE skill corpus in `prompts/skills/manimce/` is adapted from
+[manim_skill](https://github.com/adithya-s-k/manim_skill) by Adithya S Kolavi and
+is used under the MIT License. The upstream license text travels with it at
+`prompts/skills/manimce/LICENSE`, and `prompts/skills/README.md` records what
+changed on vendoring.

@@ -88,6 +88,15 @@ class WorkflowMetrics(BaseModel):
 class GlobalContext(BaseModel):
     """The root GCO shared across all agents in the ConceptCast council."""
 
+    # RESERVED AND UNPOPULATED: key_takeaways, lexicon, decisions and metrics
+    # have no writer anywhere in the pipeline (verified 2026-10, four ways).
+    # They are deliberately left in place. _format_context serialises every key,
+    # so the Architect and Animator prompts already carry them as empty blocks
+    # ("existing_visual_lexicon": {}, "recent_decisions": []). Populating them
+    # would change the prompt text and therefore the conditions the 2026-09-14
+    # benchmark ran under. Do not wire them up without re-running the study.
+    # See the benchmark-2026-09-14 tag and prompts/skills/README.md.
+
     # 1. Semantic Intent & Branding
     topic: str
     user_prompt: str | None = None
