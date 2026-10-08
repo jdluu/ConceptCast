@@ -5,7 +5,7 @@ Kolavi and are used under the MIT License.
 
 - **Source:** https://github.com/adithya-s-k/manim_skill
 - **Upstream path:** `skills/manimce-best-practices/rules/`
-- **License:** MIT — see [LICENSE](LICENSE) in this directory.
+- **License:** MIT — see [LICENSE](manimce/LICENSE) in the corpus directory.
 
 **Changes made on vendoring.** The YAML frontmatter block (`name`, `description`,
 `metadata`) was removed from every file, and a few lines were trimmed from some.
